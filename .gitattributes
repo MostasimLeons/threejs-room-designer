@@ -1,0 +1,10 @@
+# Store text files with LF line endings in Git so Windows, macOS and Linux
+# contributors don't create noisy "every line changed" diffs.
+* text=auto eol=lf
+
+# Binary files: never touch line endings
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.glb binary
+*.hdr binary
