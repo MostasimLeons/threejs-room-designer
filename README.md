@@ -160,3 +160,5 @@ src/
 - Overlapping furniture is flagged but not blocked. You decide where things go.
 - The window and door are fixed parts of the walls.
 - There is no Add or Delete for furniture yet: the room always has the six starting pieces.
+
+<!-- Last updated: 2026-11-02 12:11 UTC -->
