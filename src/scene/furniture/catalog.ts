@@ -1,4 +1,5 @@
 import { ROOM } from '../roomConfig'
+import { clamp, degToRad } from '../../utils/math'
 
 export type FurnitureType = 'sofa' | 'armchair' | 'coffeeTable' | 'tvUnit' | 'plant' | 'floorLamp'
 
@@ -33,11 +34,31 @@ interface FurnitureInfo {
   variants: VariantInfo[]
   /** Which part the colour applies to. */
   colorLabel: string
-  swatches: string[]
+  swatches: Swatch[]
 }
 
-const FABRIC_SWATCHES = ['#f1eee8', '#d9cbb3', '#8e9c80', '#5d6b7a', '#3a3a3c', '#b5654a']
-const WOOD_SWATCHES = ['#c49a6c', '#e0c49c', '#8a5a3b', '#4a3426', '#f2f0eb', '#2a2a2c']
+/** A preset colour with a readable name (shown as a tooltip and read by screen readers). */
+export interface Swatch {
+  color: string
+  name: string
+}
+
+const FABRIC_SWATCHES: Swatch[] = [
+  { color: '#f1eee8', name: 'Ivory' },
+  { color: '#d9cbb3', name: 'Oatmeal' },
+  { color: '#8e9c80', name: 'Sage' },
+  { color: '#5d6b7a', name: 'Slate blue' },
+  { color: '#3a3a3c', name: 'Charcoal' },
+  { color: '#b5654a', name: 'Rust' },
+]
+const WOOD_SWATCHES: Swatch[] = [
+  { color: '#c49a6c', name: 'Natural oak' },
+  { color: '#e0c49c', name: 'Birch' },
+  { color: '#8a5a3b', name: 'Teak' },
+  { color: '#4a3426', name: 'Walnut' },
+  { color: '#f2f0eb', name: 'White' },
+  { color: '#2a2a2c', name: 'Black' },
+]
 
 export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   sofa: {
@@ -79,7 +100,14 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
       { id: '65', label: '65" TV', detail: '180 cm unit', footprint: [1.8, 0.42] },
     ],
     colorLabel: 'Cabinet',
-    swatches: ['#6e4b33', '#c49a6c', '#f2f0eb', '#2a2a2c', '#7d8b74', '#41556b'],
+    swatches: [
+      { color: '#6e4b33', name: 'Dark walnut' },
+      { color: '#c49a6c', name: 'Natural oak' },
+      { color: '#f2f0eb', name: 'White' },
+      { color: '#2a2a2c', name: 'Black' },
+      { color: '#7d8b74', name: 'Olive' },
+      { color: '#41556b', name: 'Navy' },
+    ],
   },
   plant: {
     label: 'Indoor plant',
@@ -89,7 +117,14 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
       { id: 'small', label: 'Small', detail: '85 cm', footprint: [0.4, 0.4] },
     ],
     colorLabel: 'Pot',
-    swatches: ['#b86f50', '#ecebe6', '#2a2a2c', '#7d8b74', '#c9b393', '#41556b'],
+    swatches: [
+      { color: '#b86f50', name: 'Terracotta' },
+      { color: '#ecebe6', name: 'White ceramic' },
+      { color: '#2a2a2c', name: 'Black' },
+      { color: '#7d8b74', name: 'Olive' },
+      { color: '#c9b393', name: 'Sand' },
+      { color: '#41556b', name: 'Navy' },
+    ],
   },
   floorLamp: {
     label: 'Floor lamp',
@@ -99,7 +134,14 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
       { id: 'drum', label: 'Drum', detail: '150 cm', footprint: [0.46, 0.46] },
     ],
     colorLabel: 'Shade',
-    swatches: ['#f6eedd', '#e9d3b0', '#c9d6c2', '#e3cccc', '#c7d2de', '#ffffff'],
+    swatches: [
+      { color: '#f6eedd', name: 'Linen' },
+      { color: '#e9d3b0', name: 'Honey' },
+      { color: '#c9d6c2', name: 'Mint' },
+      { color: '#e3cccc', name: 'Blush' },
+      { color: '#c7d2de', name: 'Sky' },
+      { color: '#ffffff', name: 'White' },
+    ],
   },
 }
 
@@ -119,15 +161,13 @@ export const DEFAULT_LAYOUT: FurnitureItem[] = [
   { id: 'lamp', type: 'floorLamp', variant: 'tapered', position: [1.8, -2.6], rotation: 0, color: '#f6eedd' },
 ]
 
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
-
 /**
  * Keeps a piece of furniture inside the room walls. A rotated object takes up
  * a different amount of space along x and z, so the rotation is included.
  */
 export function clampToRoom(item: Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation'>): [number, number] {
   const [w, d] = getVariant(item.type, item.variant).footprint
-  const angle = (item.rotation * Math.PI) / 180
+  const angle = degToRad(item.rotation)
   const cos = Math.abs(Math.cos(angle))
   const sin = Math.abs(Math.sin(angle))
   const halfX = (cos * w + sin * d) / 2
@@ -135,4 +175,57 @@ export function clampToRoom(item: Pick<FurnitureItem, 'type' | 'variant' | 'posi
   const maxX = ROOM.width / 2 - halfX
   const maxZ = ROOM.depth / 2 - halfZ
   return [clamp(item.position[0], -maxX, maxX), clamp(item.position[1], -maxZ, maxZ)]
+}
+
+type Point = [number, number]
+
+/** The four floor corners of an item's footprint, rotated the same way as the 3D model. */
+function footprintCorners(item: FurnitureItem): Point[] {
+  const [w, d] = getVariant(item.type, item.variant).footprint
+  const angle = degToRad(item.rotation)
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  const [cx, cz] = item.position
+  return [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(
+    // Same maths Three.js uses to rotate around the vertical (y) axis.
+    ([x, z]): Point => [cx + x * cos + z * sin, cz - x * sin + z * cos],
+  )
+}
+
+/**
+ * Do two footprints overlap? Uses the "separating axis" test: two rectangles
+ * do NOT overlap if you can find a direction (one of their edge directions)
+ * along which their shadows don't touch.
+ */
+function footprintsOverlap(a: FurnitureItem, b: FurnitureItem): boolean {
+  const TOLERANCE = 0.02 // 2 cm, so pieces that merely touch don't count
+  const cornersA = footprintCorners(a)
+  const cornersB = footprintCorners(b)
+  for (const corners of [cornersA, cornersB]) {
+    for (let i = 0; i < 2; i++) {
+      const [x1, z1] = corners[i]
+      const [x2, z2] = corners[i + 1]
+      const axis: Point = [z1 - z2, x2 - x1] // perpendicular to this edge
+      const project = (points: Point[]) => points.map(([x, z]) => x * axis[0] + z * axis[1])
+      const pa = project(cornersA)
+      const pb = project(cornersB)
+      const length = Math.hypot(axis[0], axis[1])
+      const gap = Math.max(Math.min(...pb) - Math.max(...pa), Math.min(...pa) - Math.max(...pb)) / length
+      if (gap > -TOLERANCE) return false
+    }
+  }
+  return true
+}
+
+/** For each item that overlaps another, the ids of the items it overlaps. */
+export function findOverlaps(items: FurnitureItem[]): Map<string, string[]> {
+  const overlaps = new Map<string, string[]>()
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      if (!footprintsOverlap(items[i], items[j])) continue
+      overlaps.set(items[i].id, [...(overlaps.get(items[i].id) ?? []), items[j].id])
+      overlaps.set(items[j].id, [...(overlaps.get(items[j].id) ?? []), items[i].id])
+    }
+  }
+  return overlaps
 }

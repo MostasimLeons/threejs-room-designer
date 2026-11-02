@@ -6,12 +6,15 @@ import { getVariant, type FurnitureItem } from './furniture/catalog'
 import { FurnitureModel } from './furniture/FurnitureModel'
 
 const SELECT_COLOR = '#2f6fed'
+const WARNING_COLOR = '#d92d20' // outline colour when a piece overlaps another
 const SNAP = 0.05 // metres: positions snap to 5 cm steps while dragging
 const FLOOR_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0) // the floor, y = 0
 
 interface FurnitureLayerProps {
   items: FurnitureItem[]
   selectedId: string | null
+  /** Items that overlap another item: their outline turns red. */
+  overlaps: Map<string, string[]>
   onSelect: (id: string) => void
   /** Called repeatedly while dragging with the new floor position. */
   onMove: (id: string, position: [number, number]) => void
@@ -19,23 +22,30 @@ interface FurnitureLayerProps {
   onDragBoundary: () => void
 }
 
-/** Floor outline drawn around the selected (solid) or hovered (faint) object. */
-function SelectionOutline({ footprint, hovered }: { footprint: [number, number]; hovered: boolean }) {
+interface OutlineProps {
+  footprint: [number, number]
+  /** Faint outline (hover / overlap hint) instead of the solid selection outline. */
+  faint: boolean
+  color: string
+}
+
+/** Floor outline drawn around the selected (solid) or hovered/overlapping (faint) object. */
+function SelectionOutline({ footprint, faint, color }: OutlineProps) {
   const w = footprint[0] / 2 + 0.08
   const d = footprint[1] / 2 + 0.08
   return (
     <group position={[0, 0.02, 0]}>
       <Line
         points={[[-w, 0, -d], [w, 0, -d], [w, 0, d], [-w, 0, d], [-w, 0, -d]]}
-        color={SELECT_COLOR}
-        lineWidth={hovered ? 1.5 : 2.5}
+        color={color}
+        lineWidth={faint ? 1.5 : 2.5}
         transparent
-        opacity={hovered ? 0.45 : 1}
+        opacity={faint ? 0.55 : 1}
       />
-      {!hovered && (
+      {!faint && (
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[w * 2, d * 2]} />
-          <meshBasicMaterial color={SELECT_COLOR} transparent opacity={0.1} depthWrite={false} />
+          <meshBasicMaterial color={color} transparent opacity={0.1} depthWrite={false} />
         </mesh>
       )}
     </group>
@@ -43,7 +53,7 @@ function SelectionOutline({ footprint, hovered }: { footprint: [number, number];
 }
 
 /** Renders all furniture and handles clicking (select) and dragging (move). */
-export function FurnitureLayer({ items, selectedId, onSelect, onMove, onDragBoundary }: FurnitureLayerProps) {
+export function FurnitureLayer({ items, selectedId, overlaps, onSelect, onMove, onDragBoundary }: FurnitureLayerProps) {
   const gl = useThree((state) => state.gl)
   const get = useThree((state) => state.get)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -123,6 +133,8 @@ export function FurnitureLayer({ items, selectedId, onSelect, onMove, onDragBoun
       {items.map((item) => {
         const isSelected = item.id === selectedId
         const isHovered = !isSelected && item.id === hoveredId && !dragging
+        const isOverlapping = overlaps.has(item.id)
+        const showOutline = isSelected || isHovered || isOverlapping
         return (
           <group
             key={item.id}
@@ -136,7 +148,13 @@ export function FurnitureLayer({ items, selectedId, onSelect, onMove, onDragBoun
             onPointerOut={() => setHoveredId((id) => (id === item.id ? null : id))}
           >
             <FurnitureModel type={item.type} variant={item.variant} color={item.color} />
-            {(isSelected || isHovered) && <SelectionOutline footprint={getVariant(item.type, item.variant).footprint} hovered={isHovered} />}
+            {showOutline && (
+              <SelectionOutline
+                footprint={getVariant(item.type, item.variant).footprint}
+                faint={!isSelected}
+                color={isOverlapping ? WARNING_COLOR : SELECT_COLOR}
+              />
+            )}
           </group>
         )
       })}

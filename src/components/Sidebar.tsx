@@ -1,23 +1,28 @@
-import { ROOM } from '../scene/roomConfig'
+import { DOOR_OPENING, ROOM, WINDOW_OPENING } from '../scene/roomConfig'
 import { FURNITURE_INFO, getVariant, type FurnitureItem } from '../scene/furniture/catalog'
 import { getFloorOption, wallColorName, type RoomFinishes } from '../scene/finishes'
 
+const cm = (metres: number) => Math.round(metres * 100)
+
 // Fixtures are built into the walls, so they can't be selected or moved.
+// Their sizes come from roomConfig, so this list can't go out of date.
 const FIXTURES = [
-  { name: 'Window', detail: '140 × 140 cm', color: '#cfe4ef' },
-  { name: 'Door', detail: '90 × 210 cm', color: '#f4f1ea' },
+  { name: 'Window', detail: `${cm(WINDOW_OPENING.width)} × ${cm(WINDOW_OPENING.top - WINDOW_OPENING.bottom)} cm`, color: '#cfe4ef' },
+  { name: 'Door', detail: `${cm(DOOR_OPENING.width)} × ${cm(DOOR_OPENING.top - DOOR_OPENING.bottom)} cm`, color: '#f4f1ea' },
 ]
 
 interface SidebarProps {
   items: FurnitureItem[]
   finishes: RoomFinishes
   selectedId: string | null
+  /** Items that overlap another item (see findOverlaps). */
+  overlaps: Map<string, string[]>
   onSelect: (id: string) => void
   /** Deselect everything so the right panel shows the room finishes. */
   onShowRoom: () => void
 }
 
-export function Sidebar({ items, finishes, selectedId, onSelect, onShowRoom }: SidebarProps) {
+export function Sidebar({ items, finishes, selectedId, overlaps, onSelect, onShowRoom }: SidebarProps) {
   const floor = getFloorOption(finishes.floor)
   const finishRows = [
     { name: 'Floor', detail: floor.label, color: floor.swatch },
@@ -68,7 +73,14 @@ export function Sidebar({ items, finishes, selectedId, onSelect, onShowRoom }: S
             <li key={item.id}>
               <button className={`list-button ${item.id === selectedId ? 'selected' : ''}`} onClick={() => onSelect(item.id)}>
                 <span className="swatch" style={{ background: item.color }} />
-                <span className="item-name">{FURNITURE_INFO[item.type].label}</span>
+                <span className="item-name">
+                  {FURNITURE_INFO[item.type].label}
+                  {overlaps.has(item.id) && (
+                    <span className="overlap-badge" title="Overlaps another piece">
+                      {' '}⚠
+                    </span>
+                  )}
+                </span>
                 <span className="item-detail">{getVariant(item.type, item.variant).label}</span>
               </button>
             </li>
@@ -77,7 +89,7 @@ export function Sidebar({ items, finishes, selectedId, onSelect, onShowRoom }: S
             <li key={f.name}>
               <span className="swatch" style={{ background: f.color }} />
               <span className="item-name">{f.name}</span>
-              <span className="item-detail">Fixed</span>
+              <span className="item-detail">{f.detail} · fixed</span>
             </li>
           ))}
         </ul>

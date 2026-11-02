@@ -2,10 +2,19 @@
   "name": "threejs-room-designer",
   "private": true,
   "version": "0.1.0",
+  "description": "Interactive 3D room configurator built with React, TypeScript, Three.js and React Three Fiber",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MostasimLeons/threejs-room-designer.git"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
     "preview": "vite preview"
   },
   "dependencies": {

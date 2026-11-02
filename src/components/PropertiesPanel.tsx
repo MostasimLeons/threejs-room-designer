@@ -1,11 +1,15 @@
 import { FURNITURE_INFO, getVariant, type FurnitureItem } from '../scene/furniture/catalog'
-import { FLOOR_OPTIONS, WALL_SWATCHES, wallColorName, type RoomFinishes } from '../scene/finishes'
+import type { RoomFinishes } from '../scene/finishes'
 import { ROOM } from '../scene/roomConfig'
 import type { FinishChanges, ItemChanges } from '../state/useDesignHistory'
+import { ColorPicker } from './ColorPicker'
+import { RoomPanel } from './RoomPanel'
 
 interface PropertiesPanelProps {
   item: FurnitureItem | null
   finishes: RoomFinishes
+  /** Other pieces the selected item currently overlaps. */
+  overlapping: FurnitureItem[]
   /** Apply a change and record an undo step. */
   onUpdate: (changes: ItemChanges) => void
   /** Apply a change live (while sliding); `onCommit` records it when you let go. */
@@ -16,93 +20,14 @@ interface PropertiesPanelProps {
   onDeselect: () => void
 }
 
-/** Props that make a slider/colour input record ONE undo step when you let go. */
+/** Props that make a slider record ONE undo step when you let go. */
 function commitHandlers(onCommit: () => void) {
   return { onPointerUp: onCommit, onKeyUp: onCommit, onBlur: onCommit }
 }
 
-interface ColorPickerProps {
-  swatches: { color: string; name: string }[]
-  value: string
-  onPick: (color: string) => void
-  onPreview: (color: string) => void
-  onCommit: () => void
-}
-
-/** A grid of preset swatches plus a "+" button that opens the browser's colour picker. */
-function ColorPicker({ swatches, value, onPick, onPreview, onCommit }: ColorPickerProps) {
-  return (
-    <div className="swatch-grid">
-      {swatches.map((swatch) => (
-        <button
-          key={swatch.color}
-          className={`swatch-button ${swatch.color.toLowerCase() === value.toLowerCase() ? 'active' : ''}`}
-          style={{ background: swatch.color }}
-          onClick={() => onPick(swatch.color)}
-          aria-label={swatch.name}
-          title={swatch.name}
-        />
-      ))}
-      <label className="swatch-button custom" title="Custom colour">
-        <input type="color" value={value} onChange={(e) => onPreview(e.target.value)} onBlur={onCommit} aria-label="Custom colour" />+
-      </label>
-    </div>
-  )
-}
-
-/** Shown when nothing is selected: edit the room itself. */
-function RoomPanel({ finishes, onUpdateFinishes, onPreviewFinishes, onCommit }: Omit<PropertiesPanelProps, 'item' | 'onUpdate' | 'onPreview' | 'onDeselect'>) {
-  return (
-    <aside className="properties">
-      <section className="card">
-        <h2>Room</h2>
-        <p className="item-title">Living room</p>
-        <p className="muted">Select furniture to edit it, or style the room below.</p>
-      </section>
-
-      <section className="card">
-        <h2>Walls · {wallColorName(finishes.wallColor)}</h2>
-        <ColorPicker
-          swatches={WALL_SWATCHES}
-          value={finishes.wallColor}
-          onPick={(wallColor) => onUpdateFinishes({ wallColor })}
-          onPreview={(wallColor) => onPreviewFinishes({ wallColor })}
-          onCommit={onCommit}
-        />
-      </section>
-
-      <section className="card">
-        <h2>Floor</h2>
-        <div className="option-list">
-          {FLOOR_OPTIONS.map((floor) => (
-            <button
-              key={floor.id}
-              className={`option-button ${floor.id === finishes.floor ? 'active' : ''}`}
-              onClick={() => onUpdateFinishes({ floor: floor.id })}
-              aria-pressed={floor.id === finishes.floor}
-            >
-              <span className="swatch" style={{ background: floor.swatch }} />
-              {floor.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="card">
-        <h2>Shortcuts</h2>
-        <ul className="tips">
-          <li><kbd>Drag</kbd> furniture to move it</li>
-          <li><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd> rotate 45°</li>
-          <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo</li>
-          <li><kbd>Esc</kbd> deselect</li>
-        </ul>
-      </section>
-    </aside>
-  )
-}
-
+/** Right-hand panel: edits the selected furniture, or the room when nothing is selected. */
 export function PropertiesPanel(props: PropertiesPanelProps) {
-  const { item, onUpdate, onPreview, onCommit, onDeselect } = props
+  const { item, overlapping, onUpdate, onPreview, onCommit, onDeselect } = props
   if (!item) return <RoomPanel {...props} />
 
   const info = FURNITURE_INFO[item.type]
@@ -124,6 +49,12 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             ✕
           </button>
         </div>
+        {overlapping.length > 0 && (
+          <p className="warning" role="status">
+            Overlaps {overlapping.map((other) => FURNITURE_INFO[other.type].label.toLowerCase()).join(' and ')}. Move or rotate it to
+            make space.
+          </p>
+        )}
       </section>
 
       <section className="card">
@@ -146,13 +77,15 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
       <section className="card">
         <h2>Colour · {info.colorLabel}</h2>
         <ColorPicker
-          swatches={info.swatches.map((color) => ({ color, name: `Colour ${color}` }))}
+          swatches={info.swatches}
           value={item.color}
           onPick={(color) => onUpdate({ color })}
           onPreview={(color) => onPreview({ color })}
           onCommit={onCommit}
         />
-        <p className="muted small">Current: {item.color.toUpperCase()}</p>
+        <p className="muted small">
+          Current: {info.swatches.find((s) => s.color.toLowerCase() === item.color.toLowerCase())?.name ?? item.color.toUpperCase()}
+        </p>
       </section>
 
       <section className="card">
@@ -208,7 +141,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           aria-label="Back to front position"
           {...commitHandlers(onCommit)}
         />
-        <p className="muted small">Tip: you can also drag it in the 3D view.</p>
+        <p className="muted small">Tip: drag it in the 3D view, or use the arrow keys.</p>
       </section>
     </aside>
   )

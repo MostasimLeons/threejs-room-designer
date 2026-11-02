@@ -1,4 +1,5 @@
 import { clampToRoom, DEFAULT_LAYOUT, FURNITURE_INFO, getVariant, type FurnitureItem, type FurnitureType } from '../scene/furniture/catalog'
+import { normalizeDegrees } from '../utils/math'
 import { DEFAULT_FINISHES, FLOOR_OPTIONS, type FloorId, type RoomFinishes } from '../scene/finishes'
 
 /**
@@ -33,7 +34,7 @@ function parseItem(raw: unknown): FurnitureItem | null {
     type: furnitureType,
     variant: getVariant(furnitureType, typeof variant === 'string' ? variant : '').id,
     position: [position[0], position[1]],
-    rotation: ((Math.round(rotation) % 360) + 360) % 360,
+    rotation: normalizeDegrees(rotation),
     color,
   }
   item.position = clampToRoom(item)

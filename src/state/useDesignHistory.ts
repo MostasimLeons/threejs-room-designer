@@ -1,6 +1,7 @@
 import { useCallback, useReducer } from 'react'
 import { clampToRoom, type FurnitureItem } from '../scene/furniture/catalog'
 import type { RoomFinishes } from '../scene/finishes'
+import { normalizeDegrees } from '../utils/math'
 import { DEFAULT_DESIGN, type RoomDesign } from './design'
 
 export type ItemChanges = Partial<Pick<FurnitureItem, 'position' | 'rotation' | 'color' | 'variant'>>
@@ -38,7 +39,7 @@ function applyItemChanges(design: RoomDesign, id: string, changes: ItemChanges):
     items: design.items.map((item) => {
       if (item.id !== id) return item
       const next = { ...item, ...changes }
-      next.rotation = ((Math.round(next.rotation) % 360) + 360) % 360
+      next.rotation = normalizeDegrees(next.rotation)
       // Re-check the walls: rotating or picking a bigger size can push it outside.
       next.position = clampToRoom(next)
       return next

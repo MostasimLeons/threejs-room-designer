@@ -1,4 +1,6 @@
 import { parseDesign, type RoomDesign } from './design'
+import { createId } from '../utils/id'
+import { downloadJson } from '../utils/download'
 
 /**
  * Saving uses the browser's `localStorage`: a small key → text store that
@@ -54,7 +56,7 @@ export function saveDesign(name: string, design: RoomDesign): SavedDesign[] | nu
   const saves = listSaves()
   const existing = saves.find((s) => s.name.toLowerCase() === name.toLowerCase())
   const entry: SavedDesign = {
-    id: existing?.id ?? crypto.randomUUID(),
+    id: existing?.id ?? createId(),
     name,
     savedAt: new Date().toISOString(),
     design,
@@ -81,13 +83,7 @@ export function writeAutosave(design: RoomDesign) {
 /** Downloads the design as a .json file. */
 export function exportDesign(design: RoomDesign, name: string) {
   const file = { format: FILE_FORMAT, version: FILE_VERSION, name, exportedAt: new Date().toISOString(), ...design }
-  const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${name.trim().replace(/[^\w-]+/g, '-').toLowerCase() || 'room-design'}.json`
-  link.click()
-  URL.revokeObjectURL(url)
+  downloadJson(file, `${name.trim().replace(/[^\w-]+/g, '-').toLowerCase() || 'room-design'}.json`)
 }
 
 /** Reads a .json file chosen by the user. Throws a friendly message if it isn't a room design. */
