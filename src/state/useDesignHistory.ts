@@ -50,6 +50,8 @@ function applyItemChanges(design: RoomDesign, id: string, changes: ItemChanges):
 /** Turns an in-progress drag/slide into a finished undo step. */
 function finalize(state: HistoryState): HistoryState {
   if (!state.pending) return state
+  // Ended where it started (e.g. nudged into a wall): no undo step, and keep Redo intact.
+  if (JSON.stringify(state.pending) === JSON.stringify(state.present)) return { ...state, pending: null }
   return {
     past: [...state.past, state.pending].slice(-MAX_HISTORY),
     present: state.present,
