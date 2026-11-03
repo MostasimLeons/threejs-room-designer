@@ -43,7 +43,14 @@ export function useKeyboardShortcuts(actions: ShortcutActions) {
   latest.current = actions
 
   useEffect(() => {
-    let nudging = false
+    // Arrow keys currently held down for a nudge. The move stays one undo step
+    // until ALL of them are released, e.g. holding ↓ while tapping ←.
+    const heldArrows = new Set<string>()
+
+    function finishNudge() {
+      heldArrows.clear()
+      latest.current.commit()
+    }
 
     function handleKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement
@@ -80,24 +87,30 @@ export function useKeyboardShortcuts(actions: ShortcutActions) {
         const [dx, dz] = ARROWS[event.key]
         const step = event.shiftKey ? NUDGE_FAST : NUDGE
         const [x, z] = selectedItem.position
-        // Live change while the key is held; released key = one undo step.
+        // Live change while keys are held; releasing the last one = one undo step.
         previewItem(selectedItem.id, { position: [x + dx * step, z + dz * step] })
-        nudging = true
+        heldArrows.add(event.key)
       }
     }
 
     function handleKeyUp(event: KeyboardEvent) {
-      if (nudging && event.key in ARROWS) {
-        nudging = false
-        latest.current.commit()
-      }
+      if (!heldArrows.delete(event.key)) return // not an arrow we were nudging with
+      if (heldArrows.size === 0) finishNudge()
+    }
+
+    // Switching windows (Alt+Tab) while holding an arrow means the browser never
+    // sends its keyup, so finish the move here instead of leaving it open.
+    function handleBlur() {
+      if (heldArrows.size > 0) finishNudge()
     }
 
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
+    window.addEventListener('blur', handleBlur)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
+      window.removeEventListener('blur', handleBlur)
     }
   }, [])
 }
