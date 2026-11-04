@@ -618,6 +618,37 @@ kbd {
   white-space: nowrap;
 }
 
+/* Two-option switch inside a panel card (e.g. Paint | Tiles) */
+.segmented {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.segmented button {
+  flex: 1;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.segmented button.active {
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.segmented button:focus-visible {
+  outline: 2px solid var(--select);
+  outline-offset: 1px;
+}
+
 /* Overlap warning (properties panel) and badge (objects list) */
 .warning {
   margin: 12px 0 0;

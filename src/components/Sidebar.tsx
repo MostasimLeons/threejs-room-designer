@@ -39,7 +39,11 @@ export function Sidebar({ room, items, finishes, selectedId, overlaps, onSelect,
   const floor = getFloorOption(finishes.floor)
   const finishRows = [
     { name: 'Floor', detail: floor.label, color: floor.swatch },
-    { name: 'Walls', detail: wallColorName(finishes.wallColor), color: finishes.wallColor },
+    {
+      name: 'Walls',
+      detail: `${finishes.walls === 'tiles' ? 'Tiles' : 'Paint'} · ${wallColorName(finishes.wallColor)}`,
+      color: finishes.wallColor,
+    },
   ]
 
   return (

@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ComponentRef } from 'react'
+import { useEffect, useMemo, useRef, type ComponentRef } from 'react'
+import { BoxGeometry } from 'three'
 import type * as THREE from 'three'
 import { MeshReflectorMaterial } from '@react-three/drei'
 import { ROOM } from './roomConfig'
@@ -93,22 +94,66 @@ export function Floor({ floor, width, depth }: { floor: FloorId; width: number; 
 
 // ---------- Walls ----------
 
+type Vec3 = [number, number, number]
+
+/**
+ * Rewrites a box's texture coordinates so 1 unit = 1 metre, measured from the
+ * wall's own origin. A tile texture then keeps the same size on every wall piece,
+ * and the grout lines continue across the pieces around windows and doors.
+ * (Box faces are stored in the order +x, -x, +y, -y, +z, -z, 4 corners each.)
+ */
+function setMetreUvs(geometry: THREE.BufferGeometry, [sx, sy, sz]: Vec3, [px, py]: Vec3) {
+  const uv = geometry.getAttribute('uv')
+  const bottom = py - sy / 2
+  // [u size, v size, u offset, v offset] per face
+  const faces: [number, number, number, number][] = [
+    [sz, sy, 0, bottom],
+    [sz, sy, 0, bottom],
+    [sx, sz, px - sx / 2, 0],
+    [sx, sz, px - sx / 2, 0],
+    [sx, sy, px - sx / 2, bottom], // inside face (+z points into the room)
+    [sx, sy, -(px + sx / 2), bottom],
+  ]
+  faces.forEach(([du, dv, ou, ov], face) => {
+    for (let k = 0; k < 4; k++) {
+      const i = face * 4 + k
+      uv.setXY(i, uv.getX(i) * du + ou, uv.getY(i) * dv + ov)
+    }
+  })
+  uv.needsUpdate = true
+}
+
+function WallPiece({ size, position, material }: { size: Vec3; position: Vec3; material: THREE.Material }) {
+  const [sx, sy, sz] = size
+  const [px, py, pz] = position
+  // Built once per size and position (not on every render, which would rescale the UVs again).
+  const geometry = useMemo(() => {
+    const box = new BoxGeometry(sx, sy, sz)
+    setMetreUvs(box, [sx, sy, sz], [px, py, pz])
+    return box
+  }, [sx, sy, sz, px, py, pz])
+  useEffect(() => () => geometry.dispose(), [geometry])
+  return <mesh geometry={geometry} position={position} material={material} castShadow receiveShadow />
+}
+
 interface WallProps {
   room: RoomId
   side: WallSide
   material: THREE.Material
+  /** Tiled walls have no wooden skirting. */
+  skirting: boolean
 }
 
 /**
  * One wall with its windows, doors and skirting, built in the wall's own frame
  * (see walls.ts) and turned into place. It hides itself when it would block the view.
  */
-function Wall({ room, side, material }: WallProps) {
+function Wall({ room, side, material, skirting }: WallProps) {
   const info = ROOMS[room]
   const frame = wallFrame(side, info)
   const openings = localOpenings(side, info)
   const pieces = wallPieces(frame.length, openings)
-  const runs = skirtingRuns(frame.innerLength, openings)
+  const runs = skirting ? skirtingRuns(frame.innerLength, openings) : []
   const Decor = ROOM_DECOR[room].walls?.[side]
   const insideFace = ROOM.wallThickness / 2
 
@@ -116,7 +161,7 @@ function Wall({ room, side, material }: WallProps) {
     <Cutaway isBehind={(camera) => isCameraBehindWall(side, info, camera.position)}>
       <group position={frame.position} rotation={[0, frame.rotationY, 0]}>
         {pieces.map((piece, i) => (
-          <Block key={i} position={piece.position} size={piece.size} material={material} />
+          <WallPiece key={i} position={piece.position} size={piece.size} material={material} />
         ))}
 
         {openings.map((o) =>
@@ -151,8 +196,11 @@ function Wall({ room, side, material }: WallProps) {
  */
 export function RoomShell({ room, finishes }: { room: RoomId; finishes: RoomFinishes }) {
   const info = ROOMS[room]
-  // One paint material shared by every wall piece, recoloured when you pick a new wall colour.
-  const wallMaterial = useTintedMaterial(materials.wall, finishes.wallColor)
+  // One material shared by every wall piece, recoloured when you pick a new wall colour.
+  // Both are kept ready so switching between paint and tiles is instant.
+  const paint = useTintedMaterial(materials.wall, finishes.wallColor)
+  const tiles = useTintedMaterial(materials.wallTiles, finishes.wallColor)
+  const tiled = finishes.walls === 'tiles'
   const FloorDecor = ROOM_DECOR[room].floor
 
   return (
@@ -161,7 +209,7 @@ export function RoomShell({ room, finishes }: { room: RoomId; finishes: RoomFini
       {FloorDecor && <FloorDecor />}
       <Ceiling width={info.width} depth={info.depth} downlights={info.downlights} />
       {WALL_SIDES.map((side) => (
-        <Wall key={side} room={room} side={side} material={wallMaterial} />
+        <Wall key={side} room={room} side={side} material={tiled ? tiles : paint} skirting={!tiled} />
       ))}
     </group>
   )

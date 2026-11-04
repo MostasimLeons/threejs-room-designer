@@ -59,14 +59,22 @@ describe('parseDesign', () => {
     expect(parseDesign({ items: [sofa, bed] }, 'kitchen')?.items).toEqual([])
   })
 
+  it('reads the wall style, and ignores unknown ones', () => {
+    expect(parseDesign({ items: [], finishes: { walls: 'tiles' } })?.finishes.walls).toBe('tiles')
+    expect(parseDesign({ items: [], finishes: { walls: 'wallpaper' } })?.finishes.walls).toBe('paint')
+    // Saves from before tiled walls existed keep each room's default style.
+    expect(parseDesign({ items: [], finishes: { wallColor: '#112233' } }, 'bathroom')?.finishes.walls).toBe('tiles')
+  })
+
   it('falls back to the default finishes of that room', () => {
     expect(parseDesign({ items: [] }, 'bathroom')?.finishes).toEqual(ROOMS.bathroom.defaultFinishes)
   })
 
   it('keeps valid finishes and falls back for invalid ones', () => {
-    expect(parseDesign({ items: [], finishes: { wallColor: '#112233', floor: 'walnut' } })?.finishes).toEqual({
+    expect(parseDesign({ items: [], finishes: { wallColor: '#112233', floor: 'marble' } })?.finishes).toEqual({
       wallColor: '#112233',
-      floor: 'walnut',
+      walls: 'paint',
+      floor: 'marble',
     })
     expect(parseDesign({ items: [], finishes: { wallColor: 'blue', floor: 'lava' } })?.finishes).toEqual(DEFAULT_FINISHES)
   })
@@ -90,6 +98,21 @@ describe('parseHouseDesign', () => {
     const house = parseHouseDesign({ rooms: { kitchen: { items: [sofa] } } })
     expect(house?.kitchen.items).toEqual([])
     expect(house?.living).toEqual(DEFAULT_DESIGN)
+  })
+
+  it('furnishes a room saved by Phase 2 with only its starter plant, keeping its finishes', () => {
+    const starter = { id: 'kitchen-plant', type: 'plant', variant: 'small', position: [-1.7, -1.45], rotation: 0, color: '#ecebe6' }
+    const finishes = { wallColor: '#112233', walls: 'paint', floor: 'oak' }
+    const house = parseHouseDesign({ rooms: { kitchen: { finishes, items: [starter] } } })
+    expect(house?.kitchen.items).toEqual(DEFAULT_HOUSE.kitchen.items)
+    expect(house?.kitchen.finishes).toEqual(finishes)
+  })
+
+  it('leaves a room alone once it has anything besides the starter plant', () => {
+    const starter = { id: 'kitchen-plant', type: 'plant', variant: 'small', position: [0, 0], rotation: 0, color: '#ecebe6' }
+    const stool = { id: 'my-stool', type: 'barStool', variant: 'backless', position: [1, 1], rotation: 0, color: '#3a3a3c' }
+    const house = parseHouseDesign({ rooms: { kitchen: { items: [starter, stool] } } })
+    expect(house?.kitchen.items.map((item) => item.id)).toEqual(['kitchen-plant', 'my-stool'])
   })
 
   it('fills in a missing room with its default', () => {

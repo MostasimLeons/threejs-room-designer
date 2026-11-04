@@ -1,5 +1,5 @@
 import { ROOMS, type RoomId } from '../scene/house'
-import { FLOOR_OPTIONS, WALL_SWATCHES, wallColorName, type RoomFinishes } from '../scene/finishes'
+import { FLOOR_OPTIONS, WALL_STYLES, WALL_SWATCHES, wallColorName, type RoomFinishes } from '../scene/finishes'
 import type { FinishChanges } from '../state/useDesignHistory'
 import { ColorPicker } from './ColorPicker'
 
@@ -23,6 +23,18 @@ export function RoomPanel({ room, finishes, onUpdateFinishes, onPreviewFinishes,
 
       <section className="card">
         <h2>Walls · {wallColorName(finishes.wallColor)}</h2>
+        <div className="segmented" role="group" aria-label="Wall finish">
+          {WALL_STYLES.map((style) => (
+            <button
+              key={style.id}
+              className={style.id === finishes.walls ? 'active' : ''}
+              aria-pressed={style.id === finishes.walls}
+              onClick={() => onUpdateFinishes({ walls: style.id })}
+            >
+              {style.label}
+            </button>
+          ))}
+        </div>
         <ColorPicker
           swatches={WALL_SWATCHES}
           value={finishes.wallColor}

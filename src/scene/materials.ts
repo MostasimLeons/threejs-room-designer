@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { createFabricNormalMap } from './textures'
+import { createFabricNormalMap, createWallTileMaps, WALL_TILE_REPEAT } from './textures'
 
 // Shared materials. Creating each one once and reusing it is faster than
 // making a new material for every mesh.
@@ -51,6 +51,19 @@ export const materials = {
   // (values above 1), so the window reads as daylight and gets a soft glow from Bloom.
   sky: new THREE.MeshBasicMaterial({ color: new THREE.Color('#e4f0f7').multiplyScalar(1.6) }),
 
+  // ---- Dining Room, Kitchen, Bathroom ----
+  // Quartz-style worktop and counter: pale, slightly glossy stone.
+  stone: new THREE.MeshStandardMaterial({ color: '#eeebe5', roughness: 0.22 }),
+  // Brushed stainless steel (fridge, sink, extractor). Tinted per piece for coloured appliances.
+  steel: new THREE.MeshStandardMaterial({ color: '#c9ccce', roughness: 0.32, metalness: 0.75 }),
+  chrome: new THREE.MeshStandardMaterial({ color: '#e6e8ea', roughness: 0.08, metalness: 1 }),
+  // Glossy white enamel / ceramic for baths, basins and the toilet.
+  enamel: new THREE.MeshStandardMaterial({ color: '#f7f6f3', roughness: 0.12 }),
+  // Glossy kitchen splashback.
+  splashback: new THREE.MeshStandardMaterial({ color: '#f4f2ee', roughness: 0.1 }),
+  // Tiled walls: the wall colour tints near-white tiles (textures are added below, in the browser).
+  wallTiles: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.35 }),
+
   // ---- Ceiling (see Ceiling.tsx) ----
   // Nothing lights a ceiling's underside directly (the lights are above it, and real
   // rooms light it with light bouncing off the floor), so a faint self-glow stands in
@@ -101,4 +114,11 @@ if (typeof document !== 'undefined') {
     material.normalMap = map
     material.normalScale.set(strength, strength)
   }
+
+  // Wall tiles: wall pieces have UVs measured in metres (see RoomShell), so one texture
+  // repeat covers WALL_TILE_REPEAT metres and the grout lines up across every piece.
+  const tiles = createWallTileMaps()
+  for (const texture of Object.values(tiles)) texture.repeat.set(1 / WALL_TILE_REPEAT, 1 / WALL_TILE_REPEAT)
+  Object.assign(materials.wallTiles, tiles)
+  materials.wallTiles.normalScale.set(0.8, 0.8)
 }

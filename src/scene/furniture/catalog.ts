@@ -16,6 +16,18 @@ export type FurnitureType =
   | 'wardrobe'
   | 'dressingTable'
   | 'accentChair'
+  // Dining Room
+  | 'diningTable'
+  | 'diningChair'
+  | 'sideboard'
+  // Kitchen
+  | 'kitchenIsland'
+  | 'barStool'
+  | 'fridge'
+  // Bathroom
+  | 'bathtub'
+  | 'vanity'
+  | 'towelRail'
 
 /** One piece of furniture in the room. This plain data is what undo/redo and saving store. */
 export interface FurnitureItem {
@@ -95,6 +107,31 @@ const OAK_SWATCHES: Swatch[] = [
   { color: '#6f4a31', name: 'Smoked oak' },
   { color: '#f1ebdf', name: 'Cream' },
   { color: '#2a2a2c', name: 'Black' },
+]
+
+const CABINET_SWATCHES: Swatch[] = [
+  { color: '#f1ebdf', name: 'Cream' },
+  { color: '#8e9c80', name: 'Sage' },
+  { color: '#41556b', name: 'Navy' },
+  { color: '#2a2a2c', name: 'Black' },
+  { color: '#c49a6c', name: 'Natural oak' },
+  { color: '#b98b73', name: 'Clay' },
+]
+const APPLIANCE_SWATCHES: Swatch[] = [
+  { color: '#c9ccce', name: 'Stainless steel' },
+  { color: '#f3f2ef', name: 'White' },
+  { color: '#2a2a2c', name: 'Black' },
+  { color: '#e8dcc3', name: 'Cream' },
+  { color: '#9fae9a', name: 'Sage' },
+  { color: '#9a3b34', name: 'Retro red' },
+]
+const BATH_SWATCHES: Swatch[] = [
+  { color: '#f6f5f2', name: 'Gloss white' },
+  { color: '#2a2a2c', name: 'Matte black' },
+  { color: '#8e9c80', name: 'Sage' },
+  { color: '#c7a493', name: 'Clay' },
+  { color: '#41556b', name: 'Navy' },
+  { color: '#b8925a', name: 'Brass' },
 ]
 
 export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
@@ -243,6 +280,105 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     colorLabel: 'Fabric',
     swatches: CREAM_SWATCHES,
   },
+  diningTable: {
+    label: 'Dining table',
+    rooms: ['dining', 'kitchen'],
+    variantLabel: 'Shape',
+    variants: [
+      { id: 'rectangle', label: 'Rectangle', detail: '180 × 90 cm, seats 6', footprint: [1.8, 0.9] },
+      { id: 'round', label: 'Round', detail: 'Ø 120 cm, seats 4', footprint: [1.2, 1.2] },
+    ],
+    colorLabel: 'Wood',
+    swatches: WOOD_SWATCHES,
+  },
+  diningChair: {
+    label: 'Dining chair',
+    rooms: ['dining', 'kitchen'],
+    variantLabel: 'Style',
+    variants: [
+      { id: 'upholstered', label: 'Upholstered', detail: '46 cm', footprint: [0.46, 0.52] },
+      { id: 'spindle', label: 'Spindle back', detail: '46 cm', footprint: [0.46, 0.5] },
+    ],
+    colorLabel: 'Seat',
+    swatches: FABRIC_SWATCHES,
+  },
+  sideboard: {
+    label: 'Sideboard',
+    rooms: ['dining', 'living'],
+    variantLabel: 'Size',
+    variants: [
+      { id: '160', label: '160 cm', detail: '3 doors', footprint: [1.6, 0.45] },
+      { id: '200', label: '200 cm', detail: '4 doors', footprint: [2.0, 0.45] },
+    ],
+    colorLabel: 'Wood',
+    swatches: WOOD_SWATCHES,
+  },
+  kitchenIsland: {
+    label: 'Kitchen island',
+    rooms: ['kitchen'],
+    variantLabel: 'Size',
+    variants: [
+      { id: 'large', label: 'Large', detail: '180 × 90 cm', footprint: [1.8, 0.9] },
+      { id: 'compact', label: 'Compact', detail: '140 × 80 cm', footprint: [1.4, 0.8] },
+    ],
+    colorLabel: 'Cabinets',
+    swatches: CABINET_SWATCHES,
+  },
+  barStool: {
+    label: 'Bar stool',
+    rooms: ['kitchen'],
+    variantLabel: 'Style',
+    variants: [
+      { id: 'backless', label: 'Backless', detail: '75 cm seat', footprint: [0.4, 0.4] },
+      { id: 'low-back', label: 'Low back', detail: '75 cm seat', footprint: [0.42, 0.42] },
+    ],
+    colorLabel: 'Seat',
+    swatches: FABRIC_SWATCHES,
+  },
+  fridge: {
+    label: 'Fridge',
+    rooms: ['kitchen'],
+    variantLabel: 'Size',
+    variants: [
+      { id: 'single', label: 'Fridge-freezer', detail: '60 cm', footprint: [0.6, 0.68] },
+      { id: 'double', label: 'American style', detail: '90 cm', footprint: [0.9, 0.72] },
+    ],
+    colorLabel: 'Finish',
+    swatches: APPLIANCE_SWATCHES,
+  },
+  bathtub: {
+    label: 'Bath or shower',
+    rooms: ['bathroom'],
+    variantLabel: 'Type',
+    variants: [
+      { id: 'freestanding', label: 'Freestanding bath', detail: '170 × 78 cm', footprint: [1.7, 0.78] },
+      { id: 'shower', label: 'Walk-in shower', detail: '120 × 80 cm', footprint: [1.2, 0.8] },
+    ],
+    colorLabel: 'Outside',
+    swatches: BATH_SWATCHES,
+  },
+  vanity: {
+    label: 'Vanity unit',
+    rooms: ['bathroom'],
+    variantLabel: 'Basins',
+    variants: [
+      { id: 'single', label: 'Single basin', detail: '80 cm, with mirror', footprint: [0.8, 0.5] },
+      { id: 'double', label: 'Double basin', detail: '120 cm, with mirrors', footprint: [1.2, 0.5] },
+    ],
+    colorLabel: 'Cabinet',
+    swatches: WOOD_SWATCHES,
+  },
+  towelRail: {
+    label: 'Towel rail',
+    rooms: ['bathroom'],
+    variantLabel: 'Style',
+    variants: [
+      { id: 'ladder', label: 'Ladder', detail: '50 × 110 cm', footprint: [0.5, 0.12] },
+      { id: 'bar', label: 'Wall bar', detail: '60 cm', footprint: [0.6, 0.12] },
+    ],
+    colorLabel: 'Towel',
+    swatches: FABRIC_SWATCHES,
+  },
 }
 
 /** Can this kind of furniture go in this room? */
@@ -285,17 +421,43 @@ const BEDROOM_LAYOUT: FurnitureItem[] = [
 ]
 
 /**
- * The new rooms start with just a plant. Their furniture (dining table and chairs,
- * kitchen units, bath and vanity) comes in Phase 3.
+ * Dining Room (4.5 × 4 m): x -2.25…2.25, z -2…2. Table for six under the pendant
+ * light, chairs pulled out a little, sideboard against the right wall.
  */
 const DINING_LAYOUT: FurnitureItem[] = [
+  { id: 'dining-table', type: 'diningTable', variant: 'rectangle', position: [0, -0.1], rotation: 0, color: '#8a5a3b' },
+  { id: 'chair-back-left', type: 'diningChair', variant: 'upholstered', position: [-0.6, -0.86], rotation: 0, color: '#d9cbb3' },
+  { id: 'chair-back-mid', type: 'diningChair', variant: 'upholstered', position: [0, -0.86], rotation: 0, color: '#d9cbb3' },
+  { id: 'chair-back-right', type: 'diningChair', variant: 'upholstered', position: [0.6, -0.86], rotation: 0, color: '#d9cbb3' },
+  { id: 'chair-front-left', type: 'diningChair', variant: 'upholstered', position: [-0.6, 0.66], rotation: 180, color: '#d9cbb3' },
+  { id: 'chair-front-mid', type: 'diningChair', variant: 'upholstered', position: [0, 0.66], rotation: 180, color: '#d9cbb3' },
+  { id: 'chair-front-right', type: 'diningChair', variant: 'upholstered', position: [0.6, 0.66], rotation: 180, color: '#d9cbb3' },
+  { id: 'sideboard', type: 'sideboard', variant: '160', position: [2.0, -0.2], rotation: 270, color: '#c49a6c' },
   { id: 'dining-plant', type: 'plant', variant: 'large', position: [1.85, -1.6], rotation: 0, color: '#b86f50' },
 ]
+
+/**
+ * Kitchen (4 × 3.5 m): x -2…2, z -1.75…1.75. The units along the back wall are
+ * built in (see ROOMS.kitchen.fixedZones); the island, stools and fridge move.
+ */
 const KITCHEN_LAYOUT: FurnitureItem[] = [
-  { id: 'kitchen-plant', type: 'plant', variant: 'small', position: [-1.7, -1.45], rotation: 0, color: '#ecebe6' },
+  { id: 'island', type: 'kitchenIsland', variant: 'large', position: [-0.2, 0.3], rotation: 0, color: '#8e9c80' },
+  { id: 'stool-left', type: 'barStool', variant: 'low-back', position: [-0.8, 1.02], rotation: 180, color: '#3a3a3c' },
+  { id: 'stool-mid', type: 'barStool', variant: 'low-back', position: [-0.2, 1.02], rotation: 180, color: '#3a3a3c' },
+  { id: 'stool-right', type: 'barStool', variant: 'low-back', position: [0.4, 1.02], rotation: 180, color: '#3a3a3c' },
+  { id: 'fridge', type: 'fridge', variant: 'single', position: [1.66, -0.7], rotation: 270, color: '#c9ccce' },
+  { id: 'kitchen-plant', type: 'plant', variant: 'small', position: [-1.75, -0.6], rotation: 0, color: '#ecebe6' },
 ]
+
+/**
+ * Bathroom (3 × 2.5 m): x -1.5…1.5, z -1.25…1.25. Bath under the window, vanity
+ * on the right wall, towel rail by the door. The toilet is built in.
+ */
 const BATHROOM_LAYOUT: FurnitureItem[] = [
-  { id: 'bathroom-plant', type: 'plant', variant: 'small', position: [1.2, 0.9], rotation: 0, color: '#ecebe6' },
+  { id: 'bath', type: 'bathtub', variant: 'freestanding', position: [0.55, -0.82], rotation: 0, color: '#f6f5f2' },
+  { id: 'vanity', type: 'vanity', variant: 'single', position: [1.25, 0.72], rotation: 270, color: '#c49a6c' },
+  { id: 'towel-rail', type: 'towelRail', variant: 'ladder', position: [-1.44, -0.3], rotation: 90, color: '#f1eee8' },
+  { id: 'bathroom-plant', type: 'plant', variant: 'small', position: [0.2, 1.0], rotation: 0, color: '#ecebe6' },
 ]
 
 /** Each room's starting arrangement, measured from the room's centre. "Reset" returns to it. */
@@ -330,12 +492,25 @@ export function clampToRoom(
 type Point = [number, number]
 
 /** The four floor corners of an item's footprint, rotated the same way as the 3D model. */
-function footprintCorners(item: FurnitureItem): Point[] {
-  const [w, d] = getVariant(item.type, item.variant).footprint
-  const angle = degToRad(item.rotation)
+/**
+ * Something built into a room that furniture shouldn't overlap, such as the
+ * kitchen units or the toilet. Rectangles on the floor, never rotated.
+ */
+export interface FixedZone {
+  /** Shown in the overlap warning, e.g. "kitchen units". */
+  label: string
+  /** Centre on the floor, [x, z], and size [width, depth], in metres. */
+  position: [number, number]
+  size: [number, number]
+}
+
+/** Overlap results use this prefix for built-in zones, so they can't be mistaken for furniture ids. */
+export const ZONE_PREFIX = 'zone:'
+
+function rectCorners([cx, cz]: Point, [w, d]: Point, rotation: number): Point[] {
+  const angle = degToRad(rotation)
   const cos = Math.cos(angle)
   const sin = Math.sin(angle)
-  const [cx, cz] = item.position
   return [
     [-w / 2, -d / 2],
     [w / 2, -d / 2],
@@ -347,15 +522,18 @@ function footprintCorners(item: FurnitureItem): Point[] {
   )
 }
 
+/** The four floor corners of an item's footprint, rotated the same way as the 3D model. */
+function footprintCorners(item: FurnitureItem): Point[] {
+  return rectCorners(item.position, getVariant(item.type, item.variant).footprint, item.rotation)
+}
+
 /**
  * Do two footprints overlap? Uses the "separating axis" test: two rectangles
  * do NOT overlap if you can find a direction (one of their edge directions)
  * along which their shadows don't touch.
  */
-function footprintsOverlap(a: FurnitureItem, b: FurnitureItem): boolean {
+function cornersOverlap(cornersA: Point[], cornersB: Point[]): boolean {
   const TOLERANCE = 0.02 // 2 cm, so pieces that merely touch don't count
-  const cornersA = footprintCorners(a)
-  const cornersB = footprintCorners(b)
   for (const corners of [cornersA, cornersB]) {
     for (let i = 0; i < 2; i++) {
       const [x1, z1] = corners[i]
@@ -372,15 +550,31 @@ function footprintsOverlap(a: FurnitureItem, b: FurnitureItem): boolean {
   return true
 }
 
-/** For each item that overlaps another, the ids of the items it overlaps. */
-export function findOverlaps(items: FurnitureItem[]): Map<string, string[]> {
+/**
+ * For each item that overlaps something, what it overlaps: other items' ids, and
+ * built-in zones as `zone:<label>` (for example "zone:kitchen units").
+ */
+export function findOverlaps(items: FurnitureItem[], zones: FixedZone[] = []): Map<string, string[]> {
   const overlaps = new Map<string, string[]>()
+  const add = (id: string, other: string) => overlaps.set(id, [...(overlaps.get(id) ?? []), other])
+  const corners = items.map(footprintCorners)
+  const zoneCorners = zones.map((zone) => rectCorners(zone.position, zone.size, 0))
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
-      if (!footprintsOverlap(items[i], items[j])) continue
-      overlaps.set(items[i].id, [...(overlaps.get(items[i].id) ?? []), items[j].id])
-      overlaps.set(items[j].id, [...(overlaps.get(items[j].id) ?? []), items[i].id])
+      if (!cornersOverlap(corners[i], corners[j])) continue
+      add(items[i].id, items[j].id)
+      add(items[j].id, items[i].id)
     }
+    zones.forEach((zone, z) => {
+      if (cornersOverlap(corners[i], zoneCorners[z])) add(items[i].id, ZONE_PREFIX + zone.label)
+    })
   }
   return overlaps
+}
+
+/** A readable name for something in an overlap list: a furniture label, or a built-in zone's label. */
+export function overlapName(id: string, items: FurnitureItem[]): string {
+  if (id.startsWith(ZONE_PREFIX)) return id.slice(ZONE_PREFIX.length)
+  const item = items.find((other) => other.id === id)
+  return item ? FURNITURE_INFO[item.type].label.toLowerCase() : id
 }

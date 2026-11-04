@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, type ComponentType } from 'react'
 import * as THREE from 'three'
 import { ROOM } from '../roomConfig'
-import { ROOMS, type RoomId, type WallSide } from '../house'
+import { KITCHEN_UNIT_DEPTH, ROOMS, TOILET_POSITION, TOILET_SIZE, type RoomId, type WallSide } from '../house'
 import { materials } from '../materials'
 import { Block, Cylinder } from '../parts'
 
@@ -14,9 +14,10 @@ import { Block, Cylinder } from '../parts'
 export const ROOM_DECOR: Record<RoomId, { floor?: ComponentType; walls?: Partial<Record<WallSide, ComponentType>> }> = {
   living: { floor: LivingRug },
   bedroom: { floor: BedroomCarpet, walls: { back: SlatAccentWall } },
-  dining: {},
-  kitchen: {},
-  bathroom: {},
+  dining: { floor: DiningPendant },
+  // The units hide with the back wall, so they never block the view from behind.
+  kitchen: { walls: { back: KitchenUnits } },
+  bathroom: { floor: Toilet },
 }
 
 const T = ROOM.wallThickness
@@ -145,6 +146,139 @@ export function Curtains({ left, right, wallHalf }: CurtainsProps) {
       />
       <CurtainPanel fromX={rodLeft + 0.02} toX={left + 0.1} z={z} />
       <CurtainPanel fromX={right - 0.1} toX={rodRight - 0.02} z={z} />
+    </group>
+  )
+}
+
+// ---------- Dining Room ----------
+
+const pendantShade = new THREE.MeshStandardMaterial({ color: '#1f1f22', roughness: 0.45, metalness: 0.5, side: THREE.DoubleSide })
+
+/** Black cone pendant hanging over the table's starting position, with a glowing bulb. */
+function DiningPendant() {
+  const top = ROOM.height
+  const shadeY = 1.6
+  return (
+    <group position={[0, 0, -0.1]}>
+      <Cylinder radiusTop={0.06} height={0.02} position={[0, top - 0.01, 0]} material={materials.metalBlack} />
+      <Cylinder
+        radiusTop={0.004}
+        height={top - shadeY - 0.12}
+        position={[0, (top + shadeY + 0.12) / 2, 0]}
+        material={materials.metalBlack}
+      />
+      <mesh position={[0, shadeY, 0]} material={pendantShade} castShadow>
+        <cylinderGeometry args={[0.05, 0.26, 0.24, 40, 1, true]} />
+      </mesh>
+      <mesh position={[0, shadeY - 0.07, 0]} material={materials.bulb}>
+        <sphereGeometry args={[0.05, 20, 14]} />
+      </mesh>
+    </group>
+  )
+}
+
+// ---------- Kitchen ----------
+
+/**
+ * Built-in kitchen along the back wall (4 m): base units with a stone worktop,
+ * sink under the window, hob with an extractor, glossy splashback and wall units
+ * either side of the window, with a light strip under the left wall unit.
+ */
+function KitchenUnits() {
+  const back = -ROOMS.kitchen.depth / 2
+  const D = KITCHEN_UNIT_DEPTH
+  const front = back + D - 0.04
+  const doors = 6
+  const doorW = 4 / doors
+  const sinkX = 0.6 // centred under the window
+  const hobX = -1.0
+
+  return (
+    <group>
+      {/* Base units */}
+      <Block size={[4, 0.1, D - 0.08]} position={[0, 0.05, back + (D - 0.08) / 2]} material={materials.slatBacking} />
+      <Block size={[4, 0.78, D - 0.04]} position={[0, 0.49, back + (D - 0.04) / 2]} material={materials.creamLacquer} />
+      {Array.from({ length: doors }, (_, i) => {
+        const x = -2 + doorW * (i + 0.5)
+        return (
+          <group key={i}>
+            {i > 0 && (
+              <Block size={[0.005, 0.76, 0.004]} position={[x - doorW / 2, 0.49, front + 0.002]} material={materials.slatBacking} />
+            )}
+            <Block size={[doorW * 0.4, 0.012, 0.016]} position={[x, 0.8, front + 0.01]} material={materials.metalBlack} />
+          </group>
+        )
+      })}
+      <Block size={[4, 0.04, D]} position={[0, 0.9, back + D / 2]} material={materials.stone} />
+
+      {/* Sink and tap */}
+      <Block size={[0.56, 0.006, 0.4]} position={[sinkX, 0.922, back + 0.33]} material={materials.steel} />
+      <Block size={[0.5, 0.004, 0.34]} position={[sinkX, 0.925, back + 0.33]} material={materials.metalBlack} />
+      <Cylinder radiusTop={0.014} height={0.32} position={[sinkX, 1.08, back + 0.08]} material={materials.chrome} />
+      <Block size={[0.025, 0.025, 0.2]} radius={0.01} position={[sinkX, 1.23, back + 0.17]} material={materials.chrome} />
+
+      {/* Hob with four rings, and the extractor above it */}
+      <Block size={[0.6, 0.006, 0.5]} position={[hobX, 0.922, back + 0.32]} material={materials.screen} />
+      {[
+        [-0.14, -0.12],
+        [0.14, -0.12],
+        [-0.14, 0.12],
+        [0.14, 0.12],
+      ].map(([dx, dz], i) => (
+        <Cylinder
+          key={i}
+          radiusTop={0.08}
+          height={0.002}
+          position={[hobX + dx, 0.926, back + 0.32 + dz]}
+          segments={28}
+          material={materials.steel}
+        />
+      ))}
+      <Block size={[0.6, 0.05, 0.32]} position={[hobX, 1.47, back + 0.16]} material={materials.steel} />
+
+      {/* Splashback: either side of the window, and a strip under it */}
+      <Block size={[1.98, 0.53, 0.01]} position={[-1.01, 1.185, back + 0.005]} material={materials.splashback} />
+      <Block size={[0.78, 0.53, 0.01]} position={[1.61, 1.185, back + 0.005]} material={materials.splashback} />
+      <Block size={[1.2, 0.11, 0.01]} position={[sinkX, 0.975, back + 0.005]} material={materials.splashback} />
+
+      {/* Wall units either side of the window, with seams */}
+      <Block size={[1.85, 0.7, 0.34]} position={[-1.075, 1.85, back + 0.17]} material={materials.creamLacquer} />
+      <Block size={[0.65, 0.7, 0.34]} position={[1.675, 1.85, back + 0.17]} material={materials.creamLacquer} />
+      {[-1.53, -1.07, -0.61].map((x) => (
+        <Block key={x} size={[0.005, 0.68, 0.004]} position={[x, 1.85, back + 0.342]} material={materials.slatBacking} />
+      ))}
+      {/* Light strip under the left wall unit: lights the worktop and glows */}
+      <mesh position={[-1.075, 1.495, back + 0.3]} material={materials.coveLight}>
+        <boxGeometry args={[1.7, 0.01, 0.02]} />
+      </mesh>
+    </group>
+  )
+}
+
+// ---------- Bathroom ----------
+
+/** Wall-hung toilet in front of a concealed cistern, with a chrome flush plate. */
+function Toilet() {
+  const [x, z] = TOILET_POSITION
+  const [w, d] = TOILET_SIZE
+  const wallZ = z - d / 2 // the zone's back edge is the back wall
+  const frameD = 0.14
+  return (
+    <group position={[x, 0, 0]}>
+      <Block size={[w, 0.9, frameD]} radius={0.01} position={[0, 0.45, wallZ + frameD / 2]} material={materials.enamel} />
+      <Block size={[0.18, 0.12, 0.01]} radius={0.004} position={[0, 0.78, wallZ + frameD + 0.005]} material={materials.chrome} />
+      <Block
+        size={[0.36, 0.2, d - frameD]}
+        radius={0.08}
+        position={[0, 0.32, wallZ + frameD + (d - frameD) / 2]}
+        material={materials.enamel}
+      />
+      <Block
+        size={[0.37, 0.025, d - frameD - 0.02]}
+        radius={0.01}
+        position={[0, 0.43, wallZ + frameD + (d - frameD) / 2]}
+        material={materials.enamel}
+      />
     </group>
   )
 }

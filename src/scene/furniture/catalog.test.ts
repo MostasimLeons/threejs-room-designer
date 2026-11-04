@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { clampToRoom, DEFAULT_LAYOUTS, findOverlaps, FURNITURE_INFO, getVariant, isAllowedIn, type FurnitureItem } from './catalog'
+import {
+  clampToRoom,
+  DEFAULT_LAYOUTS,
+  findOverlaps,
+  FURNITURE_INFO,
+  getVariant,
+  isAllowedIn,
+  overlapName,
+  ZONE_PREFIX,
+  type FurnitureItem,
+} from './catalog'
 import { ROOM_IDS, ROOMS } from '../house'
 
 const room = { width: 4, depth: 4 }
@@ -63,8 +73,22 @@ describe('default layouts', () => {
     for (const piece of DEFAULT_LAYOUTS[roomId]) expect(clampToRoom(piece, ROOMS[roomId])).toEqual(piece.position)
   })
 
-  it.each(ROOM_IDS)('%s: no pieces overlap', (roomId) => {
-    expect([...findOverlaps(DEFAULT_LAYOUTS[roomId]).keys()]).toEqual([])
+  it.each(ROOM_IDS)('%s: no pieces overlap each other or the built-in units', (roomId) => {
+    expect([...findOverlaps(DEFAULT_LAYOUTS[roomId], ROOMS[roomId].fixedZones).keys()]).toEqual([])
+  })
+
+  it.each(ROOM_IDS)('%s: built-in units fit inside the room', (roomId) => {
+    const { width, depth, fixedZones } = ROOMS[roomId]
+    for (const { position, size } of fixedZones) {
+      expect(Math.abs(position[0]) + size[0] / 2).toBeLessThanOrEqual(width / 2 + 1e-9)
+      expect(Math.abs(position[1]) + size[1] / 2).toBeLessThanOrEqual(depth / 2 + 1e-9)
+    }
+  })
+
+  it('the Dining Room, Kitchen and Bathroom have real furniture', () => {
+    for (const id of ['dining', 'kitchen', 'bathroom'] as const) {
+      expect(DEFAULT_LAYOUTS[id].filter((piece) => piece.type !== 'plant').length).toBeGreaterThanOrEqual(3)
+    }
   })
 
   it.each(ROOM_IDS)('%s: only furniture that belongs in this room', (roomId) => {
@@ -88,5 +112,30 @@ describe('isAllowedIn', () => {
 
   it('every furniture type belongs to at least one room', () => {
     for (const info of Object.values(FURNITURE_INFO)) expect(info.rooms.length).toBeGreaterThan(0)
+  })
+})
+
+describe('built-in zones', () => {
+  const units = { label: 'kitchen units', position: [0, -1.44] as [number, number], size: [4, 0.62] as [number, number] }
+
+  it('flags furniture pushed into a built-in unit, and names it', () => {
+    const overlaps = findOverlaps([item([0, -1.2], 0, 'a')], [units])
+    expect(overlaps.get('a')).toEqual([ZONE_PREFIX + 'kitchen units'])
+    expect(overlapName(overlaps.get('a')![0], [])).toBe('kitchen units')
+  })
+
+  it('leaves furniture that is clear of the unit alone', () => {
+    expect(findOverlaps([item([0, 0.5], 0, 'a')], [units]).size).toBe(0)
+  })
+
+  it('names other furniture by its label', () => {
+    expect(overlapName('a', [item([0, 0], 0, 'a')])).toBe('sofa')
+  })
+
+  it('new furniture stays in its own rooms', () => {
+    expect(isAllowedIn('fridge', 'kitchen')).toBe(true)
+    expect(isAllowedIn('fridge', 'bedroom')).toBe(false)
+    expect(isAllowedIn('bathtub', 'living')).toBe(false)
+    expect(isAllowedIn('diningTable', 'kitchen')).toBe(true)
   })
 })

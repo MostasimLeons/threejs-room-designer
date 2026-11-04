@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Scene } from './scene/Scene'
 import type { ViewMode } from './scene/roomConfig'
-import { findOverlaps } from './scene/furniture/catalog'
+import { findOverlaps, overlapName } from './scene/furniture/catalog'
 import { Sidebar } from './components/Sidebar'
 import { Toolbar } from './components/Toolbar'
 import { ViewToggle } from './components/ViewToggle'
@@ -46,9 +46,10 @@ export default function App() {
   const selectedItem = design.items.find((item) => item.id === selectedId) ?? null
 
   // Which pieces overlap each other. Recalculated only when the furniture changes.
-  const overlaps = useMemo(() => findOverlaps(design.items), [design.items])
+  // Built-in units (kitchen units, toilet) count too.
+  const overlaps = useMemo(() => findOverlaps(design.items, ROOMS[room].fixedZones), [design.items, room])
   const shownItems = house[shownRoom].items
-  const shownOverlaps = useMemo(() => findOverlaps(shownItems), [shownItems])
+  const shownOverlaps = useMemo(() => findOverlaps(shownItems, ROOMS[shownRoom].fixedZones), [shownItems, shownRoom])
 
   useEffect(() => () => clearTimeout(fadeTimer.current), [])
 
@@ -111,9 +112,7 @@ export default function App() {
     }, FADE_OUT_MS)
   }
 
-  const overlapping = selectedItem
-    ? (overlaps.get(selectedItem.id) ?? []).flatMap((id) => design.items.filter((item) => item.id === id))
-    : []
+  const overlapping = selectedItem ? (overlaps.get(selectedItem.id) ?? []).map((id) => overlapName(id, design.items)) : []
 
   return (
     <div className="app">

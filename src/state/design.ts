@@ -1,6 +1,6 @@
 import { clampToRoom, FURNITURE_INFO, getVariant, isAllowedIn, type FurnitureItem, type FurnitureType } from '../scene/furniture/catalog'
 import { normalizeDegrees } from '../utils/math'
-import { FLOOR_OPTIONS, type FloorId, type RoomFinishes } from '../scene/finishes'
+import { FLOOR_OPTIONS, WALL_STYLES, type FloorId, type RoomFinishes, type WallStyle } from '../scene/finishes'
 import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'
 
 /**
@@ -69,12 +69,30 @@ export function parseDesign(raw: unknown, room: RoomId = 'living'): RoomDesign |
 
   const finishes: RoomFinishes = { ...ROOMS[room].defaultFinishes }
   if (isRecord(raw.finishes)) {
-    const { wallColor, floor } = raw.finishes
+    const { wallColor, walls, floor } = raw.finishes
     if (typeof wallColor === 'string' && HEX_COLOR.test(wallColor)) finishes.wallColor = wallColor
+    if (WALL_STYLES.some((style) => style.id === walls)) finishes.walls = walls as WallStyle
     if (FLOOR_OPTIONS.some((f) => f.id === floor)) finishes.floor = floor as FloorId
   }
 
   return { finishes, items }
+}
+
+/**
+ * Phase 2 shipped the Dining Room, Kitchen and Bathroom with only a starter plant.
+ * A room that still holds nothing but that plant was never furnished by you, so
+ * it gets the real default furniture. Its finishes (paint, floor) are kept.
+ */
+const STARTER_PLANT_IDS: Partial<Record<RoomId, string>> = {
+  dining: 'dining-plant',
+  kitchen: 'kitchen-plant',
+  bathroom: 'bathroom-plant',
+}
+
+function upgradeStarterRoom(id: RoomId, design: RoomDesign): RoomDesign {
+  const starter = STARTER_PLANT_IDS[id]
+  const onlyStarter = design.items.length === 1 && design.items[0].id === starter && design.items[0].type === 'plant'
+  return onlyStarter ? { ...design, items: ROOMS[id].defaultItems } : design
 }
 
 /**
@@ -93,7 +111,7 @@ export function parseHouseDesign(raw: unknown): HouseDesign | null {
     for (const id of ROOM_IDS) {
       const design = parseDesign(rooms[id], id)
       if (design) {
-        house[id] = design
+        house[id] = upgradeStarterRoom(id, design)
         found = true
       }
     }

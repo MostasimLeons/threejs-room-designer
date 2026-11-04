@@ -9,7 +9,9 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Every 
 - **Five rooms, each its own 3D scene:**
   - **Living Room** (7 × 6 m): sofa, armchair, coffee table, TV unit, plant, floor lamp.
   - **Bedroom** (5 × 4 m, modern luxury): king bed with upholstered headboard, two bedside tables with lamps, sliding wardrobe, dressing table with mirror, accent chair, two plants, curtained window, oak slat accent wall and cream carpet.
-  - **Dining Room** (4.5 × 4 m), **Kitchen** (4 × 3.5 m) and **Bathroom** (3 × 2.5 m): walls, window, door, ceiling lights and their own finishes, plus a plant. Their furniture comes in the next phase.
+  - **Dining Room** (4.5 × 4 m): rectangular or round dining table, six dining chairs (upholstered or spindle back), sideboard, plant, and a black pendant light over the table.
+  - **Kitchen** (4 × 3.5 m): built-in units along the back wall (stone worktop, sink under the window, hob and extractor, splashback, wall units with an under-cabinet light), plus a movable island, three bar stools and a fridge (fridge-freezer or American style).
+  - **Bathroom** (3 × 2.5 m): freestanding bath or walk-in shower, wall-hung vanity with basin(s) and mirror, towel rail, built-in toilet, tiled walls and a terrazzo floor.
 
   Pick a room in the **room bar** at the bottom of the 3D view, or press `1`–`5`. The view fades briefly and shows that room. Only the selected room is drawn, which keeps the app fast. Each room keeps its own furniture, finishes, lighting and undo history, and furniture never moves between rooms: a bed can only be in the Bedroom, a sofa only in the Living Room.
 
@@ -22,13 +24,13 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Every 
   It always stays inside the walls.
 
 - **Rotate** with the 45° buttons, the slider, or `R` / `Shift+R`.
-- **Overlap warnings:** pieces that overlap get a red outline, a ⚠ in the Objects list, and a message in the panel.
+- **Overlap warnings:** pieces that overlap each other, or a built-in unit such as the kitchen units or the toilet, get a red outline, a ⚠ in the Objects list, and a message in the panel (for example "Overlaps kitchen units").
 - **Customise** each piece:
   - furniture options, such as sofa size, table shape, chair style, TV size, plant size and lamp shade
   - named colour swatches or a custom colour
 - **Room finishes:**
-  - six wall paint presets or a custom colour
-  - five floor materials: oak, walnut, whitewashed ash, polished concrete and stone tiles
+  - walls in **paint** or glossy ceramic **tiles**, in six colour presets or a custom colour
+  - seven floor materials: oak, walnut, whitewashed ash, polished concrete, stone tiles, white marble and terrazzo
 - **Undo / Redo / Reset** covers furniture and finishes of the selected room. Reset itself can be undone.
 - **Perspective and Plan** (top-down) views.
 - **Realistic rendering**, all generated in code with no image downloads:
@@ -100,6 +102,9 @@ Measured in the Living Room with the default layout (draw calls and triangles de
 | 2026-11-04 | Phase 1: post-processing, ceilings, shadows drawn once per frame | ~560       | ~181k     |
 | 2026-11-04 | Phase 1, with a polished concrete floor (reflection)             | ~640       | ~198k     |
 | 2026-11-04 | Phase 2: only the selected room is drawn                         | ~300       | ~91k      |
+| 2026-11-04 | Phase 3, Dining Room (furnished)                                 | ~325       | ~81k      |
+| 2026-11-04 | Phase 3, Kitchen (furnished, the heaviest room)                  | ~500       | ~76k      |
+| 2026-11-04 | Phase 3, Bathroom (furnished, tiled walls)                       | ~320       | ~110k     |
 
 The two shadow passes are still most of the cost. Without the once-per-frame shadow change, a reflective floor would add about 460 draw calls instead of about 85.
 
@@ -144,7 +149,7 @@ A whole drag, slider movement or held-down arrow key counts as **one** undo step
 
 - **Saved in this browser:** designs are stored in your browser's `localStorage`, so they exist only in that browser on that computer. Clearing site data removes them.
 - **Export file / Import file:** use these to back up a design, move it to another computer, or share it. Imported files are checked first: unknown furniture is skipped, and anything outside the room is moved back inside.
-- **All rooms are always saved together:** saves, the autosave and exported files hold the whole house. Older saves and files still load. Rooms they don't contain (for example the Dining Room, Kitchen and Bathroom in a save from before those rooms existed) start from their default design. A one-room file from the very first version becomes the Living Room.
+- **All rooms are always saved together:** saves, the autosave and exported files hold the whole house. Older saves and files still load. Rooms they don't contain (for example the Dining Room, Kitchen and Bathroom in a save from before those rooms existed) start from their default design. A one-room file from the very first version becomes the Living Room. A Dining Room, Kitchen or Bathroom saved while it only had its starter plant is given the new furniture automatically, and keeps its paint and floor.
 
 ## Project structure
 
@@ -183,7 +188,8 @@ src/
     RoomShell.tsx          Builds any room from its house.ts entry: floor, ceiling, 4 walls with windows/doors/skirting
     Cutaway.tsx            Hides walls (and the ceiling) that are between the camera and the room
     walls.ts               Wall maths: placing walls, cutting openings, skirting runs, checks for bad openings
-    rooms/decor.tsx        Built-in decor per room: rug, carpet, oak slat wall, curtains
+    rooms/decor.tsx        Built-in decor per room: rug, carpet, oak slat wall, curtains,
+                           dining pendant, kitchen units, toilet
                            and the shared wall with the connecting door
     house.ts               Room registry: every room's size, windows, doors, lights, camera, default design
     CameraRig.tsx          Perspective / Plan cameras and mouse controls
@@ -201,6 +207,9 @@ src/
       Sofa.tsx … Door.tsx  One procedural model per object (Living Room)
       Bed.tsx, BedsideTable.tsx, Wardrobe.tsx,
       DressingTable.tsx, AccentChair.tsx   Bedroom models
+      DiningTable.tsx, DiningChair.tsx, Sideboard.tsx   Dining Room models
+      KitchenIsland.tsx, BarStool.tsx, Fridge.tsx       Kitchen models
+      Bathtub.tsx, Vanity.tsx, TowelRail.tsx            Bathroom models
 ```
 
 Tests sit next to the code they check, as `*.test.ts` files. They cover undo/redo, reading saves and imported files, browser storage, and the furniture maths (staying inside the walls, overlaps, default layouts).
@@ -225,11 +234,12 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 - There is no Add or Delete for furniture yet: each room always has its starting pieces.
 - Furniture can't be moved from one room to the other, by design: each room keeps its own pieces.
 - Doors between rooms are closed. Each room is a separate scene, so there's nothing to see through them.
-- The Dining Room, Kitchen and Bathroom only have a plant so far.
+- Built-in units (kitchen units, toilet, dining pendant) can't be moved or restyled. The pendant stays put if you move the dining table.
+- Walls are one finish per room: you can't tile one wall and paint another yet (per-wall editing is planned for Phase 5).
 - The start camera doesn't adapt to a tall, narrow 3D view (a mid-size window with both panels open), so part of the room can be cropped. Zoom out or use Plan view.
 - Ambient occlusion runs at full resolution. N8AO's faster half-resolution mode crashes with Three.js 0.187 (its multi-texture render target isn't compatible), so it stays off until N8AO is updated.
 - Floor reflections aren't blurred. Drei's reflection blur creates two GPU images it never frees, so softness comes from a lower reflection resolution instead.
 - The ceiling lights and lamp shades only glow; they don't light the room. Real lights for them come with the time-of-day work (Phase 3).
 - Post-processing adds about 160 KB (gzipped) to the download. It's in its own `effects` file, so the browser caches it separately.
 
-<!-- Last updated: 2026-11-04 11:10 UTC -->
+<!-- Last updated: 2026-11-04 11:28 UTC -->

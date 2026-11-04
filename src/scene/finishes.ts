@@ -1,11 +1,20 @@
 // Room finishes: the wall paint and the floor material the user can choose.
 
-export type FloorId = 'oak' | 'walnut' | 'ash' | 'concrete' | 'tiles'
+export type FloorId = 'oak' | 'walnut' | 'ash' | 'concrete' | 'tiles' | 'marble' | 'terrazzo'
+
+/** Painted plaster, or glossy ceramic tiles (tinted with the wall colour). */
+export type WallStyle = 'paint' | 'tiles'
 
 export interface RoomFinishes {
   wallColor: string
+  walls: WallStyle
   floor: FloorId
 }
+
+export const WALL_STYLES: { id: WallStyle; label: string }[] = [
+  { id: 'paint', label: 'Paint' },
+  { id: 'tiles', label: 'Tiles' },
+]
 
 interface FloorOption {
   id: FloorId
@@ -29,6 +38,8 @@ export const FLOOR_OPTIONS: FloorOption[] = [
   { id: 'ash', label: 'Whitewashed ash', swatch: '#e0cdb2', tileSize: 1.6, roughness: 0.55, reflection: 0 },
   { id: 'concrete', label: 'Polished concrete', swatch: '#b1aea8', tileSize: 2.5, roughness: 0.35, reflection: 0.4 },
   { id: 'tiles', label: 'Stone tiles', swatch: '#e4ded4', tileSize: 2.4, roughness: 0.3, reflection: 0.35 },
+  { id: 'marble', label: 'White marble', swatch: '#eceae6', tileSize: 2.4, roughness: 0.18, reflection: 0.45 },
+  { id: 'terrazzo', label: 'Terrazzo', swatch: '#e6ddd0', tileSize: 1.8, roughness: 0.3, reflection: 0.25 },
 ]
 
 export const WALL_SWATCHES = [
@@ -40,7 +51,7 @@ export const WALL_SWATCHES = [
   { color: '#9a9590', name: 'Stone grey' },
 ]
 
-export const DEFAULT_FINISHES: RoomFinishes = { wallColor: '#e8dcc8', floor: 'oak' }
+export const DEFAULT_FINISHES: RoomFinishes = { wallColor: '#e8dcc8', walls: 'paint', floor: 'oak' }
 
 export function getFloorOption(id: FloorId): FloorOption {
   return FLOOR_OPTIONS.find((f) => f.id === id) ?? FLOOR_OPTIONS[0]

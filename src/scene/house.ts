@@ -1,6 +1,6 @@
 import { DEFAULT_LAYOUTS } from './furniture/catalog'
 import { DEFAULT_FINISHES, type RoomFinishes } from './finishes'
-import type { FurnitureItem } from './furniture/catalog'
+import type { FixedZone, FurnitureItem } from './furniture/catalog'
 
 /**
  * The room registry: everything that makes each room different, as plain data.
@@ -18,8 +18,9 @@ import type { FurnitureItem } from './furniture/catalog'
  *          └──────────────────────┘
  *            front wall (z = +depth/2)
  *
- * The default camera looks from the front-right, so the front and right walls
- * hide themselves (see Cutaway) and you see into the room.
+ * The start camera usually looks from the front-right, so the front and right
+ * walls hide themselves (see Cutaway) and you see into the room. A room can pick
+ * another corner, as the Bathroom does to keep its vanity wall in view.
  */
 
 export type RoomId = 'living' | 'bedroom' | 'dining' | 'kitchen' | 'bathroom'
@@ -71,9 +72,16 @@ export interface RoomInfo {
   defaultItems: FurnitureItem[]
   /** Built-in decor that isn't a window or door, for the Objects list. */
   features: { name: string; detail: string; color: string }[]
+  /** Built-in units that furniture shouldn't overlap (kitchen units, toilet). */
+  fixedZones: FixedZone[]
 }
 
 const DOOR_HEIGHT = 2.1
+
+/** Built-in units, shared with the 3D decor (rooms/decor.tsx) so both always agree. */
+export const KITCHEN_UNIT_DEPTH = 0.62
+export const TOILET_POSITION: [number, number] = [-1.05, -0.95]
+export const TOILET_SIZE: [number, number] = [0.4, 0.6]
 
 export const ROOMS: Record<RoomId, RoomInfo> = {
   living: {
@@ -98,6 +106,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
     defaultFinishes: DEFAULT_FINISHES,
     defaultItems: DEFAULT_LAYOUTS.living,
     features: [],
+    fixedZones: [],
   },
 
   bedroom: {
@@ -123,6 +132,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
       { name: 'Oak slat wall', detail: 'behind bed', color: '#c49a6c' },
       { name: 'Cream carpet', detail: '320 × 250 cm', color: '#ece3d2' },
     ],
+    fixedZones: [],
   },
 
   dining: {
@@ -143,9 +153,11 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
     ],
     camera: { position: [4.6, 4.2, 5.2], target: [0, 0.7, -0.3] },
     lights: { ceiling: [3, 7, 4], sun: [-1.5, 5, -9] },
-    defaultFinishes: { wallColor: '#f3f1ec', floor: 'walnut' },
+    defaultFinishes: { wallColor: '#f3f1ec', walls: 'paint', floor: 'walnut' },
     defaultItems: DEFAULT_LAYOUTS.dining,
-    features: [],
+    features: [{ name: 'Pendant light', detail: 'over the table', color: '#2a2a2c' }],
+    // The pendant hangs above head height, so it doesn't block furniture.
+    fixedZones: [],
   },
 
   kitchen: {
@@ -166,9 +178,11 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
     ],
     camera: { position: [4.2, 4.0, 4.6], target: [0, 0.8, -0.3] },
     lights: { ceiling: [3, 7, 4], sun: [3.1, 7, -9] },
-    defaultFinishes: { wallColor: '#f3f1ec', floor: 'tiles' },
+    defaultFinishes: { wallColor: '#f3f1ec', walls: 'paint', floor: 'tiles' },
     defaultItems: DEFAULT_LAYOUTS.kitchen,
-    features: [],
+    features: [{ name: 'Kitchen units', detail: '400 cm, sink + hob', color: '#f1ebdf' }],
+    // Base units along the whole back wall, 62 cm deep (see KitchenUnits in rooms/decor.tsx).
+    fixedZones: [{ label: 'kitchen units', position: [0, -1.75 + KITCHEN_UNIT_DEPTH / 2], size: [4, KITCHEN_UNIT_DEPTH] }],
   },
 
   bathroom: {
@@ -183,11 +197,13 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
       left: [{ kind: 'door', label: 'Door', at: 0.55, width: 0.8, bottom: 0, top: DOOR_HEIGHT }],
     },
     downlights: [[0, 0]],
-    camera: { position: [3.4, 3.6, 3.9], target: [0, 0.8, -0.2] },
+    // From the front-left, so the right wall (vanity and mirror) stays visible.
+    camera: { position: [-3.4, 3.6, 3.9], target: [0, 0.8, -0.2] },
     lights: { ceiling: [3, 7, 4], sun: [5, 12, -9] },
-    defaultFinishes: { wallColor: '#c6ccd3', floor: 'tiles' },
+    defaultFinishes: { wallColor: '#f3f1ec', walls: 'tiles', floor: 'terrazzo' },
     defaultItems: DEFAULT_LAYOUTS.bathroom,
-    features: [],
+    features: [{ name: 'Toilet', detail: 'wall-mounted', color: '#f6f5f2' }],
+    fixedZones: [{ label: 'toilet', position: TOILET_POSITION, size: TOILET_SIZE }],
   },
 }
 

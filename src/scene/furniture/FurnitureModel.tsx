@@ -11,6 +11,15 @@ import { BedsideTable } from './BedsideTable'
 import { Wardrobe } from './Wardrobe'
 import { DressingTable } from './DressingTable'
 import { AccentChair } from './AccentChair'
+import { DiningTable } from './DiningTable'
+import { DiningChair } from './DiningChair'
+import { Sideboard } from './Sideboard'
+import { KitchenIsland } from './KitchenIsland'
+import { BarStool } from './BarStool'
+import { Fridge } from './Fridge'
+import { Bathtub } from './Bathtub'
+import { Vanity } from './Vanity'
+import { TowelRail } from './TowelRail'
 
 /**
  * Picks the right 3D model for a furniture type.
@@ -50,5 +59,23 @@ export const FurnitureModel = memo(function FurnitureModel({
       return <DressingTable color={color} variant={variant} />
     case 'accentChair':
       return <AccentChair color={color} variant={variant} />
+    case 'diningTable':
+      return <DiningTable color={color} variant={variant} />
+    case 'diningChair':
+      return <DiningChair color={color} variant={variant} />
+    case 'sideboard':
+      return <Sideboard color={color} variant={variant} />
+    case 'kitchenIsland':
+      return <KitchenIsland color={color} variant={variant} />
+    case 'barStool':
+      return <BarStool color={color} variant={variant} />
+    case 'fridge':
+      return <Fridge color={color} variant={variant} />
+    case 'bathtub':
+      return <Bathtub color={color} variant={variant} />
+    case 'vanity':
+      return <Vanity color={color} variant={variant} />
+    case 'towelRail':
+      return <TowelRail color={color} variant={variant} />
   }
 })

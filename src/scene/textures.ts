@@ -108,6 +108,96 @@ function drawTiles(ctx: CanvasRenderingContext2D, rand: () => number) {
   }
 }
 
+/** White marble: 2 × 2 large slabs with soft grey veins that wander across each slab. */
+function drawMarble(ctx: CanvasRenderingContext2D, rand: () => number) {
+  const count = 2
+  const slab = SIZE / count
+  for (let row = 0; row < count; row++) {
+    for (let col = 0; col < count; col++) {
+      const x0 = col * slab
+      const y0 = row * slab
+      const shade = 0.97 + rand() * 0.03
+      ctx.fillStyle = `rgb(${238 * shade}, ${236 * shade}, ${232 * shade})`
+      ctx.fillRect(x0, y0, slab, slab)
+      // Soft cloudy patches
+      for (let i = 0; i < 18; i++) {
+        const cx = x0 + rand() * slab
+        const cy = y0 + rand() * slab
+        const r = 30 + rand() * 120
+        const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
+        gradient.addColorStop(0, 'rgba(170, 168, 165, 0.06)')
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+        ctx.fillStyle = gradient
+        ctx.fillRect(x0, y0, slab, slab)
+      }
+      // Veins: a few long wandering lines, thin and faint, each with a fainter halo
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(x0, y0, slab, slab)
+      ctx.clip()
+      for (let v = 0; v < 5; v++) {
+        let x = x0 + rand() * slab
+        let y = y0
+        const drift = (rand() - 0.5) * 2.5
+        ctx.beginPath()
+        ctx.moveTo(x, y)
+        while (y < y0 + slab) {
+          x += drift * 6 + (rand() - 0.5) * 14
+          y += 6 + rand() * 10
+          ctx.lineTo(x, y)
+        }
+        ctx.strokeStyle = `rgba(120, 120, 124, ${0.18 + rand() * 0.2})`
+        ctx.lineWidth = 0.8 + rand() * 1.4
+        ctx.stroke()
+        ctx.strokeStyle = 'rgba(140, 140, 145, 0.05)'
+        ctx.lineWidth = 6
+        ctx.stroke()
+      }
+      ctx.restore()
+    }
+  }
+  // Fine joints between slabs
+  ctx.fillStyle = 'rgba(175, 172, 168, 0.8)'
+  for (let i = 0; i < count; i++) {
+    ctx.fillRect(i * slab, 0, 2, SIZE)
+    ctx.fillRect(0, i * slab, SIZE, 2)
+  }
+}
+
+/** Terrazzo: a warm cement base scattered with chips of marble and coloured stone. */
+function drawTerrazzo(ctx: CanvasRenderingContext2D, rand: () => number) {
+  ctx.fillStyle = 'rgb(230, 222, 210)'
+  ctx.fillRect(0, 0, SIZE, SIZE)
+  const chips: RGB[] = [
+    [250, 248, 244],
+    [196, 186, 172],
+    [120, 112, 104],
+    [192, 140, 112],
+    [150, 160, 146],
+    [70, 66, 64],
+  ]
+  for (let i = 0; i < 2600; i++) {
+    const [r, g, b] = chips[Math.floor(rand() * chips.length)]
+    const x = rand() * SIZE
+    const y = rand() * SIZE
+    const size = 2 + rand() * rand() * 16
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`
+    ctx.beginPath()
+    // An irregular polygon, so chips look broken rather than round
+    const sides = 4 + Math.floor(rand() * 3)
+    for (let k = 0; k < sides; k++) {
+      const a = (k / sides) * Math.PI * 2 + rand() * 0.6
+      const d = size * (0.6 + rand() * 0.5)
+      const px = x + Math.cos(a) * d
+      const py = y + Math.sin(a) * d
+      if (k === 0) ctx.moveTo(px, py)
+      else ctx.lineTo(px, py)
+    }
+    ctx.closePath()
+    ctx.fill()
+  }
+}
+
 function drawFloor(floor: FloorId): HTMLCanvasElement {
   const canvas = document.createElement('canvas')
   canvas.width = SIZE
@@ -130,6 +220,12 @@ function drawFloor(floor: FloorId): HTMLCanvasElement {
       break
     case 'tiles':
       drawTiles(ctx, rand)
+      break
+    case 'marble':
+      drawMarble(ctx, rand)
+      break
+    case 'terrazzo':
+      drawTerrazzo(ctx, rand)
       break
   }
   return canvas
@@ -224,6 +320,8 @@ const FLOOR_RELIEF: Record<FloorId, { strength: number; roughness: number }> = {
   ash: { strength: 3, roughness: 0.35 },
   concrete: { strength: 1.2, roughness: 0.3 },
   tiles: { strength: 4, roughness: 0.55 },
+  marble: { strength: 1.5, roughness: 0.4 },
+  terrazzo: { strength: 1.2, roughness: 0.3 },
 }
 
 /**
@@ -287,4 +385,41 @@ export function createFabricNormalMap(): THREE.CanvasTexture {
     }
   }
   return toTexture(normalMapFromHeight(height, size, 1.5), false)
+}
+
+/** How many metres of wall one copy of the wall-tile texture covers (2 × 2 tiles of 30 cm). */
+export const WALL_TILE_REPEAT = 0.6
+
+/**
+ * Square ceramic wall tiles with grout lines, for tiled walls. Nearly white, so
+ * the material's colour (the wall colour you pick) tints the tiles. The normal map
+ * makes the grout read as recessed, and the roughness map keeps the grout matte
+ * while the glaze stays glossy.
+ */
+export function createWallTileMaps(): SurfaceMaps {
+  const size = 512
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const rand = createRandom(23)
+  const count = 2
+  const tile = size / count
+  const grout = 6
+  ctx.fillStyle = 'rgb(206, 204, 200)'
+  ctx.fillRect(0, 0, size, size)
+  for (let row = 0; row < count; row++) {
+    for (let col = 0; col < count; col++) {
+      const shade = 0.96 + rand() * 0.04
+      ctx.fillStyle = `rgb(${250 * shade}, ${249 * shade}, ${246 * shade})`
+      // Grout is split between neighbouring tiles, so the texture tiles seamlessly.
+      ctx.fillRect(col * tile + grout / 2, row * tile + grout / 2, tile - grout, tile - grout)
+    }
+  }
+  const height = luminance(canvas)
+  return {
+    map: toTexture(canvas, true),
+    normalMap: toTexture(normalMapFromHeight(height, size, 6), false),
+    roughnessMap: toTexture(roughnessFromHeight(height, size, 0.7), false),
+  }
 }

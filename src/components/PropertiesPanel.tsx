@@ -10,8 +10,8 @@ interface PropertiesPanelProps {
   room: RoomId
   item: FurnitureItem | null
   finishes: RoomFinishes
-  /** Other pieces the selected item currently overlaps. */
-  overlapping: FurnitureItem[]
+  /** Names of what the selected item currently overlaps (other pieces, built-in units). */
+  overlapping: string[]
   /** Apply a change and record an undo step. */
   onUpdate: (changes: ItemChanges) => void
   /** Apply a change live (while sliding); `onCommit` records it when you let go. */
@@ -54,8 +54,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         </div>
         {overlapping.length > 0 && (
           <p className="warning" role="status">
-            Overlaps {overlapping.map((other) => FURNITURE_INFO[other.type].label.toLowerCase()).join(' and ')}. Move or rotate it to make
-            space.
+            Overlaps {overlapping.join(' and ')}. Move or rotate it to make space.
           </p>
         )}
       </section>
