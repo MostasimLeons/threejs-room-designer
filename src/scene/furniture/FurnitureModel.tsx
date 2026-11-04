@@ -1,5 +1,7 @@
 import { memo } from 'react'
-import type { FurnitureType } from './catalog'
+import { getVariant, type FurnitureType } from './catalog'
+import { modelFor } from './models'
+import { GltfFurniture } from './GltfModel'
 import { Sofa } from './Sofa'
 import { Armchair } from './Armchair'
 import { CoffeeTable } from './CoffeeTable'
@@ -21,21 +23,29 @@ import { Bathtub } from './Bathtub'
 import { Vanity } from './Vanity'
 import { TowelRail } from './TowelRail'
 
+interface ModelChoice {
+  type: FurnitureType
+  variant: string
+  color: string
+}
+
 /**
- * Picks the right 3D model for a furniture type.
+ * Picks the 3D model for a piece of furniture: a real model (GLB) where one exists
+ * for that option (see models.ts), with the code-built model shown while it
+ * downloads; otherwise the code-built model.
  * `memo` = only re-build the model when its type, variant or colour changes.
  * Moving or rotating happens on the parent group, so dragging one piece no
  * longer re-builds every model in the room on each mouse move.
  */
-export const FurnitureModel = memo(function FurnitureModel({
-  type,
-  variant,
-  color,
-}: {
-  type: FurnitureType
-  variant: string
-  color: string
-}) {
+export const FurnitureModel = memo(function FurnitureModel({ type, variant, color }: ModelChoice) {
+  const spec = modelFor(type, variant)
+  const code = <CodeModel type={type} variant={variant} color={color} />
+  if (!spec) return code
+  return <GltfFurniture spec={spec} footprint={getVariant(type, variant).footprint} color={color} fallback={code} />
+})
+
+/** The code-built model for each furniture type (see the files next to this one). */
+function CodeModel({ type, variant, color }: ModelChoice) {
   switch (type) {
     case 'sofa':
       return <Sofa color={color} variant={variant} />
@@ -78,4 +88,4 @@ export const FurnitureModel = memo(function FurnitureModel({
     case 'towelRail':
       return <TowelRail color={color} variant={variant} />
   }
-})
+}

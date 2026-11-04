@@ -152,7 +152,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     rooms: ['living'],
     variantLabel: 'Style',
     variants: [
-      { id: 'lounge', label: 'Lounge', detail: '92 cm', footprint: [0.92, 0.82] },
+      { id: 'lounge', label: 'Lounge', detail: '82 cm, oak and leather', footprint: [0.82, 0.99] },
       { id: 'armless', label: 'Armless', detail: '70 cm', footprint: [0.7, 0.8] },
     ],
     colorLabel: 'Fabric',
@@ -276,6 +276,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     variants: [
       { id: 'tub', label: 'Tub', detail: '75 cm', footprint: [0.75, 0.75] },
       { id: 'wingback', label: 'Wingback', detail: '75 cm', footprint: [0.75, 0.75] },
+      { id: 'lounge', label: 'Mid-century lounge', detail: '101 cm, swivel', footprint: [1.0, 1.18] },
     ],
     colorLabel: 'Fabric',
     swatches: CREAM_SWATCHES,

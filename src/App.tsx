@@ -13,6 +13,7 @@ import { setAllWalls, setWallFinish, wallFinishOf } from './scene/finishes'
 import { MoonIcon, SunIcon } from './components/icons'
 import { daylightAt, formatTime, sunPosition } from './scene/sun'
 import { PropertiesPanel } from './components/PropertiesPanel'
+import { preloadModels } from './scene/furniture/GltfModel'
 import { CameraViewPicker } from './components/CameraViewPicker'
 import { IntroScreen } from './components/IntroScreen'
 import type { CameraViewId } from './scene/cameraViews'
@@ -180,6 +181,13 @@ export default function App() {
     setThumbnails((current) => ({ ...current, [thumbRoom]: url }))
     saveThumbnail(thumbRoom, url)
   }
+
+  // Start downloading the real 3D models in the background (1.6 MB in total), so
+  // switching rooms finds them ready. Code-built models show until they arrive.
+  useEffect(() => {
+    const timer = setTimeout(preloadModels, 1200)
+    return () => clearTimeout(timer)
+  }, [])
 
   // A first picture of the room you start in, once it has had a moment to draw.
   useEffect(() => {

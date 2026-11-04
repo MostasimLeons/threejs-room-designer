@@ -3,6 +3,7 @@ import type { RoomFinishes } from '../scene/finishes'
 import { ROOMS, type RoomId } from '../scene/house'
 import type { FinishChanges, ItemChanges } from '../state/useDesignHistory'
 import { ColorPicker } from './ColorPicker'
+import { modelFor } from '../scene/furniture/models'
 import { RoomPanel } from './RoomPanel'
 import { WallPanel } from './WallPanel'
 import { setAllWalls, setWallFinish, wallFinishOf } from '../scene/finishes'
@@ -57,6 +58,9 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
 
   const info = FURNITURE_INFO[item.type]
   const variant = getVariant(item.type, item.variant)
+  // Real models whose texture covers several materials can't be recoloured (see models.ts).
+  const model = modelFor(item.type, item.variant)
+  const fixedFinish = model !== undefined && model.tint.length === 0
   const [x, z] = item.position
 
   return (
@@ -98,19 +102,28 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         </div>
       </section>
 
-      <section className="card">
-        <h2>Colour · {info.colorLabel}</h2>
-        <ColorPicker
-          swatches={info.swatches}
-          value={item.color}
-          onPick={(color) => onUpdate({ color })}
-          onPreview={(color) => onPreview({ color })}
-          onCommit={onCommit}
-        />
-        <p className="muted small">
-          Current: {info.swatches.find((s) => s.color.toLowerCase() === item.color.toLowerCase())?.name ?? item.color.toUpperCase()}
-        </p>
-      </section>
+      {fixedFinish ? (
+        <section className="card">
+          <h2>Colour</h2>
+          <p className="muted small">
+            This model keeps its own natural finish ({variant.label.toLowerCase()}). Pick another option to choose a colour.
+          </p>
+        </section>
+      ) : (
+        <section className="card">
+          <h2>Colour · {info.colorLabel}</h2>
+          <ColorPicker
+            swatches={info.swatches}
+            value={item.color}
+            onPick={(color) => onUpdate({ color })}
+            onPreview={(color) => onPreview({ color })}
+            onCommit={onCommit}
+          />
+          <p className="muted small">
+            Current: {info.swatches.find((s) => s.color.toLowerCase() === item.color.toLowerCase())?.name ?? item.color.toUpperCase()}
+          </p>
+        </section>
+      )}
 
       <section className="card">
         <h2>Rotation</h2>

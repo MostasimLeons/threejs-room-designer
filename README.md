@@ -2,7 +2,7 @@
 
 An interactive 3D **room configurator** that runs in the browser. Arrange furniture, pick sizes and styles, recolour pieces, change wall paint and floor material, then save and restore your designs.
 
-Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Every 3D object and texture is generated in code, so the app has no model or image downloads.
+Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms, textures and most furniture are generated in code. Seven pieces use real 3D models (CC0, from [Poly Haven](https://polyhaven.com)), optimised to 1.5 MB in total; see **3D models** below.
 
 ## Features
 
@@ -78,16 +78,17 @@ Open **http://localhost:5173** in your browser. Press `Ctrl + C` in the terminal
 
 ### Scripts
 
-| Command             | What it does                                                             |
-| ------------------- | ------------------------------------------------------------------------ |
-| `npm run dev`       | Starts the development server with instant reload                        |
-| `npm run typecheck` | Checks the TypeScript types without building                             |
-| `npm run build`     | Type-checks, then creates an optimised production build in `dist/`       |
-| `npm run preview`   | Serves the `dist/` build locally so you can test it                      |
-| `npm test`          | Runs the unit tests once (`npm run test:watch` re-runs them as you edit) |
-| `npm run lint`      | Checks the code for likely bugs with Oxlint                              |
-| `npm run format`    | Formats all files with Prettier (`format:check` only reports)            |
-| `npm run check`     | Lint + format check + type check + tests. Run this before committing.    |
+| Command             | What it does                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`       | Starts the development server with instant reload                                                                               |
+| `npm run typecheck` | Checks the TypeScript types without building                                                                                    |
+| `npm run build`     | Type-checks, then creates an optimised production build in `dist/`                                                              |
+| `npm run preview`   | Serves the `dist/` build locally so you can test it                                                                             |
+| `npm test`          | Runs the unit tests once (`npm run test:watch` re-runs them as you edit)                                                        |
+| `npm run lint`      | Checks the code for likely bugs with Oxlint                                                                                     |
+| `npm run format`    | Formats all files with Prettier (`format:check` only reports)                                                                   |
+| `npm run check`     | Lint + format check + type check + tests. Run this before committing.                                                           |
+| `npm run models`    | Rebuilds the web-ready 3D models in `public/models/` from the originals in `assets-src/` (`-- --inspect` lists their materials) |
 
 ### Checking performance
 
@@ -103,22 +104,45 @@ It also works with `npm run preview`, which gives more realistic numbers than th
 
 Measured in the Living Room with the default layout (draw calls and triangles depend on window size):
 
-| Date       | Change                                                           | Draw calls  | Triangles |
-| ---------- | ---------------------------------------------------------------- | ----------- | --------- |
-| 2026-11-04 | Phase 0 baseline                                                 | ~466        | ~166k     |
-| 2026-11-04 | Phase 1: post-processing, ceilings, shadows drawn once per frame | ~560        | ~181k     |
-| 2026-11-04 | Phase 1, with a polished concrete floor (reflection)             | ~640        | ~198k     |
-| 2026-11-04 | Phase 2: only the selected room is drawn                         | ~300        | ~91k      |
-| 2026-11-04 | Phase 3, Dining Room (furnished)                                 | ~325        | ~81k      |
-| 2026-11-04 | Phase 3, Kitchen (furnished, the heaviest room)                  | ~500        | ~76k      |
-| 2026-11-04 | Phase 3, Bathroom (furnished, tiled walls)                       | ~320        | ~110k     |
-| 2026-11-04 | Phase 4, by day (Living / Kitchen, the heaviest)                 | ~315 / ~510 |           |
-| 2026-11-04 | Phase 4, at night (room lights on; about 60 more in every room)  | ~375 / ~570 |           |
-| 2026-11-04 | Phase 5, something selected (outline redraws the scene's depth)  | ~410 / ~670 |           |
-| 2026-11-04 | Phase 6, overview with nothing selected (steady frame)           | ~330 / ~530 |           |
-| 2026-11-04 | Phase 6, eye level (only part of the room is in view)            | ~280 / ~350 |           |
+| Date       | Change                                                                     | Draw calls  | Triangles     |
+| ---------- | -------------------------------------------------------------------------- | ----------- | ------------- |
+| 2026-11-04 | Phase 0 baseline                                                           | ~466        | ~166k         |
+| 2026-11-04 | Phase 1: post-processing, ceilings, shadows drawn once per frame           | ~560        | ~181k         |
+| 2026-11-04 | Phase 1, with a polished concrete floor (reflection)                       | ~640        | ~198k         |
+| 2026-11-04 | Phase 2: only the selected room is drawn                                   | ~300        | ~91k          |
+| 2026-11-04 | Phase 3, Dining Room (furnished)                                           | ~325        | ~81k          |
+| 2026-11-04 | Phase 3, Kitchen (furnished, the heaviest room)                            | ~500        | ~76k          |
+| 2026-11-04 | Phase 3, Bathroom (furnished, tiled walls)                                 | ~320        | ~110k         |
+| 2026-11-04 | Phase 4, by day (Living / Kitchen, the heaviest)                           | ~315 / ~510 |               |
+| 2026-11-04 | Phase 4, at night (room lights on; about 60 more in every room)            | ~375 / ~570 |               |
+| 2026-11-04 | Phase 5, something selected (outline redraws the scene's depth)            | ~410 / ~670 |               |
+| 2026-11-04 | Phase 6, overview with nothing selected (steady frame)                     | ~330 / ~530 |               |
+| 2026-11-04 | Phase 6, eye level (only part of the room is in view)                      | ~280 / ~350 |               |
+| 2026-11-04 | Phase 7, real models (fewer draw calls; more triangles, mostly the plants) | ~220 / ~445 | ~135k / ~122k |
 
 The two shadow passes are still most of the cost. Without the once-per-frame shadow change, a reflective floor would add about 460 draw calls instead of about 85.
+
+## 3D models
+
+Seven furniture options use real models. Everything else is still built in code, and the code-built version shows while a model downloads (or if one ever fails to load).
+
+| In the app                                    | Model (CC0, Poly Haven)                    | File                                | Colour swatch |
+| --------------------------------------------- | ------------------------------------------ | ----------------------------------- | ------------- |
+| Indoor plant, large                           | Potted Plant 01 (Rico Cilliers)            | `plant-large.glb`, 468 KB           | pot           |
+| Indoor plant, small                           | Potted Plant 02 (Rico Cilliers)            | `plant-small.glb`, 332 KB           | pot           |
+| Coffee table, rectangle                       | Modern Coffee Table 01 (Amin)              | `coffee-table-rectangle.glb`, 92 KB | own finish    |
+| Coffee table, round                           | Coffee Table Round 01 (Ulan Cabanilla)     | `coffee-table-round.glb`, 102 KB    | own finish    |
+| Sideboard, 160 / 200 cm                       | Modern Wooden Cabinet (Patrik Pangerl)     | `sideboard.glb`, 303 KB             | wood          |
+| Armchair, lounge                              | Modern Arm Chair 01 (Vibrant Nordic)       | `armchair-lounge.glb`, 150 KB       | cushions      |
+| Accent chair, mid-century lounge (new option) | Mid Century Lounge Chair (Kuutti Siitonen) | `accent-chair-lounge.glb`, 128 KB   | own finish    |
+
+CC0 means free for any use with no credit required; the authors are listed anyway.
+
+**How the files are made:** the originals (1K-texture glTF, 19.5 MB) live in `assets-src/models/`, which isn't committed. `npm run models` (`scripts/optimize-models.mjs`) removes duplicate data, simplifies heavy meshes (the plants went from 176k and 70k triangles to 21k and 17k), resizes textures to 512 px WebP, compresses the geometry with meshopt, and writes `public/models/*.glb`. For colourable materials it also makes the texture a light greyscale, so the swatch colour shows through with the grain intact. Models whose single texture covers several materials (for example a stone top and a wooden frame) keep their own finish, and the panel says so instead of showing swatches.
+
+**Adding a model:** put the original in `assets-src/models/<id>/`, add it to `MODELS` in `scripts/optimize-models.mjs`, run `npm run models`, then map it to a furniture option in `src/scene/furniture/models.ts`. The app sizes it to the option's footprint automatically.
+
+**Why the rest is still code-built:** Poly Haven has no modern sofa, bed, wardrobe, TV unit, kitchen or bathroom pieces; its versions are antique or ornate and would clash with the rooms. The 100 MB Cinema 4D scene in `../Model_Furn` wasn't used: it bundles a chair and sofa with rocks and a tree, and its Megascans-style assets may not be licensed for publishing on a website.
 
 ## Dependencies
 
@@ -172,6 +196,10 @@ A whole drag, slider movement or held-down arrow key counts as **one** undo step
 ## Project structure
 
 ```
+public/models/             Web-ready 3D models (GLB), made by `npm run models`
+assets-src/models/         Original downloaded models (not committed; see 3D models)
+scripts/
+  optimize-models.mjs      Turns the originals into the web-ready models
 src/
   main.tsx                 Entry point: mounts <App /> into index.html
   App.tsx                  Page layout and app state (design, selection, view)
@@ -232,7 +260,9 @@ src/
     furniture/
       catalog.ts           Furniture types, options, swatches, default layout,
                            "stay inside the room" and overlap checks
-      FurnitureModel.tsx   Picks the 3D model for a furniture type
+      FurnitureModel.tsx   Picks the 3D model for a furniture type (real model if there is one)
+      models.ts            Which options use a real model, and how it's sized to the footprint
+      GltfModel.tsx        Loads a model, recolours it, falls back to the code-built one
       useTintedMaterial.ts Per-piece copy of a material so recolouring is independent
       Sofa.tsx … Door.tsx  One procedural model per object (Living Room)
       Bed.tsx, BedsideTable.tsx, Wardrobe.tsx,
@@ -272,6 +302,8 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 - The sun model is a simple textbook one for a mid-latitude summer day (sunrise about 4:35, sunset about 19:25). It isn't tied to a real date or place.
 - Post-processing adds about 160 KB (gzipped) to the download. It's in its own `effects` file, so the browser caches it separately.
 - The smooth camera (camera-controls) adds about 13 KB (gzipped). Since Phase 6 the build puts React in the same file as React Three Fiber.
+- The model loader adds about 21 KB (gzipped) to that file. The models themselves (1.5 MB) download in the background about a second after the app starts.
+- In the Dining Room's eye-level view the pendant light hangs right in your line of sight; the Corner view is clearer.
 - The first frames after switching rooms can cost more (the readout may briefly show a higher number); steady frames are in the table above.
 
-<!-- Last updated: 2026-11-04 12:06 UTC -->
+<!-- Last updated: 2026-11-04 12:34 UTC -->

@@ -39,3 +39,6 @@ Desktop.ini
 
 # Claude Code: personal settings stay local (launch.json is shared on purpose)
 .claude/settings.local.json
+
+# Original downloaded 3D models (large). Optimised copies live in public/models/.
+assets-src/
