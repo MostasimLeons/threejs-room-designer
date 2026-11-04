@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useThree, type RootState, type ThreeEvent } from '@react-three/fiber'
 import { Line } from '@react-three/drei'
+import { Select } from '@react-three/postprocessing'
 import { getVariant, type FurnitureItem } from './furniture/catalog'
 import { FurnitureModel } from './furniture/FurnitureModel'
 
 const SELECT_COLOR = '#2f6fed'
 const WARNING_COLOR = '#d92d20' // outline colour when a piece overlaps another
 const SNAP = 0.05 // metres: positions snap to 5 cm steps while dragging
+const ROTATE_SNAP = 15 // degrees per step when turning with the ring (hold Shift for 1°)
 const FLOOR_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0) // the floor, y = 0
 
 interface FurnitureLayerProps {
@@ -22,6 +24,8 @@ interface FurnitureLayerProps {
   onSelect: (id: string) => void
   /** Called repeatedly while dragging with the new floor position. */
   onMove: (id: string, position: [number, number]) => void
+  /** Called repeatedly while turning a piece with the rotate ring, in degrees. */
+  onRotate: (id: string, rotation: number) => void
   /** Called when a drag starts and ends, so the drag becomes one undo step. */
   onDragBoundary: () => void
 }
@@ -77,6 +81,7 @@ export function FurnitureLayer({
   overlaps,
   onSelect,
   onMove,
+  onRotate,
   onDragBoundary,
 }: FurnitureLayerProps) {
   const gl = useThree((state) => state.gl)
@@ -86,9 +91,11 @@ export function FurnitureLayer({
 
   // Information about the drag in progress (a ref, because it changes on every mouse move).
   const drag = useRef<{ id: string; offsetX: number; offsetZ: number } | null>(null)
+  // A turn in progress with the rotate ring: which piece, and its centre on the floor (world).
+  const turn = useRef<{ id: string; cx: number; cz: number } | null>(null)
   // Always-current callbacks for the window listeners below.
-  const callbacks = useRef({ onMove, onDragBoundary, origin })
-  callbacks.current = { onMove, onDragBoundary, origin }
+  const callbacks = useRef({ onMove, onRotate, onDragBoundary, origin })
+  callbacks.current = { onMove, onRotate, onDragBoundary, origin }
 
   // Mouse cursor: open hand over furniture, closed hand while dragging.
   useEffect(() => {
@@ -103,13 +110,24 @@ export function FurnitureLayer({
 
     function handleMove(event: PointerEvent) {
       const current = drag.current
-      if (!current) return
+      if (!current && !turn.current) return
       // Convert the mouse position into -1…+1 "normalised device coordinates".
       const rect = gl.domElement.getBoundingClientRect()
       pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1)
       // Shoot a ray from the camera through the mouse and see where it hits the floor.
       raycaster.setFromCamera(pointer, get().camera)
       if (!raycaster.ray.intersectPlane(FLOOR_PLANE, hit)) return
+
+      if (turn.current) {
+        // Angle from the piece's centre to the pointer. Models face +z, so rotation 0 = +z.
+        const { id, cx, cz } = turn.current
+        const degrees = (Math.atan2(hit.x - cx, hit.z - cz) * 180) / Math.PI
+        const step = event.shiftKey ? 1 : ROTATE_SNAP
+        callbacks.current.onRotate(id, Math.round(degrees / step) * step)
+        return
+      }
+      if (!current) return
+
       // The floor hit is in world space; furniture positions are relative to the room centre.
       const [ox, oz] = callbacks.current.origin
       const x = Math.round((hit.x - ox + current.offsetX) / SNAP) * SNAP
@@ -118,8 +136,9 @@ export function FurnitureLayer({
     }
 
     function handleUp() {
-      if (!drag.current) return
+      if (!drag.current && !turn.current) return
       drag.current = null
+      turn.current = null
       setDragging(false)
       setCameraControlsEnabled(get, true)
       callbacks.current.onDragBoundary()
@@ -135,8 +154,20 @@ export function FurnitureLayer({
     }
   }, [gl, get])
 
+  const startTurn = (item: FurnitureItem) => (event: ThreeEvent<PointerEvent>) => {
+    if (event.button !== 0) return
+    event.stopPropagation()
+    turn.current = { id: item.id, cx: origin[0] + item.position[0], cz: origin[1] + item.position[1] }
+    setDragging(true)
+    setCameraControlsEnabled(get, false)
+    onDragBoundary()
+  }
+
   const handlePointerDown = (item: FurnitureItem) => (event: ThreeEvent<PointerEvent>) => {
     if (event.button !== 0) return // only the left mouse button (or a finger) selects/drags
+    // The rotate handle is drawn on top of everything, so it wins even when a piece in front
+    // of it is nearer: step aside and let the event reach the handle.
+    if (event.intersections.some((hit) => hit.object.userData.rotateHandle)) return
     event.stopPropagation() // don't also select objects hidden behind this one
     onSelect(item.id)
 
@@ -155,34 +186,97 @@ export function FurnitureLayer({
         const isSelected = interactive && item.id === selectedId
         const isHovered = interactive && !isSelected && item.id === hoveredId && !dragging
         const isOverlapping = interactive && overlaps.has(item.id)
-        const showOutline = isSelected || isHovered || isOverlapping
+        // The selected piece gets a 3D outline (PostEffects) and the rotate ring; the floor
+        // rectangle is for hover (faint blue) and overlaps (red).
+        const showOutline = isHovered || isOverlapping
+        const footprint = getVariant(item.type, item.variant).footprint
         return (
-          <group
-            key={item.id}
-            position={[item.position[0], 0, item.position[1]]}
-            rotation={[0, (item.rotation * Math.PI) / 180, 0]}
-            onPointerDown={interactive ? handlePointerDown(item) : undefined}
-            onPointerOver={
-              interactive
-                ? (e) => {
-                    e.stopPropagation()
-                    setHoveredId(item.id)
-                  }
-                : undefined
-            }
-            onPointerOut={interactive ? () => setHoveredId((id) => (id === item.id ? null : id)) : undefined}
-          >
-            <FurnitureModel type={item.type} variant={item.variant} color={item.color} />
-            {showOutline && (
-              <SelectionOutline
-                footprint={getVariant(item.type, item.variant).footprint}
-                faint={!isSelected}
-                color={isOverlapping ? WARNING_COLOR : SELECT_COLOR}
+          <group key={item.id}>
+            <group
+              position={[item.position[0], 0, item.position[1]]}
+              rotation={[0, (item.rotation * Math.PI) / 180, 0]}
+              onPointerDown={interactive ? handlePointerDown(item) : undefined}
+              onPointerOver={
+                interactive
+                  ? (e) => {
+                      e.stopPropagation()
+                      setHoveredId(item.id)
+                    }
+                  : undefined
+              }
+              onPointerOut={interactive ? () => setHoveredId((id) => (id === item.id ? null : id)) : undefined}
+              // The piece is the nearest thing clicked, so the wall or floor behind it isn't picked too.
+              onClick={interactive ? (e) => e.stopPropagation() : undefined}
+            >
+              <Select enabled={isSelected}>
+                <FurnitureModel type={item.type} variant={item.variant} color={item.color} />
+              </Select>
+              {showOutline && (
+                <SelectionOutline footprint={footprint} faint={!isOverlapping} color={isOverlapping ? WARNING_COLOR : SELECT_COLOR} />
+              )}
+            </group>
+            {isSelected && (
+              <RotateRing
+                position={[item.position[0], 0, item.position[1]]}
+                rotation={item.rotation}
+                radius={Math.hypot(footprint[0], footprint[1]) / 2 + 0.15}
+                onGrab={startTurn(item)}
               />
             )}
           </group>
         )
       })}
+    </group>
+  )
+}
+
+interface RotateRingProps {
+  position: [number, number, number]
+  rotation: number
+  radius: number
+  onGrab: (event: ThreeEvent<PointerEvent>) => void
+}
+
+/**
+ * A thin blue ring on the floor around the selected piece, with a round handle in
+ * front of it (the way it faces). Drag the handle around the ring to turn the piece:
+ * 15° steps, or hold Shift for 1°. It sits outside the piece's own group so grabbing
+ * it never starts a move.
+ */
+function RotateRing({ position, rotation, radius, onGrab }: RotateRingProps) {
+  const [hovered, setHovered] = useState(false)
+  const gl = useThree((state) => state.gl)
+  useEffect(() => {
+    if (!hovered) return
+    gl.domElement.style.cursor = 'grab'
+    return () => {
+      gl.domElement.style.cursor = ''
+    }
+  }, [gl, hovered])
+
+  const angle = (rotation * Math.PI) / 180
+  return (
+    <group position={position}>
+      {/* Drawn on top of everything (depthTest off), so furniture in the way can't hide it. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 0]} renderOrder={10}>
+        <ringGeometry args={[radius - 0.025, radius + 0.025, 96]} />
+        <meshBasicMaterial color={SELECT_COLOR} transparent opacity={0.8} depthWrite={false} depthTest={false} toneMapped={false} />
+      </mesh>
+      <mesh
+        position={[Math.sin(angle) * radius, 0.05, Math.cos(angle) * radius]}
+        userData={{ rotateHandle: true }}
+        onPointerDown={onGrab}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          setHovered(true)
+        }}
+        onPointerOut={() => setHovered(false)}
+        onClick={(e) => e.stopPropagation()}
+        renderOrder={11}
+      >
+        <sphereGeometry args={[hovered ? 0.1 : 0.08, 24, 16]} />
+        <meshBasicMaterial color={hovered ? '#5a8cff' : SELECT_COLOR} depthTest={false} toneMapped={false} />
+      </mesh>
     </group>
   )
 }

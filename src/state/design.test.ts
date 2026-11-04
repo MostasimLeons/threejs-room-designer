@@ -67,6 +67,18 @@ describe('parseDesign', () => {
     expect(parseDesign({ items: [], finishes: { wallColor: '#112233' } }, 'bathroom')?.finishes.walls).toBe('tiles')
   })
 
+  it('reads per-wall finishes, skipping broken ones', () => {
+    const finishes = {
+      wallFinishes: {
+        back: { color: '#2a2a2c', style: 'tiles' },
+        left: { color: 'red', style: 'paint' },
+        roof: { color: '#ffffff', style: 'paint' },
+      },
+    }
+    expect(parseDesign({ items: [], finishes })?.finishes.wallFinishes).toEqual({ back: { color: '#2a2a2c', style: 'tiles' } })
+    expect(parseDesign({ items: [], finishes: { wallFinishes: { left: { color: 'red' } } } })?.finishes.wallFinishes).toBeUndefined()
+  })
+
   it('reads time of day and orientation, keeping them in range', () => {
     expect(parseDesign({ items: [], lighting: { time: 19.5, orientation: 90 } })?.lighting).toEqual({ time: 19.5, orientation: 90 })
     expect(parseDesign({ items: [], lighting: { time: 99, orientation: -45 } })?.lighting).toEqual({ time: 21, orientation: 315 })

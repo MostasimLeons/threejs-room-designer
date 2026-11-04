@@ -7,6 +7,9 @@ import { Toolbar } from './components/Toolbar'
 import { ViewToggle } from './components/ViewToggle'
 import { RoomBar } from './components/RoomBar'
 import { TimeOfDayPanel } from './components/TimeOfDayPanel'
+import { FloorPopover, WallPopover } from './components/SurfacePopover'
+import { FLOOR_SELECTION, selectedWall, wallLabel, wallSelection } from './scene/selection'
+import { setAllWalls, setWallFinish, wallFinishOf } from './scene/finishes'
 import { MoonIcon, SunIcon } from './components/icons'
 import { daylightAt, formatTime, sunPosition } from './scene/sun'
 import { PropertiesPanel } from './components/PropertiesPanel'
@@ -16,7 +19,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useHouseHistory } from './state/useDesignHistory'
 import { DEFAULT_HOUSE, type HouseDesign } from './state/design'
 import { loadAutosave, writeAutosave } from './state/storage'
-import { ROOM_IDS, ROOMS, type RoomId } from './scene/house'
+import { ROOM_IDS, ROOMS, type RoomId, type WallSide } from './scene/house'
 
 /** Room switch: the view fades out this fast, the room swaps, then it fades back in (see .scene-layer in index.css). */
 const FADE_OUT_MS = 180
@@ -31,6 +34,8 @@ export default function App() {
 
   const [designsOpen, setDesignsOpen] = useState(false)
   const [timeOpen, setTimeOpen] = useState(false)
+  // Where a wall or the floor was clicked, so its quick picker appears right there.
+  const [pick, setPick] = useState<{ id: string; point: [number, number, number] } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
   // Which room you're editing. `shownRoom` is the one in the 3D view: during the short
@@ -48,6 +53,43 @@ export default function App() {
   const history = forRoom(room)
   const { design } = history
   const selectedItem = design.items.find((item) => item.id === selectedId) ?? null
+  const wall = selectedWall(selectedId)
+
+  /** Clicked a wall in 3D: select it and show its quick picker there. */
+  function handlePickWall(side: WallSide, point: [number, number, number]) {
+    history.commit()
+    setSelectedId(wallSelection(side))
+    setPick({ id: wallSelection(side), point })
+  }
+
+  /**
+   * Clicked the floor: if something else is selected, the first click just deselects
+   * it (as clicking empty space always did); otherwise it selects the floor.
+   */
+  function handlePickFloor(point: [number, number, number]) {
+    if (selectedId !== null && selectedId !== FLOOR_SELECTION) {
+      setSelectedId(null)
+      return
+    }
+    setSelectedId(FLOOR_SELECTION)
+    setPick({ id: FLOOR_SELECTION, point })
+  }
+
+  const closePick = () => setSelectedId(null)
+  const popoverContent =
+    pick && pick.id === selectedId ? (
+      wall ? (
+        <WallPopover
+          label={wallLabel(wall)}
+          finish={wallFinishOf(design.finishes, wall)}
+          onChange={(finish) => history.updateFinishes(setWallFinish(design.finishes, wall, finish))}
+          onAllWalls={() => history.updateFinishes(setAllWalls(wallFinishOf(design.finishes, wall)))}
+          onClose={closePick}
+        />
+      ) : selectedId === FLOOR_SELECTION ? (
+        <FloorPopover floor={design.finishes.floor} onChange={(floor) => history.updateFinishes({ floor })} onClose={closePick} />
+      ) : null
+    ) : null
 
   // Which pieces overlap each other. Recalculated only when the furniture changes.
   // Built-in units (kitchen units, toilet) count too.
@@ -164,7 +206,11 @@ export default function App() {
                 overlaps={shownOverlaps}
                 onSelect={setSelectedId}
                 onMove={(id, position) => history.previewItem(id, { position })}
+                onRotate={(id, rotation) => history.previewItem(id, { rotation })}
                 onDragBoundary={history.commit}
+                onPickWall={handlePickWall}
+                onPickFloor={handlePickFloor}
+                popover={popoverContent && pick && shownRoom === room ? { point: pick.point, content: popoverContent } : null}
               />
             </ErrorBoundary>
           </div>
@@ -211,6 +257,7 @@ export default function App() {
         <PropertiesPanel
           room={room}
           item={selectedItem}
+          wall={wall}
           finishes={design.finishes}
           overlapping={overlapping}
           onUpdate={(changes) => selectedItem && history.updateItem(selectedItem.id, changes)}

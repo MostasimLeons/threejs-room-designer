@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { ROOM_IDS, ROOMS, WALL_SIDES } from './house'
 import { CASING, isCameraBehindWall, localOpenings, openingProblems, skirtingRuns, wallFrame, wallPieces, type LocalOpening } from './walls'
 import { ROOM } from './roomConfig'
+import { hasMixedWalls, setAllWalls, setWallFinish, wallFinishOf, type RoomFinishes } from './finishes'
+import { selectedWall, wallLabel, wallSelection } from './selection'
 
 const windowOpening: LocalOpening = { kind: 'window', label: 'W', center: -1, width: 1, bottom: 0.9, top: 2.3 }
 const doorOpening: LocalOpening = { kind: 'door', label: 'D', center: 1.5, width: 0.9, bottom: 0, top: 2.1 }
@@ -126,5 +128,44 @@ describe('isCameraBehindWall', () => {
     expect(isCameraBehindWall('right', room, camera)).toBe(true)
     expect(isCameraBehindWall('back', room, camera)).toBe(false)
     expect(isCameraBehindWall('left', room, camera)).toBe(false)
+  })
+})
+
+describe('per-wall finishes', () => {
+  const room: RoomFinishes = { wallColor: '#e8dcc8', walls: 'paint', floor: 'oak' }
+
+  it('a wall without its own finish uses the room finish', () => {
+    expect(wallFinishOf(room, 'back')).toEqual({ color: '#e8dcc8', style: 'paint' })
+  })
+
+  it('gives one wall its own finish without touching the others', () => {
+    const next = { ...room, ...setWallFinish(room, 'back', { color: '#2a2a2c', style: 'tiles' }) }
+    expect(wallFinishOf(next, 'back')).toEqual({ color: '#2a2a2c', style: 'tiles' })
+    expect(wallFinishOf(next, 'left')).toEqual({ color: '#e8dcc8', style: 'paint' })
+    expect(hasMixedWalls(next)).toBe(true)
+  })
+
+  it('setting a wall back to the room finish drops its own finish', () => {
+    const feature = { ...room, ...setWallFinish(room, 'back', { color: '#2a2a2c', style: 'paint' }) }
+    const back = { ...feature, ...setWallFinish(feature, 'back', { color: '#E8DCC8', style: 'paint' }) }
+    expect(back.wallFinishes).toBeUndefined()
+    expect(hasMixedWalls(back)).toBe(false)
+  })
+
+  it('"use on all walls" makes every wall the same', () => {
+    const feature = { ...room, ...setWallFinish(room, 'back', { color: '#2a2a2c', style: 'tiles' }) }
+    const all = { ...feature, ...setAllWalls({ color: '#2a2a2c', style: 'tiles' }) }
+    for (const side of WALL_SIDES) expect(wallFinishOf(all, side)).toEqual({ color: '#2a2a2c', style: 'tiles' })
+    expect(hasMixedWalls(all)).toBe(false)
+  })
+})
+
+describe('selection ids', () => {
+  it('round-trips walls and rejects anything else', () => {
+    for (const side of WALL_SIDES) expect(selectedWall(wallSelection(side))).toBe(side)
+    expect(selectedWall('sofa')).toBeNull()
+    expect(selectedWall('wall:ceiling')).toBeNull()
+    expect(selectedWall(null)).toBeNull()
+    expect(wallLabel('back')).toBe('Back wall')
   })
 })

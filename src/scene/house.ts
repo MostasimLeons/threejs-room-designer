@@ -1,5 +1,5 @@
 import { DEFAULT_LAYOUTS } from './furniture/catalog'
-import { DEFAULT_FINISHES, type RoomFinishes } from './finishes'
+import { DEFAULT_FINISHES, type RoomFinishes, type WallName } from './finishes'
 import type { FixedZone, FurnitureItem } from './furniture/catalog'
 
 /**
@@ -28,7 +28,8 @@ export type RoomId = 'living' | 'bedroom' | 'dining' | 'kitchen' | 'bathroom'
 /** The order rooms appear in the room bar (and the 1–5 keyboard shortcuts). */
 export const ROOM_IDS: RoomId[] = ['living', 'bedroom', 'dining', 'kitchen', 'bathroom']
 
-export type WallSide = 'back' | 'right' | 'front' | 'left'
+/** The four walls. Defined in finishes.ts (as WallName) so per-wall finishes can use it too. */
+export type WallSide = WallName
 export const WALL_SIDES: WallSide[] = ['back', 'right', 'front', 'left']
 
 type Vec3 = [number, number, number]

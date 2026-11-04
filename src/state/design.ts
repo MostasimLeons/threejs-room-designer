@@ -1,7 +1,15 @@
 import { clampToRoom, FURNITURE_INFO, getVariant, isAllowedIn, type FurnitureItem, type FurnitureType } from '../scene/furniture/catalog'
 import { normalizeDegrees } from '../utils/math'
 import { DEFAULT_LIGHTING, normalizeLighting, type RoomLighting } from '../scene/sun'
-import { FLOOR_OPTIONS, WALL_STYLES, type FloorId, type RoomFinishes, type WallStyle } from '../scene/finishes'
+import {
+  FLOOR_OPTIONS,
+  WALL_STYLES,
+  type FloorId,
+  type RoomFinishes,
+  type WallFinish,
+  type WallName,
+  type WallStyle,
+} from '../scene/finishes'
 import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'
 
 /**
@@ -30,6 +38,23 @@ const HEX_COLOR = /^#[0-9a-f]{6}$/i
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+const WALL_NAMES: WallName[] = ['back', 'right', 'front', 'left']
+
+/** Reads per-wall finishes, skipping any wall whose colour or style isn't valid. */
+function parseWallFinishes(raw: unknown): Partial<Record<WallName, WallFinish>> | null {
+  if (!isRecord(raw)) return null
+  const result: Partial<Record<WallName, WallFinish>> = {}
+  for (const wall of WALL_NAMES) {
+    const entry = raw[wall]
+    if (!isRecord(entry)) continue
+    const { color, style } = entry
+    if (typeof color === 'string' && HEX_COLOR.test(color) && WALL_STYLES.some((s) => s.id === style)) {
+      result[wall] = { color, style: style as WallStyle }
+    }
+  }
+  return Object.keys(result).length > 0 ? result : null
 }
 
 function parseItem(raw: unknown, room: RoomId): FurnitureItem | null {
@@ -75,6 +100,8 @@ export function parseDesign(raw: unknown, room: RoomId = 'living'): RoomDesign |
     const { wallColor, walls, floor } = raw.finishes
     if (typeof wallColor === 'string' && HEX_COLOR.test(wallColor)) finishes.wallColor = wallColor
     if (WALL_STYLES.some((style) => style.id === walls)) finishes.walls = walls as WallStyle
+    const perWall = parseWallFinishes(raw.finishes.wallFinishes)
+    if (perWall) finishes.wallFinishes = perWall
     if (FLOOR_OPTIONS.some((f) => f.id === floor)) finishes.floor = floor as FloorId
   }
 

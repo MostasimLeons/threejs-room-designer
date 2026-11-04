@@ -1,5 +1,5 @@
 import { ROOMS, type RoomId } from '../scene/house'
-import { FLOOR_OPTIONS, WALL_STYLES, WALL_SWATCHES, wallColorName, type RoomFinishes } from '../scene/finishes'
+import { FLOOR_OPTIONS, hasMixedWalls, WALL_STYLES, WALL_SWATCHES, wallColorName, type RoomFinishes } from '../scene/finishes'
 import type { FinishChanges } from '../state/useDesignHistory'
 import { ColorPicker } from './ColorPicker'
 
@@ -18,7 +18,7 @@ export function RoomPanel({ room, finishes, onUpdateFinishes, onPreviewFinishes,
       <section className="card">
         <h2>Room</h2>
         <p className="item-title">{ROOMS[room].label}</p>
-        <p className="muted">Select furniture to edit it, or style the room below.</p>
+        <p className="muted">Select furniture to edit it, or style the room below. Tip: click a wall or the floor in the 3D view.</p>
       </section>
 
       <section className="card">
@@ -42,6 +42,14 @@ export function RoomPanel({ room, finishes, onUpdateFinishes, onPreviewFinishes,
           onPreview={(wallColor) => onPreviewFinishes({ wallColor })}
           onCommit={onCommit}
         />
+        {hasMixedWalls(finishes) && (
+          <p className="muted small">
+            Some walls have their own finish and keep it.{' '}
+            <button className="text-button" onClick={() => onUpdateFinishes({ wallFinishes: undefined })}>
+              Make all walls match
+            </button>
+          </p>
+        )}
       </section>
 
       <section className="card">

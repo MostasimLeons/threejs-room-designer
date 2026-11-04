@@ -5,10 +5,32 @@ export type FloorId = 'oak' | 'walnut' | 'ash' | 'concrete' | 'tiles' | 'marble'
 /** Painted plaster, or glossy ceramic tiles (tinted with the wall colour). */
 export type WallStyle = 'paint' | 'tiles'
 
+/** One wall's own paint or tiles, when it differs from the rest of the room. */
+export interface WallFinish {
+  color: string
+  style: WallStyle
+}
+
+/** back / right / front / left (the same names as in house.ts). */
+export type WallName = 'back' | 'right' | 'front' | 'left'
+
 export interface RoomFinishes {
+  /** Colour and style for every wall that has no finish of its own. */
   wallColor: string
   walls: WallStyle
   floor: FloorId
+  /** Walls painted or tiled differently from the rest, e.g. one feature wall. */
+  wallFinishes?: Partial<Record<WallName, WallFinish>>
+}
+
+/** What a particular wall looks like: its own finish, or the room's. */
+export function wallFinishOf(finishes: RoomFinishes, wall: WallName): WallFinish {
+  return finishes.wallFinishes?.[wall] ?? { color: finishes.wallColor, style: finishes.walls }
+}
+
+/** True when at least one wall differs from the room's main wall finish. */
+export function hasMixedWalls(finishes: RoomFinishes): boolean {
+  return Object.keys(finishes.wallFinishes ?? {}).length > 0
 }
 
 export const WALL_STYLES: { id: WallStyle; label: string }[] = [
@@ -60,4 +82,20 @@ export function getFloorOption(id: FloorId): FloorOption {
 /** A human-friendly name for a wall colour, or its hex code if it's custom. */
 export function wallColorName(color: string): string {
   return WALL_SWATCHES.find((s) => s.color.toLowerCase() === color.toLowerCase())?.name ?? color.toUpperCase()
+}
+
+/**
+ * The finish change that gives one wall this finish. If it's the same as the rest of
+ * the room, the wall's own finish is dropped instead, so data stays tidy.
+ */
+export function setWallFinish(finishes: RoomFinishes, wall: WallName, finish: WallFinish): Partial<RoomFinishes> {
+  const next = { ...finishes.wallFinishes }
+  if (finish.color.toLowerCase() === finishes.wallColor.toLowerCase() && finish.style === finishes.walls) delete next[wall]
+  else next[wall] = finish
+  return { wallFinishes: Object.keys(next).length > 0 ? next : undefined }
+}
+
+/** The finish change that gives every wall this finish (no wall keeps its own). */
+export function setAllWalls(finish: WallFinish): Partial<RoomFinishes> {
+  return { wallColor: finish.color, walls: finish.style, wallFinishes: undefined }
 }

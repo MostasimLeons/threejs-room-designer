@@ -2,12 +2,15 @@ import { useEffect, useMemo, useRef, type ComponentRef } from 'react'
 import { BoxGeometry } from 'three'
 import type * as THREE from 'three'
 import { MeshReflectorMaterial } from '@react-three/drei'
+import { Select } from '@react-three/postprocessing'
+import type { ThreeEvent } from '@react-three/fiber'
 import { ROOM } from './roomConfig'
 import { ROOMS, WALL_SIDES, type RoomId, type WallSide } from './house'
 import { isCameraBehindWall, localOpenings, skirtingRuns, wallFrame, wallPieces } from './walls'
 import { createFloorMaps, type SurfaceMaps } from './textures'
 import { materials } from './materials'
-import { getFloorOption, type FloorId, type RoomFinishes } from './finishes'
+import { getFloorOption, wallFinishOf, type FloorId, type RoomFinishes, type WallFinish } from './finishes'
+import { FLOOR_SELECTION, wallSelection } from './selection'
 import { useTintedMaterial } from './furniture/useTintedMaterial'
 import { Block } from './parts'
 import { Window } from './furniture/Window'
@@ -18,6 +21,8 @@ import { Curtains, ROOM_DECOR } from './rooms/decor'
 
 export const SKIRTING_H = 0.09
 export const SKIRTING_T = 0.015
+
+type Vec3 = [number, number, number]
 
 // ---------- Floor ----------
 
@@ -76,25 +81,46 @@ function ReflectiveMaterial({ maps, roughness, strength }: { maps: SurfaceMaps; 
 }
 
 /** Textured floor. Polished floors (concrete, tiles) also mirror the room. */
-export function Floor({ floor, width, depth }: { floor: FloorId; width: number; depth: number }) {
+interface FloorProps {
+  floor: FloorId
+  width: number
+  depth: number
+  selected: boolean
+  onPick: (point: Vec3) => void
+}
+
+export function Floor({ floor, width, depth, selected, onPick }: FloorProps) {
   const maps = getFloorMaps(floor, width, depth)
   const { roughness, reflection } = getFloorOption(floor)
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[width, depth]} />
-      {reflection > 0 ? (
-        // key: switching between floors with different settings rebuilds the reflection cleanly.
-        <ReflectiveMaterial key={floor} maps={maps} roughness={roughness} strength={reflection} />
-      ) : (
-        <meshStandardMaterial {...maps} roughness={roughness} metalness={0.02} />
-      )}
-    </mesh>
+    <Select enabled={selected}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={pickHandler(onPick)}>
+        <planeGeometry args={[width, depth]} />
+        {reflection > 0 ? (
+          // key: switching between floors with different settings rebuilds the reflection cleanly.
+          <ReflectiveMaterial key={floor} maps={maps} roughness={roughness} strength={reflection} />
+        ) : (
+          <meshStandardMaterial {...maps} roughness={roughness} metalness={0.02} />
+        )}
+      </mesh>
+    </Select>
   )
 }
 
-// ---------- Walls ----------
+/**
+ * Click handler for walls and the floor. A click that was really the end of a
+ * camera drag (the pointer moved more than a few pixels) is ignored, so orbiting
+ * the view never selects anything.
+ */
+function pickHandler(onPick: (point: Vec3) => void) {
+  return (event: ThreeEvent<MouseEvent>) => {
+    if (event.delta > 4) return
+    event.stopPropagation() // only the nearest surface is picked
+    onPick([event.point.x, event.point.y, event.point.z])
+  }
+}
 
-type Vec3 = [number, number, number]
+// ---------- Walls ----------
 
 /**
  * Rewrites a box's texture coordinates so 1 unit = 1 metre, measured from the
@@ -139,17 +165,24 @@ function WallPiece({ size, position, material }: { size: Vec3; position: Vec3; m
 interface WallProps {
   room: RoomId
   side: WallSide
-  material: THREE.Material
-  /** Tiled walls have no wooden skirting. */
-  skirting: boolean
+  finish: WallFinish
+  selected: boolean
+  onPick: (point: Vec3) => void
 }
 
 /**
  * One wall with its windows, doors and skirting, built in the wall's own frame
  * (see walls.ts) and turned into place. It hides itself when it would block the view.
  */
-function Wall({ room, side, material, skirting }: WallProps) {
+function Wall({ room, side, finish, selected, onPick }: WallProps) {
   const info = ROOMS[room]
+  // Each wall has its own material, so one wall can be painted or tiled differently.
+  // Both are kept ready so switching between paint and tiles is instant.
+  const paint = useTintedMaterial(materials.wall, finish.color)
+  const tiles = useTintedMaterial(materials.wallTiles, finish.color)
+  const tiled = finish.style === 'tiles'
+  const material = tiled ? tiles : paint
+  const skirting = !tiled // tiled walls have no wooden skirting
   const frame = wallFrame(side, info)
   const openings = localOpenings(side, info)
   const pieces = wallPieces(frame.length, openings)
@@ -160,9 +193,14 @@ function Wall({ room, side, material, skirting }: WallProps) {
   return (
     <Cutaway isBehind={(camera) => isCameraBehindWall(side, info, camera.position)}>
       <group position={frame.position} rotation={[0, frame.rotationY, 0]}>
-        {pieces.map((piece, i) => (
-          <WallPiece key={i} position={piece.position} size={piece.size} material={material} />
-        ))}
+        {/* Click the wall itself to select it (windows, doors and decor don't count). */}
+        <Select enabled={selected}>
+          <group onClick={pickHandler(onPick)}>
+            {pieces.map((piece, i) => (
+              <WallPiece key={i} position={piece.position} size={piece.size} material={material} />
+            ))}
+          </group>
+        </Select>
 
         {openings.map((o) =>
           o.kind === 'window' ? (
@@ -194,22 +232,33 @@ function Wall({ room, side, material, skirting }: WallProps) {
  * A complete room built from its entry in house.ts: floor, ceiling, four walls
  * with their windows and doors, and the room's own decor (rug, carpet, slat wall).
  */
-export function RoomShell({ room, finishes }: { room: RoomId; finishes: RoomFinishes }) {
+interface RoomShellProps {
+  room: RoomId
+  finishes: RoomFinishes
+  /** What's selected: 'wall:back' etc. or 'floor' get a blue outline. */
+  selectedId: string | null
+  onPickWall: (side: WallSide, point: Vec3) => void
+  onPickFloor: (point: Vec3) => void
+}
+
+export function RoomShell({ room, finishes, selectedId, onPickWall, onPickFloor }: RoomShellProps) {
   const info = ROOMS[room]
-  // One material shared by every wall piece, recoloured when you pick a new wall colour.
-  // Both are kept ready so switching between paint and tiles is instant.
-  const paint = useTintedMaterial(materials.wall, finishes.wallColor)
-  const tiles = useTintedMaterial(materials.wallTiles, finishes.wallColor)
-  const tiled = finishes.walls === 'tiles'
   const FloorDecor = ROOM_DECOR[room].floor
 
   return (
     <group>
-      <Floor floor={finishes.floor} width={info.width} depth={info.depth} />
+      <Floor floor={finishes.floor} width={info.width} depth={info.depth} selected={selectedId === FLOOR_SELECTION} onPick={onPickFloor} />
       {FloorDecor && <FloorDecor />}
       <Ceiling width={info.width} depth={info.depth} downlights={info.downlights} />
       {WALL_SIDES.map((side) => (
-        <Wall key={side} room={room} side={side} material={tiled ? tiles : paint} skirting={!tiled} />
+        <Wall
+          key={side}
+          room={room}
+          side={side}
+          finish={wallFinishOf(finishes, side)}
+          selected={selectedId === wallSelection(side)}
+          onPick={(point) => onPickWall(side, point)}
+        />
       ))}
     </group>
   )

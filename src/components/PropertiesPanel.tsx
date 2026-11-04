@@ -4,11 +4,17 @@ import { ROOMS, type RoomId } from '../scene/house'
 import type { FinishChanges, ItemChanges } from '../state/useDesignHistory'
 import { ColorPicker } from './ColorPicker'
 import { RoomPanel } from './RoomPanel'
+import { WallPanel } from './WallPanel'
+import { setAllWalls, setWallFinish, wallFinishOf } from '../scene/finishes'
+import type { WallSide } from '../scene/house'
+import { wallLabel } from '../scene/selection'
 
 interface PropertiesPanelProps {
   /** The room being edited: sets the slider ranges and the Room panel title. */
   room: RoomId
   item: FurnitureItem | null
+  /** The selected wall, if a wall (not furniture) is selected. */
+  wall: WallSide | null
   finishes: RoomFinishes
   /** Names of what the selected item currently overlaps (other pieces, built-in units). */
   overlapping: string[]
@@ -30,6 +36,22 @@ function commitHandlers(onCommit: () => void) {
 /** Right-hand panel: edits the selected furniture, or the room when nothing is selected. */
 export function PropertiesPanel(props: PropertiesPanelProps) {
   const { room, item, overlapping, onUpdate, onPreview, onCommit, onDeselect } = props
+  if (props.wall) {
+    const { wall, finishes, onUpdateFinishes, onPreviewFinishes } = props
+    return (
+      <WallPanel
+        label={wallLabel(wall)}
+        finish={wallFinishOf(finishes, wall)}
+        custom={Boolean(finishes.wallFinishes?.[wall])}
+        onChange={(finish) => onUpdateFinishes(setWallFinish(finishes, wall, finish))}
+        onPreview={(finish) => onPreviewFinishes(setWallFinish(finishes, wall, finish))}
+        onCommit={onCommit}
+        onAllWalls={() => onUpdateFinishes(setAllWalls(wallFinishOf(finishes, wall)))}
+        onMatchRoom={() => onUpdateFinishes(setWallFinish(finishes, wall, { color: finishes.wallColor, style: finishes.walls }))}
+        onDeselect={onDeselect}
+      />
+    )
+  }
   if (!item) return <RoomPanel {...props} />
   const { width, depth } = ROOMS[room]
 

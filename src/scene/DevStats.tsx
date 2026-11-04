@@ -9,11 +9,23 @@ import { addAfterEffect, useThree } from '@react-three/fiber'
  * - Frames: how many frames have been drawn. The canvas only draws when
  *   something changes, so this should stand still while you're not interacting.
  * - Draw calls / triangles: the GPU work for the last frame. Fewer is faster.
+ * - window.roomDesigner3d.get() returns the React Three Fiber state (scene, camera, gl)
+ *   for poking at the scene in the browser console.
  * - Geometries / textures / shaders: what's loaded on the GPU. These should not
  *   keep growing as you edit; if they do, something isn't being freed.
  */
 export function DevStats() {
   const gl = useThree((state) => state.gl)
+  const get = useThree((state) => state.get)
+
+  // For debugging in the browser console while ?perf is on: window.roomDesigner3d.scene etc.
+  useEffect(() => {
+    const w = window as unknown as { roomDesigner3d?: unknown }
+    w.roomDesigner3d = { get }
+    return () => {
+      delete w.roomDesigner3d
+    }
+  }, [get])
 
   useEffect(() => {
     // A plain DOM element on top of the canvas. Updated directly (not via React

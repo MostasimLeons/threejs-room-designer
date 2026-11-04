@@ -24,9 +24,19 @@ export function Cutaway({ isBehind, children }: { isBehind: (camera: THREE.Camer
   useFrame(({ camera }) => {
     const group = ref.current
     if (!group) return
-    const layer = isBehind(camera) ? SHADOW_ONLY_LAYER : 0
+    const hidden = isBehind(camera)
     // Every frame, so pieces added later (new decor, a changed opening) pick it up too.
-    group.traverse((object) => object.layers.set(layer))
+    // Only layers 0 and SHADOW_ONLY_LAYER are touched: other layers (such as the one the
+    // selection outline uses) must survive.
+    group.traverse((object) => {
+      if (hidden) {
+        object.layers.disable(0)
+        object.layers.enable(SHADOW_ONLY_LAYER)
+      } else {
+        object.layers.enable(0)
+        object.layers.disable(SHADOW_ONLY_LAYER)
+      }
+    })
   })
   return <group ref={ref}>{children}</group>
 }
