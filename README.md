@@ -33,6 +33,7 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Every 
   - seven floor materials: oak, walnut, whitewashed ash, polished concrete, stone tiles, white marble and terrazzo
 - **Undo / Redo / Reset** covers furniture and finishes of the selected room. Reset itself can be undone.
 - **Perspective and Plan** (top-down) views.
+- **Time of day and sun:** click the clock button (☀ 2:30 PM) above the 3D view. Pick a preset (Sunrise, Morning, Midday, Golden hour, Dusk, Night) or drag the time slider from 5 AM to 9 PM, and turn the room to change which way its windows face. The sun moves from east to west and only shines in through the windows when it's on that side; a low sun is warm and orange, and the sky in the windows changes colour. As it gets dark the ceiling lights, lamps and bulbs come on, the room's own lights light it, and the backdrop turns night blue. Each room keeps its own time and orientation, and every change can be undone.
 - **Realistic rendering**, all generated in code with no image downloads:
   - soft contact shadows where things meet (ambient occlusion)
   - a gentle glow around lamps, ceiling lights and the daylight in windows (bloom)
@@ -96,15 +97,17 @@ It also works with `npm run preview`, which gives more realistic numbers than th
 
 Measured in the Living Room with the default layout (draw calls and triangles depend on window size):
 
-| Date       | Change                                                           | Draw calls | Triangles |
-| ---------- | ---------------------------------------------------------------- | ---------- | --------- |
-| 2026-11-04 | Phase 0 baseline                                                 | ~466       | ~166k     |
-| 2026-11-04 | Phase 1: post-processing, ceilings, shadows drawn once per frame | ~560       | ~181k     |
-| 2026-11-04 | Phase 1, with a polished concrete floor (reflection)             | ~640       | ~198k     |
-| 2026-11-04 | Phase 2: only the selected room is drawn                         | ~300       | ~91k      |
-| 2026-11-04 | Phase 3, Dining Room (furnished)                                 | ~325       | ~81k      |
-| 2026-11-04 | Phase 3, Kitchen (furnished, the heaviest room)                  | ~500       | ~76k      |
-| 2026-11-04 | Phase 3, Bathroom (furnished, tiled walls)                       | ~320       | ~110k     |
+| Date       | Change                                                           | Draw calls  | Triangles |
+| ---------- | ---------------------------------------------------------------- | ----------- | --------- |
+| 2026-11-04 | Phase 0 baseline                                                 | ~466        | ~166k     |
+| 2026-11-04 | Phase 1: post-processing, ceilings, shadows drawn once per frame | ~560        | ~181k     |
+| 2026-11-04 | Phase 1, with a polished concrete floor (reflection)             | ~640        | ~198k     |
+| 2026-11-04 | Phase 2: only the selected room is drawn                         | ~300        | ~91k      |
+| 2026-11-04 | Phase 3, Dining Room (furnished)                                 | ~325        | ~81k      |
+| 2026-11-04 | Phase 3, Kitchen (furnished, the heaviest room)                  | ~500        | ~76k      |
+| 2026-11-04 | Phase 3, Bathroom (furnished, tiled walls)                       | ~320        | ~110k     |
+| 2026-11-04 | Phase 4, by day (Living / Kitchen, the heaviest)                 | ~315 / ~510 |           |
+| 2026-11-04 | Phase 4, at night (room lights on; about 60 more in every room)  | ~375 / ~570 |           |
 
 The two shadow passes are still most of the cost. Without the once-per-frame shadow change, a reflective floor would add about 460 draw calls instead of about 85.
 
@@ -132,6 +135,7 @@ Exact versions are in `package.json`. `package-lock.json` pins them so every ins
 | Rotate camera     | Left-drag empty space (Perspective view)                                                                  |
 | Pan               | Right-drag (Perspective) or drag empty space (Plan)                                                       |
 | Zoom              | Mouse wheel                                                                                               |
+| Time of day       | Clock button above the 3D view, or the **Light** row under Finishes. Sliders and presets can be undone    |
 | Switch room       | Click it in the room bar, or press `1`–`5`. With the bar focused, `←` / `→` move between rooms            |
 | Select            | Click a piece, or its row in **Objects**                                                                  |
 | Deselect          | Click empty floor, press `Esc`, or click ✕                                                                |
@@ -164,6 +168,7 @@ src/
     PropertiesPanel.tsx    Selected furniture: options, colour, rotation, position
     RoomPanel.tsx          Nothing selected: wall paint and floor material
     RoomBar.tsx            Glass room bar at the bottom of the 3D view (icons, keyboard)
+    TimeOfDayPanel.tsx     Clock, presets, time slider and room orientation
     ColorPicker.tsx        Swatch grid + custom colour (used by both panels)
     DesignsDialog.tsx      Save / load / export / import window
     ViewToggle.tsx         Perspective / Plan switch
@@ -183,17 +188,20 @@ src/
     Scene.tsx              The <Canvas> (renders only when something changes)
     DevStats.tsx           Performance readout shown with ?perf in the URL
     PostEffects.tsx        Ambient occlusion, bloom, tone mapping, vignette, antialiasing
+    sun.ts                 Time of day: sun position, light colours and strengths, presets
+    interiorLight.ts       Shares how "on" the room lights are (0 day … 1 night) with lamps
     Ceiling.tsx            Ceiling with cove light line and downlights
     FurnitureLayer.tsx     Draws furniture; click-to-select, drag-to-move, outlines
     RoomShell.tsx          Builds any room from its house.ts entry: floor, ceiling, 4 walls with windows/doors/skirting
-    Cutaway.tsx            Hides walls (and the ceiling) that are between the camera and the room
+    Cutaway.tsx            Hides walls (and the ceiling) that are between the camera and the room;
+                           hidden walls still block the sun (shadow-only layer)
     walls.ts               Wall maths: placing walls, cutting openings, skirting runs, checks for bad openings
     rooms/decor.tsx        Built-in decor per room: rug, carpet, oak slat wall, curtains,
                            dining pendant, kitchen units, toilet
                            and the shared wall with the connecting door
     house.ts               Room registry: every room's size, windows, doors, lights, camera, default design
     CameraRig.tsx          Perspective / Plan cameras and mouse controls
-    Lighting.tsx           Lights, shadows (drawn once per frame), procedural environment
+    Lighting.tsx           Sun, fill and night room lights from sun.ts; shadows once per frame; environment
     finishes.ts            Wall colour presets and floor material options
     textures.ts            Procedural textures: floor colour/normal/roughness maps, fabric weave
     materials.ts           Shared materials
@@ -239,7 +247,8 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 - The start camera doesn't adapt to a tall, narrow 3D view (a mid-size window with both panels open), so part of the room can be cropped. Zoom out or use Plan view.
 - Ambient occlusion runs at full resolution. N8AO's faster half-resolution mode crashes with Three.js 0.187 (its multi-texture render target isn't compatible), so it stays off until N8AO is updated.
 - Floor reflections aren't blurred. Drei's reflection blur creates two GPU images it never frees, so softness comes from a lower reflection resolution instead.
-- The ceiling lights and lamp shades only glow; they don't light the room. Real lights for them come with the time-of-day work (Phase 3).
+- At night each room has two real ceiling lights (plus the living-room floor lamp). The other lamps, the bedside lamps and the pendant only glow, because every extra light makes every material slower to draw.
+- The sun model is a simple textbook one for a mid-latitude summer day (sunrise about 4:35, sunset about 19:25). It isn't tied to a real date or place.
 - Post-processing adds about 160 KB (gzipped) to the download. It's in its own `effects` file, so the browser caches it separately.
 
-<!-- Last updated: 2026-11-04 11:28 UTC -->
+<!-- Last updated: 2026-11-04 11:41 UTC -->

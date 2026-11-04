@@ -1,6 +1,8 @@
+import { useLayoutEffect, useRef } from 'react'
+import type * as THREE from 'three'
 import { ROOM } from './roomConfig'
 import { materials } from './materials'
-import { Cutaway } from './Cutaway'
+import { Cutaway, SHADOW_ONLY_LAYER } from './Cutaway'
 
 const H = ROOM.height
 const COVE_INSET = 0.3 // how far the glowing cove line sits in from the walls
@@ -40,34 +42,56 @@ export function Ceiling({ width, depth, overhang = ROOM.wallThickness, downlight
   ]
 
   return (
-    // Hidden whenever the camera is above the ceiling. Backface culling would already
-    // hide it from the main view, but a reflective floor looks *up* and would mirror a
-    // ceiling (and its glowing lines) that you can't otherwise see.
-    <Cutaway isBehind={(camera) => camera.position.y > H}>
-      {/* Rotated so the planes, which face +z by default, face down (-y). */}
-      <group position={[0, H, 0]}>
-        <mesh rotation={[Math.PI / 2, 0, 0]} material={materials.ceiling}>
-          <planeGeometry args={[width + 2 * overhang, depth + 2 * overhang]} />
-        </mesh>
-
-        {cove.map(([x, z, w, d], i) => (
-          <mesh key={i} position={[x, -0.002, z]} rotation={[Math.PI / 2, 0, 0]} material={materials.coveLight}>
-            <planeGeometry args={[w, d]} />
+    <>
+      <RoofShadow width={width + 2 * overhang} depth={depth + 2 * overhang} />
+      {/*
+        Hidden whenever the camera is above the ceiling. Backface culling would already
+        hide it from the main view, but a reflective floor looks *up* and would mirror a
+        ceiling (and its glowing lines) that you can't otherwise see.
+      */}
+      <Cutaway isBehind={(camera) => camera.position.y > H}>
+        {/* Rotated so the planes, which face +z by default, face down (-y). */}
+        <group position={[0, H, 0]}>
+          <mesh rotation={[Math.PI / 2, 0, 0]} material={materials.ceiling}>
+            <planeGeometry args={[width + 2 * overhang, depth + 2 * overhang]} />
           </mesh>
-        ))}
 
-        {downlights.map(([x, z]) => (
-          <group key={`${x},${z}`} position={[x, 0, z]} rotation={[Math.PI / 2, 0, 0]}>
-            {/* Metal trim ring, then the glowing lens inside it */}
-            <mesh position={[0, 0, 0.002]} material={materials.downlightTrim}>
-              <circleGeometry args={[0.065, 32]} />
+          {cove.map(([x, z, w, d], i) => (
+            <mesh key={i} position={[x, -0.002, z]} rotation={[Math.PI / 2, 0, 0]} material={materials.coveLight}>
+              <planeGeometry args={[w, d]} />
             </mesh>
-            <mesh position={[0, 0, 0.004]} material={materials.coveLight}>
-              <circleGeometry args={[0.045, 32]} />
-            </mesh>
-          </group>
-        ))}
-      </group>
-    </Cutaway>
+          ))}
+
+          {downlights.map(([x, z]) => (
+            <group key={`${x},${z}`} position={[x, 0, z]} rotation={[Math.PI / 2, 0, 0]}>
+              {/* Metal trim ring, then the glowing lens inside it */}
+              <mesh position={[0, 0, 0.002]} material={materials.downlightTrim}>
+                <circleGeometry args={[0.065, 32]} />
+              </mesh>
+              <mesh position={[0, 0, 0.004]} material={materials.coveLight}>
+                <circleGeometry args={[0.045, 32]} />
+              </mesh>
+            </group>
+          ))}
+        </group>
+      </Cutaway>
+    </>
+  )
+}
+
+/**
+ * An invisible roof that only the sun's shadow sees (SHADOW_ONLY_LAYER), so a high
+ * midday sun can't shine straight through the ceiling. The visible ceiling casts no
+ * shadow, so the overhead fill light still reaches into the cut-open room.
+ */
+function RoofShadow({ width, depth }: { width: number; depth: number }) {
+  const ref = useRef<THREE.Mesh>(null)
+  useLayoutEffect(() => {
+    ref.current?.layers.set(SHADOW_ONLY_LAYER)
+  }, [])
+  return (
+    <mesh ref={ref} position={[0, H + 0.03, 0]} material={materials.ceiling} castShadow>
+      <boxGeometry args={[width, 0.06, depth]} />
+    </mesh>
   )
 }

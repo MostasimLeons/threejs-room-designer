@@ -2,6 +2,7 @@ import { ROOM } from '../scene/roomConfig'
 import { ROOMS, WALL_SIDES, type RoomId } from '../scene/house'
 import { FURNITURE_INFO, getVariant, type FurnitureItem } from '../scene/furniture/catalog'
 import { getFloorOption, wallColorName, type RoomFinishes } from '../scene/finishes'
+import { compassName, formatTime, type RoomLighting } from '../scene/sun'
 
 const cm = (metres: number) => Math.round(metres * 100)
 
@@ -31,9 +32,12 @@ interface SidebarProps {
   onSelect: (id: string) => void
   /** Deselect everything so the right panel shows the room finishes. */
   onShowRoom: () => void
+  lighting: RoomLighting
+  /** Open the time-of-day panel. */
+  onShowLighting: () => void
 }
 
-export function Sidebar({ room, items, finishes, selectedId, overlaps, onSelect, onShowRoom }: SidebarProps) {
+export function Sidebar({ room, items, finishes, selectedId, overlaps, onSelect, onShowRoom, lighting, onShowLighting }: SidebarProps) {
   const { label, width, depth } = ROOMS[room]
   const fixtures = fixturesOf(room)
   const floor = getFloorOption(finishes.floor)
@@ -84,6 +88,15 @@ export function Sidebar({ room, items, finishes, selectedId, overlaps, onSelect,
               </button>
             </li>
           ))}
+          <li>
+            <button className="list-button" onClick={onShowLighting} title="Change the time of day">
+              <span className="swatch" style={{ background: 'linear-gradient(135deg, #f4b38c, #e4f0f7)' }} />
+              <span className="item-name">Light</span>
+              <span className="item-detail">
+                {formatTime(lighting.time)} · faces {compassName(lighting.orientation)}
+              </span>
+            </button>
+          </li>
         </ul>
       </section>
 

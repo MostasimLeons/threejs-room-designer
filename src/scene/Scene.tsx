@@ -36,9 +36,9 @@ export function Scene({ view, resetKey, room, design, selectedId, overlaps, onSe
     // `onPointerMissed` fires when you click empty space → deselect.
     // `flat` + `antialias: false`: tone mapping and antialiasing happen in PostEffects instead.
     <Canvas shadows="percentage" dpr={[1, 2]} frameloop="demand" flat gl={{ antialias: false }} onPointerMissed={() => onSelect(null)}>
-      <color attach="background" args={['#ebe7e0']} />
       <CameraRig view={view} resetKey={resetKey} room={room} />
-      <Lighting room={room} />
+      {/* Also sets the background colour, which follows the time of day. */}
+      <Lighting room={room} lighting={design.lighting} />
       {PERF_ENABLED && <DevStats />}
 
       {/*

@@ -1,5 +1,6 @@
 import { clampToRoom, FURNITURE_INFO, getVariant, isAllowedIn, type FurnitureItem, type FurnitureType } from '../scene/furniture/catalog'
 import { normalizeDegrees } from '../utils/math'
+import { DEFAULT_LIGHTING, normalizeLighting, type RoomLighting } from '../scene/sun'
 import { FLOOR_OPTIONS, WALL_STYLES, type FloorId, type RoomFinishes, type WallStyle } from '../scene/finishes'
 import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'
 
@@ -10,6 +11,8 @@ import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'
 export interface RoomDesign {
   finishes: RoomFinishes
   items: FurnitureItem[]
+  /** This room's time of day and which way its windows face. */
+  lighting: RoomLighting
 }
 
 /** The whole house: one independent design per room. This is what Save / Load stores. */
@@ -17,7 +20,7 @@ export type HouseDesign = Record<RoomId, RoomDesign>
 
 /** Every room's starting design (from house.ts). "Reset" returns a room to its entry here. */
 export const DEFAULT_HOUSE = Object.fromEntries(
-  ROOM_IDS.map((id) => [id, { finishes: ROOMS[id].defaultFinishes, items: ROOMS[id].defaultItems }]),
+  ROOM_IDS.map((id) => [id, { finishes: ROOMS[id].defaultFinishes, items: ROOMS[id].defaultItems, lighting: DEFAULT_LIGHTING }]),
 ) as HouseDesign
 
 export const DEFAULT_DESIGN = DEFAULT_HOUSE.living
@@ -75,7 +78,15 @@ export function parseDesign(raw: unknown, room: RoomId = 'living'): RoomDesign |
     if (FLOOR_OPTIONS.some((f) => f.id === floor)) finishes.floor = floor as FloorId
   }
 
-  return { finishes, items }
+  // Saves from before time of day existed get the default (an afternoon, windows facing south).
+  const lighting = { ...DEFAULT_LIGHTING }
+  if (isRecord(raw.lighting)) {
+    const { time, orientation } = raw.lighting
+    if (typeof time === 'number' && Number.isFinite(time)) lighting.time = time
+    if (typeof orientation === 'number' && Number.isFinite(orientation)) lighting.orientation = orientation
+  }
+
+  return { finishes, items, lighting: normalizeLighting(lighting) }
 }
 
 /**

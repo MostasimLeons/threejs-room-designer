@@ -1,26 +1,66 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Environment, Lightformer } from '@react-three/drei'
 import { ROOMS, type RoomId } from './house'
+import { materials } from './materials'
+import { daylightAt, type RoomLighting } from './sun'
+import { InteriorLightContext } from './interiorLight'
+import { SHADOW_ONLY_LAYER } from './Cutaway'
+
+/** The ceiling lights' glow colour at full brightness (see materials.coveLight). */
+const COVE_BASE = new THREE.Color('#fff1dc')
+const SKY_COLOR = new THREE.Color()
+
+/** How far from the room the sun light sits. Only its direction matters; this just keeps it outside. */
+const SUN_DISTANCE = 14
 
 /**
- * Lighting setup:
- * - Hemisphere light: soft sky/ground fill so nothing is pitch black.
- * - "Ceiling" directional light: main light that gives furniture soft shadows.
- * - Sun: shines from outside through the window opening onto the floor.
+ * Lighting for one moment of the day (sun.ts works out the numbers):
+ * - Sun: from the real sun direction for this time and room orientation, so it only
+ *   shines in through a window when the sun is on that side. Warm and dim when low.
+ * - "Ceiling" fill: a directional light standing in for daylight bouncing around the
+ *   room; it fades to a faint blue at night.
+ * - Hemisphere light: soft sky/ground fill, cooler and dimmer at night.
+ * - Room lights: two warm point lights at the ceiling downlights, off by day and on
+ *   at night. Their number never changes (only brightness), because adding or removing
+ *   a light makes Three.js rebuild every material.
+ * - Glow: ceiling lights, lamp shades and bulbs get brighter at night; the sky in the
+ *   windows goes from blue to orange to night blue.
  * - Environment: a procedural "room" of light panels (no downloads) for reflections and fill.
- * The floor lamp has its own warm point light (see FloorLamp.tsx).
  */
-export function Lighting({ room }: { room: RoomId }) {
-  // Each room has its own light directions (house.ts); the sun comes in through a window.
-  const { ceiling, sun } = ROOMS[room].lights
+export function Lighting({ room, lighting }: { room: RoomId; lighting: RoomLighting }) {
+  const { ceiling } = ROOMS[room].lights
+  const { downlights } = ROOMS[room]
   const ceilingTarget = useMemo(() => new THREE.Object3D(), [])
   const sunTarget = useMemo(() => new THREE.Object3D(), [])
+  const state = daylightAt(lighting)
+  const [dx, dy, dz] = state.sunDirection
+  const invalidate = useThree((s) => s.invalidate)
+
+  // The sun's shadow also sees hidden walls and the invisible roof (see Cutaway.tsx),
+  // so it only gets in through windows. The fill light's shadow doesn't.
+  const sunRef = useRef<THREE.DirectionalLight>(null)
+  useLayoutEffect(() => {
+    sunRef.current?.shadow.camera.layers.enable(SHADOW_ONLY_LAYER)
+  }, [])
+
+  // Glowing materials are shared by every room, so they're updated in place.
+  useEffect(() => {
+    materials.coveLight.color.copy(COVE_BASE).multiplyScalar(0.9 + 3.1 * state.interior)
+    materials.lampShade.emissiveIntensity = 0.25 + 1.0 * state.interior
+    materials.bulb.emissiveIntensity = 1 + 3 * state.interior
+    materials.sky.color.copy(SKY_COLOR.set(state.sky.color)).multiplyScalar(state.sky.brightness)
+    invalidate()
+  }, [state.interior, state.sky.color, state.sky.brightness, invalidate])
+
+  // At most two room lights: enough to light the room at night without making every material slower.
+  const roomLights = downlights.slice(0, 2)
 
   return (
-    <>
-      <hemisphereLight args={['#fff7ea', '#b89f80', 0.5]} />
+    <InteriorLightContext.Provider value={state.interior}>
+      <color attach="background" args={[state.background]} />
+      <hemisphereLight args={[state.hemisphere.sky, state.hemisphere.ground, state.hemisphere.intensity]} />
 
       <primitive object={ceilingTarget} position={[0, 0, 0]} />
       <primitive object={sunTarget} position={[0, 0, 0]} />
@@ -29,8 +69,8 @@ export function Lighting({ room }: { room: RoomId }) {
         castShadow
         target={ceilingTarget}
         position={ceiling}
-        intensity={1.0}
-        color="#fffaf2"
+        intensity={state.fillIntensity}
+        color={state.fillColor}
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-6}
         shadow-camera-right={6}
@@ -42,11 +82,12 @@ export function Lighting({ room }: { room: RoomId }) {
       />
 
       <directionalLight
+        ref={sunRef}
         castShadow
         target={sunTarget}
-        position={sun}
-        intensity={2.4}
-        color="#ffeccc"
+        position={[dx * SUN_DISTANCE, Math.max(dy, 0.02) * SUN_DISTANCE, dz * SUN_DISTANCE]}
+        intensity={state.sunIntensity}
+        color={state.sunColor}
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-7}
         shadow-camera-right={7}
@@ -57,6 +98,10 @@ export function Lighting({ room }: { room: RoomId }) {
         shadow-normalBias={0.02}
       />
 
+      {roomLights.map(([x, z]) => (
+        <pointLight key={`${x},${z}`} position={[x, 2.55, z]} color="#ffd9a8" intensity={5 * state.interior} distance={7} decay={2} />
+      ))}
+
       {/*
         Environment: what shiny surfaces reflect, and a soft fill light from every direction.
         Built from glowing panels ("lightformers") arranged like the inside of a room, so it
@@ -64,7 +109,7 @@ export function Lighting({ room }: { room: RoomId }) {
         daylight on the window side (-z, where every room's main window is) and a warm wooden
         floor below. Rendered once, at start-up.
       */}
-      <Environment resolution={256} environmentIntensity={0.5}>
+      <Environment resolution={256} environmentIntensity={state.environment}>
         <color attach="background" args={['#cdbfae']} />
         <Lightformer form="rect" intensity={1.6} color="#fff6ea" position={[0, 6, 0]} rotation-x={Math.PI / 2} scale={[12, 12, 1]} />
         <Lightformer form="rect" intensity={4} color="#dcecff" position={[-2, 2, -9]} scale={[5, 3, 1]} />
@@ -73,7 +118,7 @@ export function Lighting({ room }: { room: RoomId }) {
         <Lightformer form="rect" intensity={0.5} color="#c99a6b" position={[0, -3, 0]} rotation-x={-Math.PI / 2} scale={[14, 14, 1]} />
       </Environment>
       <ShadowsOncePerFrame />
-    </>
+    </InteriorLightContext.Provider>
   )
 }
 

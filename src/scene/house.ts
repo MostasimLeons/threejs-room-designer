@@ -64,10 +64,10 @@ export interface RoomInfo {
   /** Where the Perspective camera starts and what it looks at. */
   camera: { position: Vec3; target: Vec3 }
   /**
-   * Where the two shadow-casting lights sit, relative to the room centre. The
-   * sun is placed so its light comes in through a window.
+   * Where the overhead fill light sits, relative to the room centre. (The sun's
+   * position comes from the time of day and the room's orientation; see sun.ts.)
    */
-  lights: { ceiling: Vec3; sun: Vec3 }
+  lights: { ceiling: Vec3 }
   defaultFinishes: RoomFinishes
   defaultItems: FurnitureItem[]
   /** Built-in decor that isn't a window or door, for the Objects list. */
@@ -102,7 +102,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
       [1.8, 1.5],
     ],
     camera: { position: [6.2, 4.4, 6.4], target: [0, 0.8, -0.8] },
-    lights: { ceiling: [3, 7, 4], sun: [-5.7, 5, -9] },
+    lights: { ceiling: [3, 7, 4] },
     defaultFinishes: DEFAULT_FINISHES,
     defaultItems: DEFAULT_LAYOUTS.living,
     features: [],
@@ -125,7 +125,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
       [1.7, -0.9],
     ],
     camera: { position: [5.4, 4.5, 6.0], target: [-0.2, 0.7, -0.4] },
-    lights: { ceiling: [3, 7, 4], sun: [7.9, 5, -9] },
+    lights: { ceiling: [3, 7, 4] },
     defaultFinishes: DEFAULT_FINISHES,
     defaultItems: DEFAULT_LAYOUTS.bedroom,
     features: [
@@ -152,7 +152,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
       [1.2, 0.9],
     ],
     camera: { position: [4.6, 4.2, 5.2], target: [0, 0.7, -0.3] },
-    lights: { ceiling: [3, 7, 4], sun: [-1.5, 5, -9] },
+    lights: { ceiling: [3, 7, 4] },
     defaultFinishes: { wallColor: '#f3f1ec', walls: 'paint', floor: 'walnut' },
     defaultItems: DEFAULT_LAYOUTS.dining,
     features: [{ name: 'Pendant light', detail: 'over the table', color: '#2a2a2c' }],
@@ -177,7 +177,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
       [0, 0.9],
     ],
     camera: { position: [4.2, 4.0, 4.6], target: [0, 0.8, -0.3] },
-    lights: { ceiling: [3, 7, 4], sun: [3.1, 7, -9] },
+    lights: { ceiling: [3, 7, 4] },
     defaultFinishes: { wallColor: '#f3f1ec', walls: 'paint', floor: 'tiles' },
     defaultItems: DEFAULT_LAYOUTS.kitchen,
     features: [{ name: 'Kitchen units', detail: '400 cm, sink + hob', color: '#f1ebdf' }],
@@ -199,7 +199,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
     downlights: [[0, 0]],
     // From the front-left, so the right wall (vanity and mirror) stays visible.
     camera: { position: [-3.4, 3.6, 3.9], target: [0, 0.8, -0.2] },
-    lights: { ceiling: [3, 7, 4], sun: [5, 12, -9] },
+    lights: { ceiling: [3, 7, 4] },
     defaultFinishes: { wallColor: '#f3f1ec', walls: 'tiles', floor: 'terrazzo' },
     defaultItems: DEFAULT_LAYOUTS.bathroom,
     features: [{ name: 'Toilet', detail: 'wall-mounted', color: '#f6f5f2' }],

@@ -6,6 +6,9 @@ import { Sidebar } from './components/Sidebar'
 import { Toolbar } from './components/Toolbar'
 import { ViewToggle } from './components/ViewToggle'
 import { RoomBar } from './components/RoomBar'
+import { TimeOfDayPanel } from './components/TimeOfDayPanel'
+import { MoonIcon, SunIcon } from './components/icons'
+import { daylightAt, formatTime, sunPosition } from './scene/sun'
 import { PropertiesPanel } from './components/PropertiesPanel'
 import { DesignsDialog } from './components/DesignsDialog'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -27,6 +30,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const [designsOpen, setDesignsOpen] = useState(false)
+  const [timeOpen, setTimeOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
   // Which room you're editing. `shownRoom` is the one in the 3D view: during the short
@@ -143,9 +147,12 @@ export default function App() {
           overlaps={overlaps}
           onSelect={setSelectedId}
           onShowRoom={() => setSelectedId(null)}
+          lighting={design.lighting}
+          onShowLighting={() => setTimeOpen(true)}
         />
 
-        <main className="viewport">
+        {/* Background follows the time of day, so the room-switch fade dips to the same tone as the 3D backdrop. */}
+        <main className="viewport" style={{ background: daylightAt(house[shownRoom].lighting).background }}>
           <div className={`scene-layer ${fading ? 'fading' : ''}`}>
             <ErrorBoundary>
               <Scene
@@ -164,9 +171,29 @@ export default function App() {
 
           <div className="overlay-top">
             <ViewToggle view={view} onChange={setView} />
+            <button
+              className={`time-toggle ${timeOpen ? 'active' : ''}`}
+              aria-pressed={timeOpen}
+              aria-label={`Time of day: ${formatTime(design.lighting.time)}`}
+              onClick={() => setTimeOpen((open) => !open)}
+            >
+              {sunPosition(design.lighting.time).elevation < 0 ? <MoonIcon /> : <SunIcon />}
+              {formatTime(design.lighting.time)}
+            </button>
           </div>
 
-          <p className="hint">
+          {timeOpen && (
+            <TimeOfDayPanel
+              roomLabel={ROOMS[room].label}
+              lighting={design.lighting}
+              onUpdate={history.updateLighting}
+              onPreview={history.previewLighting}
+              onCommit={history.commit}
+              onClose={() => setTimeOpen(false)}
+            />
+          )}
+
+          <p className="hint" hidden={timeOpen}>
             {view === 'perspective'
               ? 'Click furniture to select · drag it to move · drag empty space to rotate · right-drag to pan · scroll to zoom'
               : 'Click furniture to select · drag it to move · drag empty space to pan · scroll to zoom'}

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_BEDROOM_DESIGN, DEFAULT_DESIGN, DEFAULT_HOUSE, parseDesign, parseHouseDesign } from './design'
 import { DEFAULT_FINISHES } from '../scene/finishes'
 import { ROOM_IDS, ROOMS } from '../scene/house'
+import { DEFAULT_LIGHTING } from '../scene/sun'
 
 const sofa = { id: 's1', type: 'sofa', variant: '3-seat', position: [0, 0], rotation: 0, color: '#aabbcc' }
 
@@ -64,6 +65,16 @@ describe('parseDesign', () => {
     expect(parseDesign({ items: [], finishes: { walls: 'wallpaper' } })?.finishes.walls).toBe('paint')
     // Saves from before tiled walls existed keep each room's default style.
     expect(parseDesign({ items: [], finishes: { wallColor: '#112233' } }, 'bathroom')?.finishes.walls).toBe('tiles')
+  })
+
+  it('reads time of day and orientation, keeping them in range', () => {
+    expect(parseDesign({ items: [], lighting: { time: 19.5, orientation: 90 } })?.lighting).toEqual({ time: 19.5, orientation: 90 })
+    expect(parseDesign({ items: [], lighting: { time: 99, orientation: -45 } })?.lighting).toEqual({ time: 21, orientation: 315 })
+  })
+
+  it('gives saves from before time of day existed the default light', () => {
+    expect(parseDesign({ items: [] })?.lighting).toEqual(DEFAULT_LIGHTING)
+    expect(parseDesign({ items: [], lighting: { time: 'noon' } })?.lighting).toEqual(DEFAULT_LIGHTING)
   })
 
   it('falls back to the default finishes of that room', () => {

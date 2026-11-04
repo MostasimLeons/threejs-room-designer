@@ -2,11 +2,13 @@ import { useMemo, useReducer } from 'react'
 import { clampToRoom, type FurnitureItem } from '../scene/furniture/catalog'
 import type { RoomFinishes } from '../scene/finishes'
 import { normalizeDegrees } from '../utils/math'
+import { normalizeLighting, type RoomLighting } from '../scene/sun'
 import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'
 import { DEFAULT_HOUSE, type HouseDesign, type RoomDesign } from './design'
 
 export type ItemChanges = Partial<Pick<FurnitureItem, 'position' | 'rotation' | 'color' | 'variant'>>
 export type FinishChanges = Partial<RoomFinishes>
+export type LightingChanges = Partial<RoomLighting>
 
 /**
  * Undo/redo works by keeping snapshots of the whole design (furniture + finishes):
@@ -29,6 +31,7 @@ export type RoomBounds = { width: number; depth: number }
 export type HistoryAction =
   | { type: 'updateItem'; id: string; changes: ItemChanges; transient: boolean; bounds: RoomBounds }
   | { type: 'updateFinishes'; changes: FinishChanges; transient: boolean }
+  | { type: 'updateLighting'; changes: LightingChanges; transient: boolean }
   | { type: 'load'; design: RoomDesign }
   | { type: 'commit' }
   | { type: 'undo' }
@@ -77,6 +80,12 @@ export function historyReducer(state: HistoryState, action: HistoryAction): Hist
   switch (action.type) {
     case 'updateItem':
       return change(state, applyItemChanges(state.present, action.id, action.changes, action.bounds), action.transient)
+    case 'updateLighting':
+      return change(
+        state,
+        { ...state.present, lighting: normalizeLighting({ ...state.present.lighting, ...action.changes }) },
+        action.transient,
+      )
     case 'updateFinishes':
       return change(state, { ...state.present, finishes: { ...state.present.finishes, ...action.changes } }, action.transient)
     case 'load':
@@ -141,6 +150,10 @@ export interface RoomHistory {
   previewItem: (id: string, changes: ItemChanges) => void
   updateFinishes: (changes: FinishChanges) => void
   previewFinishes: (changes: FinishChanges) => void
+  /** Time of day / orientation: one undo step (preset buttons). */
+  updateLighting: (changes: LightingChanges) => void
+  /** Live change while a slider moves; `commit` records it. */
+  previewLighting: (changes: LightingChanges) => void
   /** Replace the whole design (restoring a save). Can be undone. */
   load: (design: RoomDesign) => void
   commit: () => void
@@ -175,6 +188,8 @@ export function useHouseHistory(getInitialHouse: () => HouseDesign) {
               previewItem: (id, changes) => send({ type: 'updateItem', id, changes, transient: true, bounds }),
               updateFinishes: (changes) => send({ type: 'updateFinishes', changes, transient: false }),
               previewFinishes: (changes) => send({ type: 'updateFinishes', changes, transient: true }),
+              updateLighting: (changes) => send({ type: 'updateLighting', changes, transient: false }),
+              previewLighting: (changes) => send({ type: 'updateLighting', changes, transient: true }),
               load: (design) => send({ type: 'load', design }),
               commit: () => send({ type: 'commit' }),
               undo: () => send({ type: 'undo' }),

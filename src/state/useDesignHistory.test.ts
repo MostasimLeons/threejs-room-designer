@@ -110,6 +110,18 @@ describe('historyReducer', () => {
     expect(run(state, { type: 'undo' }).present.finishes).toEqual(DEFAULT_DESIGN.finishes)
   })
 
+  it('time of day: a slider drag is one undo step, and values stay in range', () => {
+    const state = run(
+      start(),
+      { type: 'updateLighting', changes: { time: 15 }, transient: true },
+      { type: 'updateLighting', changes: { time: 30 }, transient: true },
+      { type: 'commit' },
+    )
+    expect(state.present.lighting.time).toBe(21)
+    expect(state.past).toHaveLength(1)
+    expect(run(state, { type: 'undo' }).present.lighting).toEqual(DEFAULT_DESIGN.lighting)
+  })
+
   it('reset is undoable', () => {
     const moved = run(start(), move('sofa', [0, 0]))
     const reset = run(moved, { type: 'reset', design: DEFAULT_DESIGN })
