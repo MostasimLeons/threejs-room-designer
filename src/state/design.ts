@@ -1,14 +1,6 @@
-import {
-  clampToRoom,
-  DEFAULT_BEDROOM_LAYOUT,
-  DEFAULT_LAYOUT,
-  FURNITURE_INFO,
-  getVariant,
-  type FurnitureItem,
-  type FurnitureType,
-} from '../scene/furniture/catalog'
+import { clampToRoom, FURNITURE_INFO, getVariant, isAllowedIn, type FurnitureItem, type FurnitureType } from '../scene/furniture/catalog'
 import { normalizeDegrees } from '../utils/math'
-import { DEFAULT_FINISHES, FLOOR_OPTIONS, type FloorId, type RoomFinishes } from '../scene/finishes'
+import { FLOOR_OPTIONS, type FloorId, type RoomFinishes } from '../scene/finishes'
 import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'
 
 /**
@@ -20,15 +12,16 @@ export interface RoomDesign {
   items: FurnitureItem[]
 }
 
-export const DEFAULT_DESIGN: RoomDesign = { finishes: DEFAULT_FINISHES, items: DEFAULT_LAYOUT }
-
-/** Bedroom defaults: warm beige walls and natural oak planks (the same presets as the Living Room). */
-export const DEFAULT_BEDROOM_DESIGN: RoomDesign = { finishes: DEFAULT_FINISHES, items: DEFAULT_BEDROOM_LAYOUT }
-
 /** The whole house: one independent design per room. This is what Save / Load stores. */
 export type HouseDesign = Record<RoomId, RoomDesign>
 
-export const DEFAULT_HOUSE: HouseDesign = { living: DEFAULT_DESIGN, bedroom: DEFAULT_BEDROOM_DESIGN }
+/** Every room's starting design (from house.ts). "Reset" returns a room to its entry here. */
+export const DEFAULT_HOUSE = Object.fromEntries(
+  ROOM_IDS.map((id) => [id, { finishes: ROOMS[id].defaultFinishes, items: ROOMS[id].defaultItems }]),
+) as HouseDesign
+
+export const DEFAULT_DESIGN = DEFAULT_HOUSE.living
+export const DEFAULT_BEDROOM_DESIGN = DEFAULT_HOUSE.bedroom
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i
 
@@ -45,6 +38,8 @@ function parseItem(raw: unknown, room: RoomId): FurnitureItem | null {
   if (typeof color !== 'string' || !HEX_COLOR.test(color)) return null
 
   const furnitureType = type as FurnitureType
+  // Rooms never mix: furniture that doesn't belong in this room is skipped.
+  if (!isAllowedIn(furnitureType, room)) return null
   // Unknown or missing variants fall back to the default one.
   const item: FurnitureItem = {
     id,
@@ -72,7 +67,7 @@ export function parseDesign(raw: unknown, room: RoomId = 'living'): RoomDesign |
     if (item && !items.some((existing) => existing.id === item.id)) items.push(item)
   }
 
-  const finishes: RoomFinishes = { ...DEFAULT_FINISHES }
+  const finishes: RoomFinishes = { ...ROOMS[room].defaultFinishes }
   if (isRecord(raw.finishes)) {
     const { wallColor, floor } = raw.finishes
     if (typeof wallColor === 'string' && HEX_COLOR.test(wallColor)) finishes.wallColor = wallColor
@@ -83,9 +78,10 @@ export function parseDesign(raw: unknown, room: RoomId = 'living'): RoomDesign |
 }
 
 /**
- * Checks saved/imported data for the whole house. Also accepts files saved before
- * the Bedroom existed (one room only): those become the Living Room, and the
- * Bedroom starts from its defaults, so no older save is lost.
+ * Checks saved/imported data for the whole house. Rooms missing from the data
+ * (saves from before the Bedroom, Dining Room, Kitchen and Bathroom existed)
+ * start from their defaults, so no older save is lost. Files with just one room
+ * (the oldest format) become the Living Room.
  */
 export function parseHouseDesign(raw: unknown): HouseDesign | null {
   if (!isRecord(raw)) return null
@@ -106,5 +102,5 @@ export function parseHouseDesign(raw: unknown): HouseDesign | null {
 
   // Older single-room format: { finishes, items }
   const living = parseDesign(raw, 'living')
-  return living ? { living, bedroom: DEFAULT_BEDROOM_DESIGN } : null
+  return living ? { ...DEFAULT_HOUSE, living } : null
 }

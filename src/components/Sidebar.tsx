@@ -1,26 +1,23 @@
-import { DOOR_OPENING, ROOM, WINDOW_OPENING } from '../scene/roomConfig'
-import { BEDROOM_WINDOW, CONNECTING_DOOR, ROOMS, type RoomId } from '../scene/house'
+import { ROOM } from '../scene/roomConfig'
+import { ROOMS, WALL_SIDES, type RoomId } from '../scene/house'
 import { FURNITURE_INFO, getVariant, type FurnitureItem } from '../scene/furniture/catalog'
 import { getFloorOption, wallColorName, type RoomFinishes } from '../scene/finishes'
 
 const cm = (metres: number) => Math.round(metres * 100)
 
-const size = (opening: { width: number; top: number; bottom: number }) => `${cm(opening.width)} × ${cm(opening.top - opening.bottom)} cm`
-
-// Fixtures are built into the walls, so they can't be selected or moved.
-// Their sizes come from roomConfig / house, so this list can't go out of date.
-const FIXTURES: Record<RoomId, { name: string; detail: string; color: string }[]> = {
-  living: [
-    { name: 'Window', detail: size(WINDOW_OPENING), color: '#cfe4ef' },
-    { name: 'Door', detail: size(DOOR_OPENING), color: '#f4f1ea' },
-    { name: 'Door to bedroom', detail: size(CONNECTING_DOOR), color: '#f4f1ea' },
-  ],
-  bedroom: [
-    { name: 'Window + curtains', detail: size(BEDROOM_WINDOW), color: '#cfe4ef' },
-    { name: 'Door to living room', detail: size(CONNECTING_DOOR), color: '#f4f1ea' },
-    { name: 'Oak slat wall', detail: 'behind bed', color: '#c49a6c' },
-    { name: 'Cream carpet', detail: '320 × 250 cm', color: '#ece3d2' },
-  ],
+/**
+ * Fixtures are built into the room, so they can't be selected or moved: its
+ * windows and doors, plus decor such as the Bedroom's slat wall. All of it comes
+ * from the room's entry in house.ts, so this list can't go out of date.
+ */
+function fixturesOf(room: RoomId) {
+  const info = ROOMS[room]
+  const openings = WALL_SIDES.flatMap((side) => info.openings[side] ?? []).map((o) => ({
+    name: o.label,
+    detail: `${cm(o.width)} × ${cm(o.top - o.bottom)} cm`,
+    color: o.kind === 'window' ? '#cfe4ef' : '#f4f1ea',
+  }))
+  return [...openings, ...info.features]
 }
 
 interface SidebarProps {
@@ -38,7 +35,7 @@ interface SidebarProps {
 
 export function Sidebar({ room, items, finishes, selectedId, overlaps, onSelect, onShowRoom }: SidebarProps) {
   const { label, width, depth } = ROOMS[room]
-  const fixtures = FIXTURES[room]
+  const fixtures = fixturesOf(room)
   const floor = getFloorOption(finishes.floor)
   const finishRows = [
     { name: 'Floor', detail: floor.label, color: floor.swatch },

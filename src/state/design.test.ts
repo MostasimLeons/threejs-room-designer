@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_BEDROOM_DESIGN, DEFAULT_DESIGN, parseDesign, parseHouseDesign } from './design'
+import { DEFAULT_BEDROOM_DESIGN, DEFAULT_DESIGN, DEFAULT_HOUSE, parseDesign, parseHouseDesign } from './design'
 import { DEFAULT_FINISHES } from '../scene/finishes'
-import { ROOMS } from '../scene/house'
+import { ROOM_IDS, ROOMS } from '../scene/house'
 
 const sofa = { id: 's1', type: 'sofa', variant: '3-seat', position: [0, 0], rotation: 0, color: '#aabbcc' }
 
@@ -48,8 +48,19 @@ describe('parseDesign', () => {
   })
 
   it('uses the right room size for clamping', () => {
-    const [piece] = parseDesign({ items: [{ ...sofa, position: [50, 0] }] }, 'bedroom')!.items
-    expect(piece.position[0]).toBeLessThanOrEqual(ROOMS.bedroom.width / 2)
+    const plant = { id: 'p', type: 'plant', variant: 'small', position: [50, 0], rotation: 0, color: '#aabbcc' }
+    const [piece] = parseDesign({ items: [plant] }, 'bathroom')!.items
+    expect(piece.position[0]).toBeLessThanOrEqual(ROOMS.bathroom.width / 2)
+  })
+
+  it('skips furniture that does not belong in the room', () => {
+    const bed = { id: 'b', type: 'bed', variant: 'king', position: [0, 0], rotation: 0, color: '#aabbcc' }
+    expect(parseDesign({ items: [sofa, bed] }, 'living')?.items.map((item) => item.id)).toEqual(['s1'])
+    expect(parseDesign({ items: [sofa, bed] }, 'kitchen')?.items).toEqual([])
+  })
+
+  it('falls back to the default finishes of that room', () => {
+    expect(parseDesign({ items: [] }, 'bathroom')?.finishes).toEqual(ROOMS.bathroom.defaultFinishes)
   })
 
   it('keeps valid finishes and falls back for invalid ones', () => {
@@ -62,9 +73,23 @@ describe('parseDesign', () => {
 })
 
 describe('parseHouseDesign', () => {
-  it('reads the current whole-house format', () => {
-    const house = parseHouseDesign({ rooms: { living: DEFAULT_DESIGN, bedroom: DEFAULT_BEDROOM_DESIGN } })
-    expect(house).toEqual({ living: DEFAULT_DESIGN, bedroom: DEFAULT_BEDROOM_DESIGN })
+  it('reads the current whole-house format (all five rooms)', () => {
+    expect(parseHouseDesign({ rooms: DEFAULT_HOUSE })).toEqual(DEFAULT_HOUSE)
+    expect(Object.keys(DEFAULT_HOUSE).toSorted()).toEqual(ROOM_IDS.toSorted())
+  })
+
+  it('upgrades a two-room save (version 2): the new rooms start from their defaults', () => {
+    const house = parseHouseDesign({ rooms: { living: { items: [sofa] }, bedroom: DEFAULT_BEDROOM_DESIGN } })
+    expect(house?.living.items.map((item) => item.id)).toEqual(['s1'])
+    expect(house?.bedroom).toEqual(DEFAULT_BEDROOM_DESIGN)
+    for (const id of ['dining', 'kitchen', 'bathroom'] as const) expect(house?.[id]).toEqual(DEFAULT_HOUSE[id])
+  })
+
+  it('keeps each room separate: furniture never moves to another room', () => {
+    // A sofa saved under "kitchen" (for example in a hand-edited file) is dropped, not moved.
+    const house = parseHouseDesign({ rooms: { kitchen: { items: [sofa] } } })
+    expect(house?.kitchen.items).toEqual([])
+    expect(house?.living).toEqual(DEFAULT_DESIGN)
   })
 
   it('fills in a missing room with its default', () => {
@@ -77,6 +102,7 @@ describe('parseHouseDesign', () => {
     const house = parseHouseDesign({ finishes: DEFAULT_FINISHES, items: [sofa] })
     expect(house?.living.items.map((item) => item.id)).toEqual(['s1'])
     expect(house?.bedroom).toEqual(DEFAULT_BEDROOM_DESIGN)
+    expect(house?.kitchen).toEqual(DEFAULT_HOUSE.kitchen)
   })
 
   it('returns null when no room can be read', () => {

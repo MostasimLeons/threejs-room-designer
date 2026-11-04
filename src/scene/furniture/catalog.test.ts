@@ -1,14 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  clampToRoom,
-  DEFAULT_BEDROOM_LAYOUT,
-  DEFAULT_LAYOUT,
-  findOverlaps,
-  FURNITURE_INFO,
-  getVariant,
-  type FurnitureItem,
-} from './catalog'
-import { ROOMS } from '../house'
+import { clampToRoom, DEFAULT_LAYOUTS, findOverlaps, FURNITURE_INFO, getVariant, isAllowedIn, type FurnitureItem } from './catalog'
+import { ROOM_IDS, ROOMS } from '../house'
 
 const room = { width: 4, depth: 4 }
 
@@ -67,24 +59,34 @@ describe('findOverlaps', () => {
 })
 
 describe('default layouts', () => {
-  it.each([
-    ['living', DEFAULT_LAYOUT],
-    ['bedroom', DEFAULT_BEDROOM_LAYOUT],
-  ] as const)('%s: every piece starts inside its room', (roomId, layout) => {
-    for (const piece of layout) expect(clampToRoom(piece, ROOMS[roomId])).toEqual(piece.position)
+  it.each(ROOM_IDS)('%s: every piece starts inside its room', (roomId) => {
+    for (const piece of DEFAULT_LAYOUTS[roomId]) expect(clampToRoom(piece, ROOMS[roomId])).toEqual(piece.position)
   })
 
-  it.each([
-    ['living', DEFAULT_LAYOUT],
-    ['bedroom', DEFAULT_BEDROOM_LAYOUT],
-  ] as const)('%s: no pieces overlap', (_roomId, layout) => {
-    expect([...findOverlaps(layout).keys()]).toEqual([])
+  it.each(ROOM_IDS)('%s: no pieces overlap', (roomId) => {
+    expect([...findOverlaps(DEFAULT_LAYOUTS[roomId]).keys()]).toEqual([])
   })
 
-  it('uses unique ids and valid variants', () => {
-    for (const layout of [DEFAULT_LAYOUT, DEFAULT_BEDROOM_LAYOUT]) {
-      expect(new Set(layout.map((piece) => piece.id)).size).toBe(layout.length)
-      for (const piece of layout) expect(getVariant(piece.type, piece.variant).id).toBe(piece.variant)
-    }
+  it.each(ROOM_IDS)('%s: only furniture that belongs in this room', (roomId) => {
+    for (const piece of DEFAULT_LAYOUTS[roomId]) expect(isAllowedIn(piece.type, roomId)).toBe(true)
+  })
+
+  it('uses unique ids and valid variants, across all rooms', () => {
+    const all = ROOM_IDS.flatMap((id) => DEFAULT_LAYOUTS[id])
+    expect(new Set(all.map((piece) => piece.id)).size).toBe(all.length)
+    for (const piece of all) expect(getVariant(piece.type, piece.variant).id).toBe(piece.variant)
+  })
+})
+
+describe('isAllowedIn', () => {
+  it('keeps furniture in the rooms it belongs to', () => {
+    expect(isAllowedIn('bed', 'bedroom')).toBe(true)
+    expect(isAllowedIn('bed', 'kitchen')).toBe(false)
+    expect(isAllowedIn('sofa', 'bathroom')).toBe(false)
+    expect(isAllowedIn('plant', 'bathroom')).toBe(true)
+  })
+
+  it('every furniture type belongs to at least one room', () => {
+    for (const info of Object.values(FURNITURE_INFO)) expect(info.rooms.length).toBeGreaterThan(0)
   })
 })

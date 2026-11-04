@@ -1,5 +1,6 @@
-import { ROOM } from '../roomConfig'
 import { clamp, degToRad } from '../../utils/math'
+// Type-only: house.ts imports this file's layouts, so a value import here would be circular.
+import type { RoomId } from '../house'
 
 export type FurnitureType =
   // Living Room
@@ -41,6 +42,11 @@ export interface VariantInfo {
 
 interface FurnitureInfo {
   label: string
+  /**
+   * The rooms this piece belongs in. Saved or imported furniture in any other room
+   * is skipped, so rooms never mix (a bed can't end up in the kitchen).
+   */
+  rooms: RoomId[]
   /** Name of the option group shown in the panel, e.g. "Size" or "Style". */
   variantLabel: string
   /** The first one is the default. */
@@ -94,6 +100,7 @@ const OAK_SWATCHES: Swatch[] = [
 export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   sofa: {
     label: 'Sofa',
+    rooms: ['living'],
     variantLabel: 'Size',
     variants: [
       { id: '3-seat', label: '3-seater', detail: '220 cm', footprint: [2.2, 0.9] },
@@ -105,6 +112,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   armchair: {
     label: 'Armchair',
+    rooms: ['living'],
     variantLabel: 'Style',
     variants: [
       { id: 'lounge', label: 'Lounge', detail: '92 cm', footprint: [0.92, 0.82] },
@@ -115,6 +123,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   coffeeTable: {
     label: 'Coffee table',
+    rooms: ['living'],
     variantLabel: 'Shape',
     variants: [
       { id: 'rectangle', label: 'Rectangle', detail: '120 × 60 cm', footprint: [1.2, 0.6] },
@@ -125,6 +134,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   tvUnit: {
     label: 'TV & media unit',
+    rooms: ['living'],
     variantLabel: 'Screen',
     variants: [
       { id: '55', label: '55" TV', detail: '180 cm unit', footprint: [1.8, 0.42] },
@@ -142,6 +152,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   plant: {
     label: 'Indoor plant',
+    rooms: ['living', 'bedroom', 'dining', 'kitchen', 'bathroom'],
     variantLabel: 'Size',
     variants: [
       { id: 'large', label: 'Large', detail: '130 cm', footprint: [0.6, 0.6] },
@@ -159,6 +170,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   floorLamp: {
     label: 'Floor lamp',
+    rooms: ['living', 'bedroom', 'dining'],
     variantLabel: 'Shade',
     variants: [
       { id: 'tapered', label: 'Tapered', detail: '150 cm', footprint: [0.46, 0.46] },
@@ -176,6 +188,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   bed: {
     label: 'Bed',
+    rooms: ['bedroom'],
     variantLabel: 'Size',
     variants: [
       // Footprint = frame + headboard around a 180 × 200 (or 160 × 200) mattress
@@ -187,6 +200,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   bedsideTable: {
     label: 'Bedside table',
+    rooms: ['bedroom'],
     variantLabel: 'Style',
     variants: [
       { id: 'drawers', label: 'Two drawers', detail: 'with lamp', footprint: [0.5, 0.4] },
@@ -197,6 +211,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   wardrobe: {
     label: 'Sliding wardrobe',
+    rooms: ['bedroom'],
     variantLabel: 'Size',
     variants: [
       { id: '2-door', label: '2 doors', detail: '200 cm', footprint: [2.0, 0.62] },
@@ -207,6 +222,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   dressingTable: {
     label: 'Dressing table',
+    rooms: ['bedroom'],
     variantLabel: 'Mirror',
     variants: [
       // Depth includes the stool tucked in front
@@ -218,6 +234,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   accentChair: {
     label: 'Accent chair',
+    rooms: ['bedroom', 'living'],
     variantLabel: 'Style',
     variants: [
       { id: 'tub', label: 'Tub', detail: '75 cm', footprint: [0.75, 0.75] },
@@ -228,6 +245,11 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
 }
 
+/** Can this kind of furniture go in this room? */
+export function isAllowedIn(type: FurnitureType, room: RoomId): boolean {
+  return FURNITURE_INFO[type].rooms.includes(room)
+}
+
 /** Looks up a variant, falling back to the default if the id is unknown. */
 export function getVariant(type: FurnitureType, variant: string): VariantInfo {
   const { variants } = FURNITURE_INFO[type]
@@ -235,7 +257,7 @@ export function getVariant(type: FurnitureType, variant: string): VariantInfo {
 }
 
 /** The Living Room's starting arrangement. "Reset" returns to this. */
-export const DEFAULT_LAYOUT: FurnitureItem[] = [
+const LIVING_LAYOUT: FurnitureItem[] = [
   { id: 'sofa', type: 'sofa', variant: '3-seat', position: [0.3, -2.5], rotation: 0, color: '#f1eee8' },
   { id: 'coffee-table', type: 'coffeeTable', variant: 'rectangle', position: [0.3, -1.15], rotation: 0, color: '#c49a6c' },
   { id: 'armchair', type: 'armchair', variant: 'lounge', position: [2.2, -0.5], rotation: 250, color: '#f1eee8' },
@@ -248,7 +270,7 @@ export const DEFAULT_LAYOUT: FurnitureItem[] = [
  * The Bedroom's starting arrangement (5 × 4 m). Positions are measured from the
  * bedroom's centre: x -2.5…2.5, z -2…2 (back wall at z = -2, shared wall at x = -2.5).
  */
-export const DEFAULT_BEDROOM_LAYOUT: FurnitureItem[] = [
+const BEDROOM_LAYOUT: FurnitureItem[] = [
   // King bed centred on the oak slat wall, headboard against the back wall
   { id: 'bed', type: 'bed', variant: 'king', position: [-0.35, -0.915], rotation: 0, color: '#efe6d6' },
   { id: 'bedside-left', type: 'bedsideTable', variant: 'drawers', position: [-1.61, -1.78], rotation: 0, color: '#c49a6c' },
@@ -263,13 +285,36 @@ export const DEFAULT_BEDROOM_LAYOUT: FurnitureItem[] = [
 ]
 
 /**
+ * The new rooms start with just a plant. Their furniture (dining table and chairs,
+ * kitchen units, bath and vanity) comes in Phase 3.
+ */
+const DINING_LAYOUT: FurnitureItem[] = [
+  { id: 'dining-plant', type: 'plant', variant: 'large', position: [1.85, -1.6], rotation: 0, color: '#b86f50' },
+]
+const KITCHEN_LAYOUT: FurnitureItem[] = [
+  { id: 'kitchen-plant', type: 'plant', variant: 'small', position: [-1.7, -1.45], rotation: 0, color: '#ecebe6' },
+]
+const BATHROOM_LAYOUT: FurnitureItem[] = [
+  { id: 'bathroom-plant', type: 'plant', variant: 'small', position: [1.2, 0.9], rotation: 0, color: '#ecebe6' },
+]
+
+/** Each room's starting arrangement, measured from the room's centre. "Reset" returns to it. */
+export const DEFAULT_LAYOUTS: Record<RoomId, FurnitureItem[]> = {
+  living: LIVING_LAYOUT,
+  bedroom: BEDROOM_LAYOUT,
+  dining: DINING_LAYOUT,
+  kitchen: KITCHEN_LAYOUT,
+  bathroom: BATHROOM_LAYOUT,
+}
+
+/**
  * Keeps a piece of furniture inside the room walls. A rotated object takes up
  * a different amount of space along x and z, so the rotation is included.
  */
 export function clampToRoom(
   item: Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation'>,
-  /** Room size; defaults to the Living Room. */
-  room: { width: number; depth: number } = ROOM,
+  /** The room's inner size. */
+  room: { width: number; depth: number },
 ): [number, number] {
   const [w, d] = getVariant(item.type, item.variant).footprint
   const angle = degToRad(item.rotation)

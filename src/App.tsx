@@ -1,19 +1,24 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Scene } from './scene/Scene'
 import type { ViewMode } from './scene/roomConfig'
 import { findOverlaps } from './scene/furniture/catalog'
 import { Sidebar } from './components/Sidebar'
 import { Toolbar } from './components/Toolbar'
 import { ViewToggle } from './components/ViewToggle'
-import { RoomSelector } from './components/RoomSelector'
+import { RoomBar } from './components/RoomBar'
 import { PropertiesPanel } from './components/PropertiesPanel'
 import { DesignsDialog } from './components/DesignsDialog'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
-import { useDesignHistory } from './state/useDesignHistory'
-import { DEFAULT_BEDROOM_DESIGN, DEFAULT_DESIGN, DEFAULT_HOUSE, type HouseDesign } from './state/design'
+import { useHouseHistory } from './state/useDesignHistory'
+import { DEFAULT_HOUSE, type HouseDesign } from './state/design'
 import { loadAutosave, writeAutosave } from './state/storage'
-import { ROOMS, type RoomId } from './scene/house'
+import { ROOM_IDS, ROOMS, type RoomId } from './scene/house'
+
+/** Room switch: the view fades out this fast, the room swaps, then it fades back in (see .scene-layer in index.css). */
+const FADE_OUT_MS = 180
+
+const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 export default function App() {
   // App state: which camera view is active, and a counter used to reset the camera.
@@ -24,25 +29,30 @@ export default function App() {
   const [designsOpen, setDesignsOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
-  // Which room you're viewing and editing.
+  // Which room you're editing. `shownRoom` is the one in the 3D view: during the short
+  // fade between rooms it still shows the old room, then catches up.
   const [room, setRoom] = useState<RoomId>('living')
+  const [shownRoom, setShownRoom] = useState<RoomId>('living')
+  const [fading, setFading] = useState(false)
+  const fadeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  // Each room has its own design (furniture + finishes) and its own undo/redo history.
-  // Both start from the autosave, so reloading the page keeps your work.
-  const [initialHouse] = useState<HouseDesign>(() => loadAutosave() ?? DEFAULT_HOUSE)
-  const living = useDesignHistory(() => initialHouse.living, { bounds: ROOMS.living, defaultDesign: DEFAULT_DESIGN })
-  const bedroom = useDesignHistory(() => initialHouse.bedroom, { bounds: ROOMS.bedroom, defaultDesign: DEFAULT_BEDROOM_DESIGN })
-  const house = useMemo<HouseDesign>(() => ({ living: living.design, bedroom: bedroom.design }), [living.design, bedroom.design])
+  // Every room has its own design (furniture + finishes) and its own undo/redo history.
+  // They start from the autosave, so reloading the page keeps your work.
+  const { house, forRoom, loadHouse } = useHouseHistory(() => loadAutosave() ?? DEFAULT_HOUSE)
 
   // Everything below (toolbar, panels, shortcuts) works on the selected room's history.
-  const history = room === 'living' ? living : bedroom
+  const history = forRoom(room)
   const { design } = history
   const selectedItem = design.items.find((item) => item.id === selectedId) ?? null
 
   // Which pieces overlap each other. Recalculated only when the furniture changes.
   const overlaps = useMemo(() => findOverlaps(design.items), [design.items])
+  const shownItems = house[shownRoom].items
+  const shownOverlaps = useMemo(() => findOverlaps(shownItems), [shownItems])
 
-  // Autosave: write both rooms to browser storage shortly after every change.
+  useEffect(() => () => clearTimeout(fadeTimer.current), [])
+
+  // Autosave: write every room to browser storage shortly after every change.
   useEffect(() => {
     const timer = setTimeout(() => writeAutosave(house), 400)
     return () => clearTimeout(timer)
@@ -63,14 +73,17 @@ export default function App() {
     updateItem: history.updateItem,
     previewItem: history.previewItem,
     commit: history.commit,
+    selectRoom: (index) => {
+      const next = ROOM_IDS[index]
+      if (next) handleRoomChange(next)
+    },
   })
 
   function handleLoad(loaded: HouseDesign, name: string) {
-    living.load(loaded.living)
-    bedroom.load(loaded.bedroom)
+    loadHouse(loaded)
     setSelectedId(null)
     setDesignsOpen(false)
-    setToast(`Loaded "${name}" (both rooms). Undo goes back one room at a time.`)
+    setToast(`Loaded "${name}" (all rooms). Undo goes back one room at a time.`)
   }
 
   function handleReset() {
@@ -84,6 +97,18 @@ export default function App() {
     history.commit() // finish any drag/slide in the room you're leaving
     setSelectedId(null)
     setRoom(next)
+
+    clearTimeout(fadeTimer.current)
+    if (prefersReducedMotion()) {
+      setShownRoom(next)
+      return
+    }
+    // Fade out, swap the room while the view is hidden, then fade back in.
+    setFading(true)
+    fadeTimer.current = setTimeout(() => {
+      setShownRoom(next)
+      setFading(false)
+    }, FADE_OUT_MS)
   }
 
   const overlapping = selectedItem
@@ -122,22 +147,23 @@ export default function App() {
         />
 
         <main className="viewport">
-          <ErrorBoundary>
-            <Scene
-              view={view}
-              resetKey={resetKey}
-              activeRoom={room}
-              house={house}
-              selectedId={selectedId}
-              overlaps={overlaps}
-              onSelect={setSelectedId}
-              onMove={(id, position) => history.previewItem(id, { position })}
-              onDragBoundary={history.commit}
-            />
-          </ErrorBoundary>
+          <div className={`scene-layer ${fading ? 'fading' : ''}`}>
+            <ErrorBoundary>
+              <Scene
+                view={view}
+                resetKey={resetKey}
+                room={shownRoom}
+                design={house[shownRoom]}
+                selectedId={shownRoom === room ? selectedId : null}
+                overlaps={shownOverlaps}
+                onSelect={setSelectedId}
+                onMove={(id, position) => history.previewItem(id, { position })}
+                onDragBoundary={history.commit}
+              />
+            </ErrorBoundary>
+          </div>
 
           <div className="overlay-top">
-            <RoomSelector room={room} onChange={handleRoomChange} />
             <ViewToggle view={view} onChange={setView} />
           </div>
 
@@ -152,6 +178,8 @@ export default function App() {
               {toast}
             </div>
           )}
+
+          <RoomBar room={room} onChange={handleRoomChange} />
         </main>
 
         <PropertiesPanel

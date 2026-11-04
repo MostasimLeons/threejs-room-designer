@@ -6,11 +6,12 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Every 
 
 ## Features
 
-- **Two connected rooms in one house:**
+- **Five rooms, each its own 3D scene:**
   - **Living Room** (7 × 6 m): sofa, armchair, coffee table, TV unit, plant, floor lamp.
   - **Bedroom** (5 × 4 m, modern luxury): king bed with upholstered headboard, two bedside tables with lamps, sliding wardrobe, dressing table with mirror, accent chair, two plants, curtained window, oak slat accent wall and cream carpet.
+  - **Dining Room** (4.5 × 4 m), **Kitchen** (4 × 3.5 m) and **Bathroom** (3 × 2.5 m): walls, window, door, ceiling lights and their own finishes, plus a plant. Their furniture comes in the next phase.
 
-  The rooms share a wall with an open connecting door. Use the **Living Room | Bedroom** switch above the 3D view to choose which room you see and edit. Each room has its own furniture, finishes and undo history.
+  Pick a room in the **room bar** at the bottom of the 3D view, or press `1`–`5`. The view fades briefly and shows that room. Only the selected room is drawn, which keeps the app fast. Each room keeps its own furniture, finishes, lighting and undo history, and furniture never moves between rooms: a bed can only be in the Bedroom, a sofa only in the Living Room.
 
 - **Select** furniture by clicking it in the 3D view or in the Objects list.
 - **Move** furniture by:
@@ -98,6 +99,7 @@ Measured in the Living Room with the default layout (draw calls and triangles de
 | 2026-11-04 | Phase 0 baseline                                                 | ~466       | ~166k     |
 | 2026-11-04 | Phase 1: post-processing, ceilings, shadows drawn once per frame | ~560       | ~181k     |
 | 2026-11-04 | Phase 1, with a polished concrete floor (reflection)             | ~640       | ~198k     |
+| 2026-11-04 | Phase 2: only the selected room is drawn                         | ~300       | ~91k      |
 
 The two shadow passes are still most of the cost. Without the once-per-frame shadow change, a reflective floor would add about 460 draw calls instead of about 85.
 
@@ -125,6 +127,7 @@ Exact versions are in `package.json`. `package-lock.json` pins them so every ins
 | Rotate camera     | Left-drag empty space (Perspective view)                                                                  |
 | Pan               | Right-drag (Perspective) or drag empty space (Plan)                                                       |
 | Zoom              | Mouse wheel                                                                                               |
+| Switch room       | Click it in the room bar, or press `1`–`5`. With the bar focused, `←` / `→` move between rooms            |
 | Select            | Click a piece, or its row in **Objects**                                                                  |
 | Deselect          | Click empty floor, press `Esc`, or click ✕                                                                |
 | Move              | Drag the piece, use the Position sliders, or arrow keys: 5 cm per press, 25 cm with `Shift`               |
@@ -141,7 +144,7 @@ A whole drag, slider movement or held-down arrow key counts as **one** undo step
 
 - **Saved in this browser:** designs are stored in your browser's `localStorage`, so they exist only in that browser on that computer. Clearing site data removes them.
 - **Export file / Import file:** use these to back up a design, move it to another computer, or share it. Imported files are checked first: unknown furniture is skipped, and anything outside the room is moved back inside.
-- **Both rooms are always saved together:** saves, the autosave and exported files hold the whole house. Saves and files made before the Bedroom existed still load: they become the Living Room, and the Bedroom starts from its default layout.
+- **All rooms are always saved together:** saves, the autosave and exported files hold the whole house. Older saves and files still load. Rooms they don't contain (for example the Dining Room, Kitchen and Bathroom in a save from before those rooms existed) start from their default design. A one-room file from the very first version becomes the Living Room.
 
 ## Project structure
 
@@ -155,7 +158,7 @@ src/
     Sidebar.tsx            Room stats, finishes summary, objects list
     PropertiesPanel.tsx    Selected furniture: options, colour, rotation, position
     RoomPanel.tsx          Nothing selected: wall paint and floor material
-    RoomSelector.tsx       Living Room / Bedroom switch
+    RoomBar.tsx            Glass room bar at the bottom of the 3D view (icons, keyboard)
     ColorPicker.tsx        Swatch grid + custom colour (used by both panels)
     DesignsDialog.tsx      Save / load / export / import window
     ViewToggle.tsx         Perspective / Plan switch
@@ -177,16 +180,18 @@ src/
     PostEffects.tsx        Ambient occlusion, bloom, tone mapping, vignette, antialiasing
     Ceiling.tsx            Ceiling with cove light line and downlights
     FurnitureLayer.tsx     Draws furniture; click-to-select, drag-to-move, outlines
-    Room.tsx               Living Room: floor, walls (with openings), skirting, rug, cutaway walls
-    Bedroom.tsx            Bedroom shell (floor, walls, curtained window, slat wall, carpet)
+    RoomShell.tsx          Builds any room from its house.ts entry: floor, ceiling, 4 walls with windows/doors/skirting
+    Cutaway.tsx            Hides walls (and the ceiling) that are between the camera and the room
+    walls.ts               Wall maths: placing walls, cutting openings, skirting runs, checks for bad openings
+    rooms/decor.tsx        Built-in decor per room: rug, carpet, oak slat wall, curtains
                            and the shared wall with the connecting door
-    house.ts               House layout: room sizes and positions, shared wall, door, bedroom window
+    house.ts               Room registry: every room's size, windows, doors, lights, camera, default design
     CameraRig.tsx          Perspective / Plan cameras and mouse controls
     Lighting.tsx           Lights, shadows (drawn once per frame), procedural environment
     finishes.ts            Wall colour presets and floor material options
     textures.ts            Procedural textures: floor colour/normal/roughness maps, fabric weave
     materials.ts           Shared materials
-    roomConfig.ts          Room size and window/door positions
+    roomConfig.ts          Ceiling height and wall thickness shared by all rooms
     parts.tsx              Reusable Block / Cylinder helpers
     furniture/
       catalog.ts           Furniture types, options, swatches, default layout,
@@ -218,10 +223,13 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 - Overlapping furniture is flagged but not blocked. You decide where things go.
 - The window and door are fixed parts of the walls.
 - There is no Add or Delete for furniture yet: each room always has its starting pieces.
-- Furniture can't be moved from one room to the other.
+- Furniture can't be moved from one room to the other, by design: each room keeps its own pieces.
+- Doors between rooms are closed. Each room is a separate scene, so there's nothing to see through them.
+- The Dining Room, Kitchen and Bathroom only have a plant so far.
+- The start camera doesn't adapt to a tall, narrow 3D view (a mid-size window with both panels open), so part of the room can be cropped. Zoom out or use Plan view.
 - Ambient occlusion runs at full resolution. N8AO's faster half-resolution mode crashes with Three.js 0.187 (its multi-texture render target isn't compatible), so it stays off until N8AO is updated.
 - Floor reflections aren't blurred. Drei's reflection blur creates two GPU images it never frees, so softness comes from a lower reflection resolution instead.
 - The ceiling lights and lamp shades only glow; they don't light the room. Real lights for them come with the time-of-day work (Phase 3).
 - Post-processing adds about 160 KB (gzipped) to the download. It's in its own `effects` file, so the browser caches it separately.
 
-<!-- Last updated: 2026-11-04 10:46 UTC -->
+<!-- Last updated: 2026-11-04 11:10 UTC -->

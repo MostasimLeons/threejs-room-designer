@@ -4,18 +4,6 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Environment, Lightformer } from '@react-three/drei'
 import { ROOMS, type RoomId } from './house'
 
-type Vec3 = [number, number, number]
-
-/**
- * Where the two shadow-casting lights sit, relative to the room they light.
- * The Living Room uses the original values. The Bedroom's sun is angled to
- * shine in through the Bedroom window instead.
- */
-const LIGHT_OFFSETS: Record<RoomId, { ceiling: Vec3; sun: Vec3 }> = {
-  living: { ceiling: [3, 7, 4], sun: [-5.7, 5, -9] },
-  bedroom: { ceiling: [3, 7, 4], sun: [7.9, 5, -9] },
-}
-
 /**
  * Lighting setup:
  * - Hemisphere light: soft sky/ground fill so nothing is pitch black.
@@ -25,9 +13,8 @@ const LIGHT_OFFSETS: Record<RoomId, { ceiling: Vec3; sun: Vec3 }> = {
  * The floor lamp has its own warm point light (see FloorLamp.tsx).
  */
 export function Lighting({ room }: { room: RoomId }) {
-  // The directional lights aim at the room you're viewing, so its shadows stay sharp.
-  const [cx, cz] = ROOMS[room].center
-  const { ceiling, sun } = LIGHT_OFFSETS[room]
+  // Each room has its own light directions (house.ts); the sun comes in through a window.
+  const { ceiling, sun } = ROOMS[room].lights
   const ceilingTarget = useMemo(() => new THREE.Object3D(), [])
   const sunTarget = useMemo(() => new THREE.Object3D(), [])
 
@@ -35,13 +22,13 @@ export function Lighting({ room }: { room: RoomId }) {
     <>
       <hemisphereLight args={['#fff7ea', '#b89f80', 0.5]} />
 
-      <primitive object={ceilingTarget} position={[cx, 0, cz]} />
-      <primitive object={sunTarget} position={[cx, 0, cz]} />
+      <primitive object={ceilingTarget} position={[0, 0, 0]} />
+      <primitive object={sunTarget} position={[0, 0, 0]} />
 
       <directionalLight
         castShadow
         target={ceilingTarget}
-        position={[cx + ceiling[0], ceiling[1], cz + ceiling[2]]}
+        position={ceiling}
         intensity={1.0}
         color="#fffaf2"
         shadow-mapSize={[2048, 2048]}
@@ -57,7 +44,7 @@ export function Lighting({ room }: { room: RoomId }) {
       <directionalLight
         castShadow
         target={sunTarget}
-        position={[cx + sun[0], sun[1], cz + sun[2]]}
+        position={sun}
         intensity={2.4}
         color="#ffeccc"
         shadow-mapSize={[2048, 2048]}
@@ -74,7 +61,7 @@ export function Lighting({ room }: { room: RoomId }) {
         Environment: what shiny surfaces reflect, and a soft fill light from every direction.
         Built from glowing panels ("lightformers") arranged like the inside of a room, so it
         needs no HDR image download: warm walls all round, a bright softbox overhead, cool
-        daylight on the window side (-z, where both rooms' windows are) and a warm wooden
+        daylight on the window side (-z, where every room's main window is) and a warm wooden
         floor below. Rendered once, at start-up.
       */}
       <Environment resolution={256} environmentIntensity={0.5}>

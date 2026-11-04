@@ -1,22 +1,21 @@
 import { Canvas } from '@react-three/fiber'
 import { CameraRig } from './CameraRig'
 import { Lighting } from './Lighting'
-import { Room } from './Room'
-import { BedroomShell, SharedWall } from './Bedroom'
+import { RoomShell } from './RoomShell'
 import { FurnitureLayer } from './FurnitureLayer'
 import { DevStats, PERF_ENABLED } from './DevStats'
 import { PostEffects } from './PostEffects'
-import { ROOM_IDS, ROOMS, type RoomId } from './house'
+import type { RoomId } from './house'
 import type { ViewMode } from './roomConfig'
-import type { HouseDesign } from '../state/design'
+import type { RoomDesign } from '../state/design'
 
 interface SceneProps {
   view: ViewMode
   resetKey: number
-  /** The room being edited: the camera frames it and only its furniture is clickable. */
-  activeRoom: RoomId
-  /** Both rooms' furniture and finishes; the whole house is always drawn. */
-  house: HouseDesign
+  /** The room on screen. Each room is its own scene: only this one is drawn. */
+  room: RoomId
+  /** That room's furniture and finishes. */
+  design: RoomDesign
   selectedId: string | null
   overlaps: Map<string, string[]>
   onSelect: (id: string | null) => void
@@ -24,10 +23,11 @@ interface SceneProps {
   onDragBoundary: () => void
 }
 
-const NO_OVERLAPS = new Map<string, string[]>()
+/** Every room is centred on the origin, so furniture positions are already world positions. */
+const ROOM_ORIGIN: [number, number] = [0, 0]
 
 /** The 3D canvas. Everything inside <Canvas> is Three.js, written as React components. */
-export function Scene({ view, resetKey, activeRoom, house, selectedId, overlaps, onSelect, onMove, onDragBoundary }: SceneProps) {
+export function Scene({ view, resetKey, room, design, selectedId, overlaps, onSelect, onMove, onDragBoundary }: SceneProps) {
   return (
     // `shadows` turns on shadow maps ("percentage" = PCF filtering, the smooth mode in current Three.js).
     // `dpr` keeps it sharp on high-DPI screens without going overboard.
@@ -37,35 +37,28 @@ export function Scene({ view, resetKey, activeRoom, house, selectedId, overlaps,
     // `flat` + `antialias: false`: tone mapping and antialiasing happen in PostEffects instead.
     <Canvas shadows="percentage" dpr={[1, 2]} frameloop="demand" flat gl={{ antialias: false }} onPointerMissed={() => onSelect(null)}>
       <color attach="background" args={['#ebe7e0']} />
-      <CameraRig view={view} resetKey={resetKey} room={activeRoom} />
-      <Lighting room={activeRoom} />
+      <CameraRig view={view} resetKey={resetKey} room={room} />
+      <Lighting room={room} />
       {PERF_ENABLED && <DevStats />}
 
-      {/* Living Room: floor, ceiling, walls, window and front door */}
-      <Room finishes={house.living.finishes} active={activeRoom === 'living'} />
-      {/* Wall between the rooms, with the connecting door */}
-      <SharedWall
-        livingWallColor={house.living.finishes.wallColor}
-        bedroomWallColor={house.bedroom.finishes.wallColor}
-        activeRoom={activeRoom}
-      />
-      {/* Bedroom: floor, ceiling, walls, curtained window, slat accent wall, carpet */}
-      <BedroomShell finishes={house.bedroom.finishes} active={activeRoom === 'bedroom'} />
-
-      {/* Movable furniture for each room, placed relative to that room's centre */}
-      {ROOM_IDS.map((room) => (
+      {/*
+        key={room}: switching rooms swaps the whole room out, so nothing from one room can
+        linger in another. Materials and reflection buffers are freed when a room is removed;
+        floor textures are cached, so coming back to a room is quick.
+      */}
+      <group key={room}>
+        <RoomShell room={room} finishes={design.finishes} />
         <FurnitureLayer
-          key={room}
-          items={house[room].items}
-          origin={ROOMS[room].center}
-          interactive={room === activeRoom}
-          selectedId={room === activeRoom ? selectedId : null}
-          overlaps={room === activeRoom ? overlaps : NO_OVERLAPS}
+          items={design.items}
+          origin={ROOM_ORIGIN}
+          interactive
+          selectedId={selectedId}
+          overlaps={overlaps}
           onSelect={onSelect}
           onMove={onMove}
           onDragBoundary={onDragBoundary}
         />
-      ))}
+      </group>
 
       <PostEffects view={view} />
     </Canvas>

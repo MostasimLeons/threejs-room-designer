@@ -4,7 +4,7 @@ import { deleteSave, exportDesign, importDesign, listSaves, saveDesign, type Sav
 
 interface DesignsDialogProps {
   open: boolean
-  /** Both rooms: saving and exporting always include the whole house. */
+  /** Every room: saving and exporting always include the whole house. */
   design: HouseDesign
   onClose: () => void
   /** Called with a house to restore (from a save or an imported file). */
@@ -128,7 +128,7 @@ export function DesignsDialog({ open, design, onClose, onLoad }: DesignsDialogPr
 
       <h3>File</h3>
       <p className="muted small">
-        Saves and files include both rooms. Export a .json file to back up or share a design, and import it on any computer.
+        Saves and files include all rooms. Export a .json file to back up or share a design, and import it on any computer.
       </p>
       <div className="file-row">
         <button className="ghost-button" onClick={() => exportDesign(design, name.trim() || 'room-design')}>

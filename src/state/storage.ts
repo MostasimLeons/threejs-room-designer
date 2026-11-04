@@ -11,13 +11,13 @@ import { downloadJson } from '../utils/download'
 const SAVES_KEY = 'room-designer:saves'
 const AUTOSAVE_KEY = 'room-designer:autosave'
 const FILE_FORMAT = 'room-designer'
-const FILE_VERSION = 2 // 2 = whole house (Living Room + Bedroom); version 1 files still import
+const FILE_VERSION = 3 // 3 = all five rooms; versions 1 (one room) and 2 (Living Room + Bedroom) still import
 
 export interface SavedDesign {
   id: string
   name: string
   savedAt: string // ISO date
-  /** Both rooms. Saves from before the Bedroom existed are upgraded when read. */
+  /** Every room. Older saves with fewer rooms are filled in with defaults when read. */
   design: HouseDesign
 }
 
@@ -79,7 +79,7 @@ export function deleteSave(id: string): SavedDesign[] {
 
 /**
  * The house from last time, so a page reload doesn't lose your work.
- * An autosave from before the Bedroom existed keeps its Living Room.
+ * An autosave from before the newer rooms existed keeps the rooms it has.
  */
 export function loadAutosave(): HouseDesign | null {
   return parseHouseDesign(readJson(AUTOSAVE_KEY))
@@ -89,7 +89,7 @@ export function writeAutosave(house: HouseDesign) {
   writeJson(AUTOSAVE_KEY, { rooms: house })
 }
 
-/** Downloads both rooms as one .json file. */
+/** Downloads every room as one .json file. */
 export function exportDesign(house: HouseDesign, name: string) {
   const file = { format: FILE_FORMAT, version: FILE_VERSION, name, exportedAt: new Date().toISOString(), rooms: house }
   downloadJson(

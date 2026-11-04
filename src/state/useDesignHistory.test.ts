@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { historyReducer, MAX_HISTORY, type HistoryAction, type HistoryState } from './useDesignHistory'
-import { DEFAULT_DESIGN, type RoomDesign } from './design'
-import { ROOMS } from '../scene/house'
+import {
+  createHouseHistory,
+  historyReducer,
+  houseReducer,
+  MAX_HISTORY,
+  type HistoryAction,
+  type HistoryState,
+  type HouseAction,
+  type HouseHistory,
+} from './useDesignHistory'
+import { DEFAULT_DESIGN, DEFAULT_HOUSE, type RoomDesign } from './design'
+import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'
 
 const bounds = ROOMS.living
 
@@ -106,5 +115,52 @@ describe('historyReducer', () => {
     const reset = run(moved, { type: 'reset', design: DEFAULT_DESIGN })
     expect(reset.present).toEqual(DEFAULT_DESIGN)
     expect(sofa(run(reset, { type: 'undo' })).position).toEqual([0, 0])
+  })
+})
+
+// ---------- Every room together ----------
+
+const bedBounds = ROOMS.bedroom
+const moveIn = (room: RoomId, id: string, position: [number, number], transient = false): HouseAction => ({
+  room,
+  action: { type: 'updateItem', id, changes: { position }, transient, bounds: ROOMS[room] },
+})
+const run2 = (state: HouseHistory, ...actions: HouseAction[]) => actions.reduce(houseReducer, state)
+const find = (state: HouseHistory, room: RoomId, id: string) => state[room].present.items.find((item) => item.id === id)!
+
+describe('houseReducer (one history per room)', () => {
+  it('a change in one room leaves every other room exactly as it was', () => {
+    const initial = createHouseHistory(DEFAULT_HOUSE)
+    const next = run2(initial, moveIn('bedroom', 'bed', [0, 0]))
+    expect(find(next, 'bedroom', 'bed').position).toEqual([0, 0])
+    for (const id of ROOM_IDS.filter((r) => r !== 'bedroom')) expect(next[id]).toBe(initial[id])
+  })
+
+  it('undo only affects its own room', () => {
+    let state = run2(createHouseHistory(DEFAULT_HOUSE), moveIn('living', 'sofa', [0, 0]), moveIn('bedroom', 'bed', [0, 0]))
+    state = run2(state, { room: 'living', action: { type: 'undo' } })
+    expect(find(state, 'living', 'sofa').position).toEqual(DEFAULT_HOUSE.living.items.find((i) => i.id === 'sofa')!.position)
+    expect(find(state, 'bedroom', 'bed').position).toEqual([0, 0])
+    expect(state.bedroom.past).toHaveLength(1)
+  })
+
+  it('keeps furniture inside the walls of the room it is in', () => {
+    const state = run2(createHouseHistory(DEFAULT_HOUSE), moveIn('bedroom', 'bed', [100, 0]))
+    expect(find(state, 'bedroom', 'bed').position[0]).toBeLessThanOrEqual(bedBounds.width / 2)
+  })
+
+  it('a drag left unfinished in one room does not block another', () => {
+    const state = run2(
+      createHouseHistory(DEFAULT_HOUSE),
+      moveIn('living', 'sofa', [0.5, 0], true),
+      moveIn('kitchen', 'kitchen-plant', [0, 0]),
+    )
+    expect(state.living.pending).not.toBeNull()
+    expect(state.kitchen.past).toHaveLength(1)
+  })
+
+  it('returns the same state object when nothing changes (no needless re-renders)', () => {
+    const initial = createHouseHistory(DEFAULT_HOUSE)
+    expect(houseReducer(initial, { room: 'dining', action: { type: 'undo' } })).toBe(initial)
   })
 })

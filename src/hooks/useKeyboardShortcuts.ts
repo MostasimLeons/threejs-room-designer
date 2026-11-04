@@ -12,6 +12,8 @@ interface ShortcutActions {
   /** Change the selected item live; `commit` records it later. */
   previewItem: (id: string, changes: ItemChanges) => void
   commit: () => void
+  /** Switch to the room at this position in the room bar (0 = first). */
+  selectRoom: (index: number) => void
 }
 
 const NUDGE = 0.05 // metres per arrow-key press
@@ -27,7 +29,8 @@ const ARROWS: Record<string, [number, number]> = {
 
 /**
  * Global keyboard shortcuts:
- * Ctrl+Z / Ctrl+Y undo/redo · Esc deselect · R / Shift+R rotate · arrows move (Shift = faster).
+ * Ctrl+Z / Ctrl+Y undo/redo · Esc deselect · R / Shift+R rotate · arrows move (Shift = faster)
+ * · 1–5 switch room.
  *
  * The listener is added once. It reads the latest values through a ref, so it
  * doesn't need to be removed and re-added on every render.
@@ -46,7 +49,7 @@ export function useKeyboardShortcuts(actions: ShortcutActions) {
       if (inInput && (target as HTMLInputElement).type !== 'range') return
       if (document.querySelector('dialog[open]')) return
 
-      const { selectedItem, undo, redo, deselect, updateItem, previewItem } = latest.current
+      const { selectedItem, undo, redo, deselect, updateItem, previewItem, selectRoom } = latest.current
       const ctrl = event.ctrlKey || event.metaKey
       const key = event.key.toLowerCase()
 
@@ -56,6 +59,8 @@ export function useKeyboardShortcuts(actions: ShortcutActions) {
       } else if (ctrl && (key === 'y' || (key === 'z' && event.shiftKey))) {
         event.preventDefault()
         redo()
+      } else if (/^[1-9]$/.test(event.key) && !ctrl && !event.altKey && !inInput) {
+        selectRoom(Number(event.key) - 1)
       } else if (key === 'escape') {
         deselect()
       } else if (key === 'r' && !ctrl && selectedItem) {

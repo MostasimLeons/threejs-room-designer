@@ -1,9 +1,9 @@
-import { useCallback, useReducer } from 'react'
+import { useMemo, useReducer } from 'react'
 import { clampToRoom, type FurnitureItem } from '../scene/furniture/catalog'
 import type { RoomFinishes } from '../scene/finishes'
 import { normalizeDegrees } from '../utils/math'
-import { ROOM } from '../scene/roomConfig'
-import { DEFAULT_DESIGN, type RoomDesign } from './design'
+import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'
+import { DEFAULT_HOUSE, type HouseDesign, type RoomDesign } from './design'
 
 export type ItemChanges = Partial<Pick<FurnitureItem, 'position' | 'rotation' | 'color' | 'variant'>>
 export type FinishChanges = Partial<RoomFinishes>
@@ -108,50 +108,103 @@ export function historyReducer(state: HistoryState, action: HistoryAction): Hist
   }
 }
 
-interface HistoryOptions {
-  /** The room's size: furniture is kept inside it. */
-  bounds: RoomBounds
-  /** What Reset returns to. */
-  defaultDesign: RoomDesign
+// ---------- All rooms together ----------
+
+/** One independent undo/redo history per room. */
+export type HouseHistory = Record<RoomId, HistoryState>
+
+export interface HouseAction {
+  room: RoomId
+  action: HistoryAction
 }
 
-/**
- * React hook that owns ONE room's design and its own undo/redo history.
- * Each room gets its own copy, so Undo in the Bedroom never changes the Living Room.
- */
-export function useDesignHistory(
-  getInitialDesign: () => RoomDesign,
-  { bounds, defaultDesign }: HistoryOptions = { bounds: ROOM, defaultDesign: DEFAULT_DESIGN },
-) {
-  // The third argument runs `getInitialDesign` only once, on the first render.
-  const [state, dispatch] = useReducer(historyReducer, getInitialDesign, (getDesign) => ({
-    past: [],
-    present: getDesign(),
-    future: [],
-    pending: null,
-  }))
+export function createHouseHistory(house: HouseDesign): HouseHistory {
+  return Object.fromEntries(
+    ROOM_IDS.map((id): [RoomId, HistoryState] => [id, { past: [], present: house[id], future: [], pending: null }]),
+  ) as HouseHistory
+}
 
-  return {
-    design: state.present,
-    canUndo: state.past.length > 0 || state.pending !== null,
-    canRedo: state.future.length > 0,
-    /** Change an item and record one undo step (button clicks, swatches). */
-    updateItem: useCallback(
-      (id: string, changes: ItemChanges) => dispatch({ type: 'updateItem', id, changes, transient: false, bounds }),
-      [bounds],
-    ),
-    /** Change an item live without recording yet (dragging, sliders). Call `commit` when done. */
-    previewItem: useCallback(
-      (id: string, changes: ItemChanges) => dispatch({ type: 'updateItem', id, changes, transient: true, bounds }),
-      [bounds],
-    ),
-    updateFinishes: useCallback((changes: FinishChanges) => dispatch({ type: 'updateFinishes', changes, transient: false }), []),
-    previewFinishes: useCallback((changes: FinishChanges) => dispatch({ type: 'updateFinishes', changes, transient: true }), []),
-    /** Replace the whole design (restoring a save). Can be undone. */
-    load: useCallback((design: RoomDesign) => dispatch({ type: 'load', design }), []),
-    commit: useCallback(() => dispatch({ type: 'commit' }), []),
-    undo: useCallback(() => dispatch({ type: 'undo' }), []),
-    redo: useCallback(() => dispatch({ type: 'redo' }), []),
-    reset: useCallback(() => dispatch({ type: 'reset', design: defaultDesign }), [defaultDesign]),
+/** Sends an action to one room's history. The other rooms are not touched at all. */
+export function houseReducer(state: HouseHistory, { room, action }: HouseAction): HouseHistory {
+  const next = historyReducer(state[room], action)
+  return next === state[room] ? state : { ...state, [room]: next }
+}
+
+/** Everything the toolbar, panels and shortcuts need for the room you're editing. */
+export interface RoomHistory {
+  design: RoomDesign
+  canUndo: boolean
+  canRedo: boolean
+  /** Change an item and record one undo step (button clicks, swatches). */
+  updateItem: (id: string, changes: ItemChanges) => void
+  /** Change an item live without recording yet (dragging, sliders). Call `commit` when done. */
+  previewItem: (id: string, changes: ItemChanges) => void
+  updateFinishes: (changes: FinishChanges) => void
+  previewFinishes: (changes: FinishChanges) => void
+  /** Replace the whole design (restoring a save). Can be undone. */
+  load: (design: RoomDesign) => void
+  commit: () => void
+  undo: () => void
+  redo: () => void
+  /** Back to the room's starting design. Can be undone. */
+  reset: () => void
+}
+
+type RoomActions = Omit<RoomHistory, 'design' | 'canUndo' | 'canRedo'>
+
+/**
+ * React hook that owns every room's design and its own undo/redo history.
+ * Undo in the Bedroom never changes the Kitchen, and each room keeps its
+ * furniture, finishes and history while you look at another one.
+ */
+export function useHouseHistory(getInitialHouse: () => HouseDesign) {
+  // The third argument runs `getInitialHouse` only once, on the first render.
+  const [state, dispatch] = useReducer(houseReducer, getInitialHouse, (get) => createHouseHistory(get()))
+
+  // Stable functions per room (they never change), so components using them don't re-render needlessly.
+  const actions = useMemo(
+    () =>
+      Object.fromEntries(
+        ROOM_IDS.map((room): [RoomId, RoomActions] => {
+          const bounds = ROOMS[room]
+          const send = (action: HistoryAction) => dispatch({ room, action })
+          return [
+            room,
+            {
+              updateItem: (id, changes) => send({ type: 'updateItem', id, changes, transient: false, bounds }),
+              previewItem: (id, changes) => send({ type: 'updateItem', id, changes, transient: true, bounds }),
+              updateFinishes: (changes) => send({ type: 'updateFinishes', changes, transient: false }),
+              previewFinishes: (changes) => send({ type: 'updateFinishes', changes, transient: true }),
+              load: (design) => send({ type: 'load', design }),
+              commit: () => send({ type: 'commit' }),
+              undo: () => send({ type: 'undo' }),
+              redo: () => send({ type: 'redo' }),
+              reset: () => send({ type: 'reset', design: DEFAULT_HOUSE[room] }),
+            },
+          ]
+        }),
+      ) as Record<RoomId, RoomActions>,
+    [],
+  )
+
+  /** What every room looks like right now: this is what gets autosaved and saved. */
+  const house = useMemo(() => Object.fromEntries(ROOM_IDS.map((id) => [id, state[id].present])) as HouseDesign, [state])
+
+  /** The history and actions of one room. */
+  function forRoom(room: RoomId): RoomHistory {
+    const history = state[room]
+    return {
+      design: history.present,
+      canUndo: history.past.length > 0 || history.pending !== null,
+      canRedo: history.future.length > 0,
+      ...actions[room],
+    }
   }
+
+  /** Loads a saved house: every room is replaced, and each room can undo it separately. */
+  function loadHouse(next: HouseDesign) {
+    for (const id of ROOM_IDS) actions[id].load(next[id])
+  }
+
+  return { house, forRoom, loadHouse }
 }

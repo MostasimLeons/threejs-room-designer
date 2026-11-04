@@ -1,6 +1,6 @@
 import { ROOM } from './roomConfig'
 import { materials } from './materials'
-import { Cutaway } from './Room'
+import { Cutaway } from './Cutaway'
 
 const H = ROOM.height
 const COVE_INSET = 0.3 // how far the glowing cove line sits in from the walls

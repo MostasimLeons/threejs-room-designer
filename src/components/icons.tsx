@@ -47,3 +47,43 @@ export const PlanIcon = () => (
     <path d="M4 4h16v16H4zM4 11h7V4M11 20v-5h9" />
   </Icon>
 )
+
+// ---------- Room icons (room bar) ----------
+
+export const LivingRoomIcon = () => (
+  <Icon>
+    <path d="M5 11V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2" />
+    <path d="M3 13a1.5 1.5 0 0 1 3 0v1.5h12V13a1.5 1.5 0 0 1 3 0v3.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" />
+    <path d="M6 17.5V19M18 17.5V19" />
+  </Icon>
+)
+
+export const BedroomIcon = () => (
+  <Icon>
+    <path d="M3 6v13M3 15h18M21 19v-5.5a2.5 2.5 0 0 0-2.5-2.5H11v4" />
+    <path d="M5 15v-2.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V15" />
+  </Icon>
+)
+
+export const DiningRoomIcon = () => (
+  <Icon>
+    <path d="M8 11h8M10 11v8M14 11v8" />
+    <path d="M4 6v13M4 14h3v5M20 6v13M20 14h-3v5" />
+  </Icon>
+)
+
+export const KitchenIcon = () => (
+  <Icon>
+    <path d="M5 11h14v5a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3Z" />
+    <path d="M3 11h18M10 8h4M12 8v3" />
+    <path d="M9 5c0-1 1-1 1-2M14 5c0-1 1-1 1-2" />
+  </Icon>
+)
+
+export const BathroomIcon = () => (
+  <Icon>
+    <path d="M3 12h18v2a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5Z" />
+    <path d="M6 12V6.5A2.5 2.5 0 0 1 8.5 4v0A2.5 2.5 0 0 1 11 6.5" />
+    <path d="M7 19l-1 2M17 19l1 2" />
+  </Icon>
+)

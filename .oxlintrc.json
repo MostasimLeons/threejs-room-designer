@@ -15,6 +15,7 @@
     "react/refs": "off",
     "react/immutability": "off",
     "react/exhaustive-effect-dependencies": "off",
+    "react/preserve-manual-memoization": "off",
     "jsx-a11y/prefer-tag-over-role": "off",
     "typescript/no-explicit-any": "warn",
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }]
