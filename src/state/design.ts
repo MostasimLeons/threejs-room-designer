@@ -1,4 +1,12 @@
-import { clampToRoom, DEFAULT_BEDROOM_LAYOUT, DEFAULT_LAYOUT, FURNITURE_INFO, getVariant, type FurnitureItem, type FurnitureType } from '../scene/furniture/catalog'
+import {
+  clampToRoom,
+  DEFAULT_BEDROOM_LAYOUT,
+  DEFAULT_LAYOUT,
+  FURNITURE_INFO,
+  getVariant,
+  type FurnitureItem,
+  type FurnitureType,
+} from '../scene/furniture/catalog'
 import { normalizeDegrees } from '../utils/math'
 import { DEFAULT_FINISHES, FLOOR_OPTIONS, type FloorId, type RoomFinishes } from '../scene/finishes'
 import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'

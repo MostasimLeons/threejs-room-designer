@@ -25,7 +25,14 @@ export function DressingTable({ color, variant }: ModelProps) {
   return (
     <group>
       {legs.map(([x, z], i) => (
-        <Cylinder key={i} radiusTop={0.022} radiusBottom={0.014} height={topY - 0.03} position={[x, (topY - 0.03) / 2, z]} material={wood} />
+        <Cylinder
+          key={i}
+          radiusTop={0.022}
+          radiusBottom={0.014}
+          height={topY - 0.03}
+          position={[x, (topY - 0.03) / 2, z]}
+          material={wood}
+        />
       ))}
       <Block size={[width, 0.035, tableD]} radius={0.01} position={[0, topY - 0.0175, tableZ]} material={wood} />
       {/* Drawer under the top */}
@@ -51,7 +58,13 @@ export function DressingTable({ color, variant }: ModelProps) {
       )}
 
       {/* Small items: a perfume bottle and a tray */}
-      <Cylinder radiusTop={0.02} radiusBottom={0.03} height={0.11} position={[width / 2 - 0.18, topY + 0.055, tableZ - 0.05]} material={materials.glass} />
+      <Cylinder
+        radiusTop={0.02}
+        radiusBottom={0.03}
+        height={0.11}
+        position={[width / 2 - 0.18, topY + 0.055, tableZ - 0.05]}
+        material={materials.glass}
+      />
       <Block size={[0.24, 0.015, 0.14]} position={[-width / 2 + 0.2, topY + 0.008, tableZ]} material={materials.brass} />
 
       {/* Upholstered stool tucked in front */}

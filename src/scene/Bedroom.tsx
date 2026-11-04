@@ -86,12 +86,20 @@ function SlatAccentWall() {
 
   return (
     <group>
-      <Block size={[to - from, height, 0.015]} position={[(from + to) / 2, height / 2, -HALF_D + 0.0075]} material={materials.slatBacking} />
+      <Block
+        size={[to - from, height, 0.015]}
+        position={[(from + to) / 2, height / 2, -HALF_D + 0.0075]}
+        material={materials.slatBacking}
+      />
       <instancedMesh ref={ref} args={[undefined, undefined, count]} material={materials.woodLight} castShadow receiveShadow>
         <boxGeometry args={[slatW, height, 0.03]} />
       </instancedMesh>
       {/* Oak cap along the top */}
-      <Block size={[to - from + 0.02, 0.03, 0.06]} position={[(from + to) / 2, height + 0.015, -HALF_D + 0.03]} material={materials.woodLight} />
+      <Block
+        size={[to - from + 0.02, 0.03, 0.06]}
+        position={[(from + to) / 2, height + 0.015, -HALF_D + 0.03]}
+        material={materials.woodLight}
+      />
     </group>
   )
 }
@@ -139,13 +147,21 @@ export function BedroomShell({ finishes }: BedroomShellProps) {
         />
         <CurtainedWindow />
         <SlatAccentWall />
-        <Block size={[BED.width, SKIRTING_H, SKIRTING_T]} position={[0, SKIRTING_H / 2, -HALF_D + SKIRTING_T / 2]} material={materials.trim} />
+        <Block
+          size={[BED.width, SKIRTING_H, SKIRTING_T]}
+          position={[0, SKIRTING_H / 2, -HALF_D + SKIRTING_T / 2]}
+          material={materials.trim}
+        />
       </Cutaway>
 
       {/* Right (outside) wall */}
       <Cutaway isBehind={(camera) => camera.position.x > CX + HALF_W}>
         <Wall length={BED.depth} material={wallMaterial} position={[HALF_W + T / 2, 0, 0]} rotation={[0, Math.PI / 2, 0]} />
-        <Block size={[SKIRTING_T, SKIRTING_H, BED.depth]} position={[HALF_W - SKIRTING_T / 2, SKIRTING_H / 2, 0]} material={materials.trim} />
+        <Block
+          size={[SKIRTING_T, SKIRTING_H, BED.depth]}
+          position={[HALF_W - SKIRTING_T / 2, SKIRTING_H / 2, 0]}
+          material={materials.trim}
+        />
       </Cutaway>
     </group>
   )
@@ -180,23 +196,46 @@ export function SharedWall({ livingWallColor, bedroomWallColor, activeRoom }: Sh
   const livingFace = x - T / 2
   const bedroomFace = x + T / 2
 
-  const isBehind = (camera: THREE.Camera) =>
-    activeRoom === 'living' ? camera.position.x > livingFace : camera.position.x < bedroomFace
+  const isBehind = (camera: THREE.Camera) => (activeRoom === 'living' ? camera.position.x > livingFace : camera.position.x < bedroomFace)
 
   return (
     <Cutaway isBehind={isBehind}>
-      <Wall length={length} thickness={half} opening={opening} material={livingPaint} position={[x - half / 2, 0, zCenter]} rotation={[0, Math.PI / 2, 0]} />
-      <Wall length={length} thickness={half} opening={opening} material={bedroomPaint} position={[x + half / 2, 0, zCenter]} rotation={[0, Math.PI / 2, 0]} />
+      <Wall
+        length={length}
+        thickness={half}
+        opening={opening}
+        material={livingPaint}
+        position={[x - half / 2, 0, zCenter]}
+        rotation={[0, Math.PI / 2, 0]}
+      />
+      <Wall
+        length={length}
+        thickness={half}
+        opening={opening}
+        material={bedroomPaint}
+        position={[x + half / 2, 0, zCenter]}
+        rotation={[0, Math.PI / 2, 0]}
+      />
 
       {/* Connecting door, standing open into the bedroom */}
-      <Door width={CONNECTING_DOOR.width} height={CONNECTING_DOOR.top} openAngle={95} position={[x, 0, CONNECTING_DOOR.center]} rotation={[0, Math.PI / 2, 0]} />
+      <Door
+        width={CONNECTING_DOOR.width}
+        height={CONNECTING_DOOR.top}
+        openAngle={95}
+        position={[x, 0, CONNECTING_DOOR.center]}
+        rotation={[0, Math.PI / 2, 0]}
+      />
       {/* Oak threshold strip so there's no gap in the floor under the doorway */}
       <Block size={[T + 0.02, 0.012, CONNECTING_DOOR.width]} position={[x, 0.006, CONNECTING_DOOR.center]} material={materials.woodLight} />
 
       {[livingFace - SKIRTING_T / 2, bedroomFace + SKIRTING_T / 2].map((sx) => (
         <group key={sx}>
           <Block size={[SKIRTING_T, SKIRTING_H, backLen]} position={[sx, SKIRTING_H / 2, zStart + backLen / 2]} material={materials.trim} />
-          <Block size={[SKIRTING_T, SKIRTING_H, frontLen]} position={[sx, SKIRTING_H / 2, doorEnd + frontLen / 2]} material={materials.trim} />
+          <Block
+            size={[SKIRTING_T, SKIRTING_H, frontLen]}
+            position={[sx, SKIRTING_H / 2, doorEnd + frontLen / 2]}
+            material={materials.trim}
+          />
         </group>
       ))}
     </Cutaway>

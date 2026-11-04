@@ -19,8 +19,19 @@ export function BedsideTable({ color, variant }: ModelProps) {
 
   return (
     <group>
-      {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz], i) => (
-        <Cylinder key={i} radiusTop={0.012} height={legH} position={[sx * (w / 2 - 0.04), legH / 2, sz * (d / 2 - 0.04)]} material={materials.brass} />
+      {[
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+        [1, 1],
+      ].map(([sx, sz], i) => (
+        <Cylinder
+          key={i}
+          radiusTop={0.012}
+          height={legH}
+          position={[sx * (w / 2 - 0.04), legH / 2, sz * (d / 2 - 0.04)]}
+          material={materials.brass}
+        />
       ))}
       <Block size={[w, bodyH, d]} radius={0.015} position={[0, legH + bodyH / 2, 0]} material={wood} />
 

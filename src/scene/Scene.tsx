@@ -42,7 +42,11 @@ export function Scene({ view, resetKey, activeRoom, house, selectedId, overlaps,
       {/* Living Room: floor, walls, window and front door (unchanged) */}
       <Room finishes={house.living.finishes} />
       {/* Wall between the rooms, with the connecting door */}
-      <SharedWall livingWallColor={house.living.finishes.wallColor} bedroomWallColor={house.bedroom.finishes.wallColor} activeRoom={activeRoom} />
+      <SharedWall
+        livingWallColor={house.living.finishes.wallColor}
+        bedroomWallColor={house.bedroom.finishes.wallColor}
+        activeRoom={activeRoom}
+      />
       {/* Bedroom: floor, walls, curtained window, slat accent wall, carpet */}
       <BedroomShell finishes={house.bedroom.finishes} />
 

@@ -34,7 +34,13 @@ export function Door({ width: w, height: h, openAngle = 0, ...props }: DoorProps
           <Block size={[w - 0.24, 0.7, 0.012]} position={[0, 0.55, panelZ + 0.026]} material={materials.door} />
 
           {/* Handle: round rosette + lever */}
-          <Cylinder radiusTop={0.028} height={0.03} rotation={[Math.PI / 2, 0, 0]} position={[w / 2 - 0.1, 1.0, panelZ + 0.035]} material={materials.brass} />
+          <Cylinder
+            radiusTop={0.028}
+            height={0.03}
+            rotation={[Math.PI / 2, 0, 0]}
+            position={[w / 2 - 0.1, 1.0, panelZ + 0.035]}
+            material={materials.brass}
+          />
           <Block size={[0.12, 0.018, 0.018]} position={[w / 2 - 0.15, 1.0, panelZ + 0.06]} material={materials.brass} />
         </group>
       </group>

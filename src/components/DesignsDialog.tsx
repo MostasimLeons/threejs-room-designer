@@ -96,7 +96,11 @@ export function DesignsDialog({ open, design, onClose, onLoad }: DesignsDialogPr
         </button>
       </form>
 
-      {message && <p className={`dialog-message ${message.error ? 'error' : ''}`} role="status">{message.text}</p>}
+      {message && (
+        <p className={`dialog-message ${message.error ? 'error' : ''}`} role="status">
+          {message.text}
+        </p>
+      )}
 
       <h3>Saved in this browser</h3>
       {saves.length === 0 ? (
@@ -123,7 +127,9 @@ export function DesignsDialog({ open, design, onClose, onLoad }: DesignsDialogPr
       )}
 
       <h3>File</h3>
-      <p className="muted small">Saves and files include both rooms. Export a .json file to back up or share a design, and import it on any computer.</p>
+      <p className="muted small">
+        Saves and files include both rooms. Export a .json file to back up or share a design, and import it on any computer.
+      </p>
       <div className="file-row">
         <button className="ghost-button" onClick={() => exportDesign(design, name.trim() || 'room-design')}>
           Export file

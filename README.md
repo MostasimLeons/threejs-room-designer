@@ -11,6 +11,7 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Every 
   - **Bedroom** (5 × 4 m, modern luxury): king bed with upholstered headboard, two bedside tables with lamps, sliding wardrobe, dressing table with mirror, accent chair, two plants, curtained window, oak slat accent wall and cream carpet.
 
   The rooms share a wall with an open connecting door. Use the **Living Room | Bedroom** switch above the 3D view to choose which room you see and edit. Each room has its own furniture, finishes and undo history.
+
 - **Select** furniture by clicking it in the 3D view or in the Objects list.
 - **Move** furniture by:
   - dragging it across the floor
@@ -18,6 +19,7 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Every 
   - using the arrow keys
 
   It always stays inside the walls.
+
 - **Rotate** with the 45° buttons, the slider, or `R` / `Shift+R`.
 - **Overlap warnings:** pieces that overlap get a red outline, a ⚠ in the Objects list, and a message in the panel.
 - **Customise** each piece:
@@ -59,61 +61,61 @@ Open **http://localhost:5173** in your browser. Press `Ctrl + C` in the terminal
 
 ### Scripts
 
-| Command             | What it does                                                            |
-| ------------------- | ----------------------------------------------------------------------- |
-| `npm run dev`       | Starts the development server with instant reload                       |
-| `npm run typecheck` | Checks the TypeScript types without building                            |
-| `npm run build`     | Type-checks, then creates an optimised production build in `dist/`      |
-| `npm run preview`   | Serves the `dist/` build locally so you can test it                     |
+| Command             | What it does                                                             |
+| ------------------- | ------------------------------------------------------------------------ |
+| `npm run dev`       | Starts the development server with instant reload                        |
+| `npm run typecheck` | Checks the TypeScript types without building                             |
+| `npm run build`     | Type-checks, then creates an optimised production build in `dist/`       |
+| `npm run preview`   | Serves the `dist/` build locally so you can test it                      |
 | `npm test`          | Runs the unit tests once (`npm run test:watch` re-runs them as you edit) |
-| `npm run lint`      | Checks the code for likely bugs with Oxlint                             |
-| `npm run format`    | Formats all files with Prettier (`format:check` only reports)           |
-| `npm run check`     | Lint + format check + type check + tests. Run this before committing.   |
+| `npm run lint`      | Checks the code for likely bugs with Oxlint                              |
+| `npm run format`    | Formats all files with Prettier (`format:check` only reports)            |
+| `npm run check`     | Lint + format check + type check + tests. Run this before committing.    |
 
 ### Checking performance
 
 Add `?perf` to the address, for example **http://localhost:5173/?perf**. A small readout appears in the bottom-left corner of the 3D view:
 
-| Line | Meaning |
-| --- | --- |
-| frames | Frames drawn so far. The view only redraws when something changes, so this stands still while you're idle. |
-| draw calls / triangles | GPU work for the last frame, including shadow passes. Lower is faster. |
-| geometries / textures / shaders | What's loaded on the GPU. These should not keep growing while you edit. |
+| Line                            | Meaning                                                                                                    |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| frames                          | Frames drawn so far. The view only redraws when something changes, so this stands still while you're idle. |
+| draw calls / triangles          | GPU work for the last frame, including shadow passes. Lower is faster.                                     |
+| geometries / textures / shaders | What's loaded on the GPU. These should not keep growing while you edit.                                    |
 
 It also works with `npm run preview`, which gives more realistic numbers than the dev server. Baseline on 2026-11-04 (Living Room, default layout): about 466 draw calls and 166k triangles per frame. Roughly 80% of that is the two shadow passes.
 
 ## Dependencies
 
-| Package                       | Purpose                                                    |
-| ----------------------------- | ---------------------------------------------------------- |
-| `react`, `react-dom`          | User interface                                             |
-| `three`                       | 3D engine (WebGL)                                          |
-| `@react-three/fiber`          | Lets you write Three.js scenes as React components         |
-| `@react-three/drei`           | Ready-made helpers: camera controls, rounded boxes, lines, lighting environment |
-| `vite`, `@vitejs/plugin-react` | Development server and build tool (dev only)              |
-| `typescript`, `@types/*`      | Type checking (dev only)                                   |
-| `vitest`                      | Unit tests (dev only)                                      |
-| `oxlint`                      | Linter (dev only). Used instead of ESLint because ESLint's TypeScript parser doesn't support TypeScript 7 yet. |
-| `prettier`                    | Code formatter (dev only)                                  |
+| Package                        | Purpose                                                                                                        |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `react`, `react-dom`           | User interface                                                                                                 |
+| `three`                        | 3D engine (WebGL)                                                                                              |
+| `@react-three/fiber`           | Lets you write Three.js scenes as React components                                                             |
+| `@react-three/drei`            | Ready-made helpers: camera controls, rounded boxes, lines, lighting environment                                |
+| `vite`, `@vitejs/plugin-react` | Development server and build tool (dev only)                                                                   |
+| `typescript`, `@types/*`       | Type checking (dev only)                                                                                       |
+| `vitest`                       | Unit tests (dev only)                                                                                          |
+| `oxlint`                       | Linter (dev only). Used instead of ESLint because ESLint's TypeScript parser doesn't support TypeScript 7 yet. |
+| `prettier`                     | Code formatter (dev only)                                                                                      |
 
 Exact versions are in `package.json`. `package-lock.json` pins them so every install is identical.
 
 ## How to use it
 
-| Action            | How                                                                   |
-| ----------------- | --------------------------------------------------------------------- |
-| Rotate camera     | Left-drag empty space (Perspective view)                              |
-| Pan               | Right-drag (Perspective) or drag empty space (Plan)                   |
-| Zoom              | Mouse wheel                                                           |
-| Select            | Click a piece, or its row in **Objects**                              |
-| Deselect          | Click empty floor, press `Esc`, or click ✕                            |
-| Move              | Drag the piece, use the Position sliders, or arrow keys: 5 cm per press, 25 cm with `Shift` |
-| Rotate            | ⟲ / ⟳ buttons, slider, or `R` / `Shift+R`                             |
-| Furniture options | Size / Style / Shape list in the right panel                          |
-| Walls and floor   | Deselect everything (or click **Finishes** on the left), then use the **Room** panel |
-| Undo / Redo       | Toolbar buttons, `Ctrl+Z` / `Ctrl+Y` (`Ctrl+Shift+Z` also redoes)     |
+| Action            | How                                                                                                       |
+| ----------------- | --------------------------------------------------------------------------------------------------------- |
+| Rotate camera     | Left-drag empty space (Perspective view)                                                                  |
+| Pan               | Right-drag (Perspective) or drag empty space (Plan)                                                       |
+| Zoom              | Mouse wheel                                                                                               |
+| Select            | Click a piece, or its row in **Objects**                                                                  |
+| Deselect          | Click empty floor, press `Esc`, or click ✕                                                                |
+| Move              | Drag the piece, use the Position sliders, or arrow keys: 5 cm per press, 25 cm with `Shift`               |
+| Rotate            | ⟲ / ⟳ buttons, slider, or `R` / `Shift+R`                                                                 |
+| Furniture options | Size / Style / Shape list in the right panel                                                              |
+| Walls and floor   | Deselect everything (or click **Finishes** on the left), then use the **Room** panel                      |
+| Undo / Redo       | Toolbar buttons, `Ctrl+Z` / `Ctrl+Y` (`Ctrl+Shift+Z` also redoes)                                         |
 | Reset             | **Reset** puts furniture and finishes back to the start (undoable). **Reset view** moves only the camera. |
-| Save / Load       | **Save / Load** opens the Designs window                              |
+| Save / Load       | **Save / Load** opens the Designs window                                                                  |
 
 A whole drag, slider movement or held-down arrow key counts as **one** undo step.
 
@@ -182,12 +184,12 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 
 ## Troubleshooting
 
-| Problem | Fix |
-| --- | --- |
-| "The 3D view couldn't start" message | Your browser or GPU may not support WebGL. Update the browser or enable hardware acceleration. |
-| `npm run dev` fails with a Node version error | Install Node 20.19+ or 22.12+. |
-| Port 5173 is busy | Vite automatically picks the next free port. Use the URL it prints. |
-| Saved designs disappeared | They live in the browser's storage, so clearing site data removes them. Keep exported `.json` files as backups. |
+| Problem                                       | Fix                                                                                                             |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| "The 3D view couldn't start" message          | Your browser or GPU may not support WebGL. Update the browser or enable hardware acceleration.                  |
+| `npm run dev` fails with a Node version error | Install Node 20.19+ or 22.12+.                                                                                  |
+| Port 5173 is busy                             | Vite automatically picks the next free port. Use the URL it prints.                                             |
+| Saved designs disappeared                     | They live in the browser's storage, so clearing site data removes them. Keep exported `.json` files as backups. |
 
 **Known harmless warning:** the browser console shows `THREE.Clock: This module has been deprecated`. It comes from inside React Three Fiber 9.8.2, the latest version at the time of writing, not from this project's code. It goes away when the library is updated.
 

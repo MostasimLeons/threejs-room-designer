@@ -136,9 +136,15 @@ export function useDesignHistory(
     canUndo: state.past.length > 0 || state.pending !== null,
     canRedo: state.future.length > 0,
     /** Change an item and record one undo step (button clicks, swatches). */
-    updateItem: useCallback((id: string, changes: ItemChanges) => dispatch({ type: 'updateItem', id, changes, transient: false, bounds }), [bounds]),
+    updateItem: useCallback(
+      (id: string, changes: ItemChanges) => dispatch({ type: 'updateItem', id, changes, transient: false, bounds }),
+      [bounds],
+    ),
     /** Change an item live without recording yet (dragging, sliders). Call `commit` when done. */
-    previewItem: useCallback((id: string, changes: ItemChanges) => dispatch({ type: 'updateItem', id, changes, transient: true, bounds }), [bounds]),
+    previewItem: useCallback(
+      (id: string, changes: ItemChanges) => dispatch({ type: 'updateItem', id, changes, transient: true, bounds }),
+      [bounds],
+    ),
     updateFinishes: useCallback((changes: FinishChanges) => dispatch({ type: 'updateFinishes', changes, transient: false }), []),
     previewFinishes: useCallback((changes: FinishChanges) => dispatch({ type: 'updateFinishes', changes, transient: true }), []),
     /** Replace the whole design (restoring a save). Can be undone. */

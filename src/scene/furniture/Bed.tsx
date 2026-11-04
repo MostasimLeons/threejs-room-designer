@@ -28,14 +28,36 @@ export function Bed({ color, variant }: ModelProps) {
       {/* Mattress */}
       <Block size={[mattressW, 0.22, frameD - 0.08]} radius={0.05} position={[0, 0.45, frameZ]} material={materials.linen} />
       {/* Duvet over the front two-thirds, and a sand throw across the foot */}
-      <Block size={[mattressW + 0.06, 0.07, frameD * 0.68]} radius={0.03} position={[0, 0.58, frameZ + frameD * 0.15]} material={materials.linen} />
-      <Block size={[mattressW + 0.1, 0.075, 0.5]} radius={0.03} position={[0, 0.6, frameZ + frameD / 2 - 0.33]} material={materials.fabricSand} />
+      <Block
+        size={[mattressW + 0.06, 0.07, frameD * 0.68]}
+        radius={0.03}
+        position={[0, 0.58, frameZ + frameD * 0.15]}
+        material={materials.linen}
+      />
+      <Block
+        size={[mattressW + 0.1, 0.075, 0.5]}
+        radius={0.03}
+        position={[0, 0.6, frameZ + frameD / 2 - 0.33]}
+        material={materials.fabricSand}
+      />
 
       {/* Pillows: two sleeping pillows and two smaller accent cushions */}
       {[-1, 1].map((side) => (
         <group key={side}>
-          <Block size={[mattressW / 2 - 0.1, 0.17, 0.42]} radius={0.07} position={[side * (mattressW / 4), 0.64, back + 0.42]} rotation={[-0.35, 0, 0]} material={materials.linen} />
-          <Block size={[0.42, 0.3, 0.12]} radius={0.06} position={[side * (mattressW / 4 - 0.05), 0.72, back + 0.6]} rotation={[-0.3, 0, side * 0.08]} material={materials.fabricSand} />
+          <Block
+            size={[mattressW / 2 - 0.1, 0.17, 0.42]}
+            radius={0.07}
+            position={[side * (mattressW / 4), 0.64, back + 0.42]}
+            rotation={[-0.35, 0, 0]}
+            material={materials.linen}
+          />
+          <Block
+            size={[0.42, 0.3, 0.12]}
+            radius={0.06}
+            position={[side * (mattressW / 4 - 0.05), 0.72, back + 0.6]}
+            rotation={[-0.3, 0, side * 0.08]}
+            material={materials.fabricSand}
+          />
         </group>
       ))}
 

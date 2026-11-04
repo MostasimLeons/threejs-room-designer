@@ -89,9 +89,12 @@ function drawTiles(ctx: CanvasRenderingContext2D, rand: () => number) {
         ctx.beginPath()
         ctx.moveTo(col * tile + rand() * tile, row * tile)
         ctx.bezierCurveTo(
-          col * tile + rand() * tile, row * tile + tile * 0.3,
-          col * tile + rand() * tile, row * tile + tile * 0.7,
-          col * tile + rand() * tile, row * tile + tile,
+          col * tile + rand() * tile,
+          row * tile + tile * 0.3,
+          col * tile + rand() * tile,
+          row * tile + tile * 0.7,
+          col * tile + rand() * tile,
+          row * tile + tile,
         )
         ctx.stroke()
       }

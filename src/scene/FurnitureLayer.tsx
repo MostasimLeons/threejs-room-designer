@@ -40,7 +40,13 @@ function SelectionOutline({ footprint, faint, color }: OutlineProps) {
   return (
     <group position={[0, 0.02, 0]}>
       <Line
-        points={[[-w, 0, -d], [w, 0, -d], [w, 0, d], [-w, 0, d], [-w, 0, -d]]}
+        points={[
+          [-w, 0, -d],
+          [w, 0, -d],
+          [w, 0, d],
+          [-w, 0, d],
+          [-w, 0, -d],
+        ]}
         color={color}
         lineWidth={faint ? 1.5 : 2.5}
         transparent
@@ -63,7 +69,16 @@ function setCameraControlsEnabled(get: RootState['get'], enabled: boolean) {
 }
 
 /** Renders all furniture and handles clicking (select) and dragging (move). */
-export function FurnitureLayer({ items, origin, interactive, selectedId, overlaps, onSelect, onMove, onDragBoundary }: FurnitureLayerProps) {
+export function FurnitureLayer({
+  items,
+  origin,
+  interactive,
+  selectedId,
+  overlaps,
+  onSelect,
+  onMove,
+  onDragBoundary,
+}: FurnitureLayerProps) {
   const gl = useThree((state) => state.gl)
   const get = useThree((state) => state.get)
   const [hoveredId, setHoveredId] = useState<string | null>(null)

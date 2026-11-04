@@ -18,7 +18,15 @@ import { AccentChair } from './AccentChair'
  * Moving or rotating happens on the parent group, so dragging one piece no
  * longer re-builds every model in the room on each mouse move.
  */
-export const FurnitureModel = memo(function FurnitureModel({ type, variant, color }: { type: FurnitureType; variant: string; color: string }) {
+export const FurnitureModel = memo(function FurnitureModel({
+  type,
+  variant,
+  color,
+}: {
+  type: FurnitureType
+  variant: string
+  color: string
+}) {
   switch (type) {
     case 'sofa':
       return <Sofa color={color} variant={variant} />

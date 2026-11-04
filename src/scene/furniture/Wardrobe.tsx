@@ -22,7 +22,11 @@ export function Wardrobe({ color, variant }: ModelProps) {
     <group>
       <Block size={[width - 0.06, plinth, depth - 0.06]} position={[0, plinth / 2, -0.02]} material={materials.slatBacking} />
       {/* Oak carcass */}
-      <Block size={[width, height - plinth, depth - 0.05]} position={[0, plinth + (height - plinth) / 2, -0.025]} material={materials.woodLight} />
+      <Block
+        size={[width, height - plinth, depth - 0.05]}
+        position={[0, plinth + (height - plinth) / 2, -0.025]}
+        material={materials.woodLight}
+      />
 
       {Array.from({ length: doors }, (_, i) => {
         const x = -(width - 0.06) / 2 + (doorW - 0.03) * i + doorW / 2

@@ -70,7 +70,10 @@ export function saveDesign(name: string, design: HouseDesign): SavedDesign[] | n
 
 export function deleteSave(id: string): SavedDesign[] {
   const next = listSaves().filter((s) => s.id !== id)
-  writeJson(SAVES_KEY, next.map((save) => ({ ...save, design: { rooms: save.design } })))
+  writeJson(
+    SAVES_KEY,
+    next.map((save) => ({ ...save, design: { rooms: save.design } })),
+  )
   return next
 }
 
@@ -89,7 +92,15 @@ export function writeAutosave(house: HouseDesign) {
 /** Downloads both rooms as one .json file. */
 export function exportDesign(house: HouseDesign, name: string) {
   const file = { format: FILE_FORMAT, version: FILE_VERSION, name, exportedAt: new Date().toISOString(), rooms: house }
-  downloadJson(file, `${name.trim().replace(/[^\w-]+/g, '-').toLowerCase() || 'room-design'}.json`)
+  downloadJson(
+    file,
+    `${
+      name
+        .trim()
+        .replace(/[^\w-]+/g, '-')
+        .toLowerCase() || 'room-design'
+    }.json`,
+  )
 }
 
 /** Reads a .json file chosen by the user. Throws a friendly message if it isn't a room design. */

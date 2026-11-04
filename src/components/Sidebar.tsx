@@ -5,8 +5,7 @@ import { getFloorOption, wallColorName, type RoomFinishes } from '../scene/finis
 
 const cm = (metres: number) => Math.round(metres * 100)
 
-const size = (opening: { width: number; top: number; bottom: number }) =>
-  `${cm(opening.width)} × ${cm(opening.top - opening.bottom)} cm`
+const size = (opening: { width: number; top: number; bottom: number }) => `${cm(opening.width)} × ${cm(opening.top - opening.bottom)} cm`
 
 // Fixtures are built into the walls, so they can't be selected or moved.
 // Their sizes come from roomConfig / house, so this list can't go out of date.
@@ -52,7 +51,9 @@ export function Sidebar({ room, items, finishes, selectedId, overlaps, onSelect,
         <h2>{label}</h2>
         <div className="stats">
           <div>
-            <span className="stat-value">{width.toFixed(1)} × {depth.toFixed(1)} m</span>
+            <span className="stat-value">
+              {width.toFixed(1)} × {depth.toFixed(1)} m
+            </span>
             <span className="stat-label">Size</span>
           </div>
           <div>
@@ -71,7 +72,11 @@ export function Sidebar({ room, items, finishes, selectedId, overlaps, onSelect,
         <ul className="list">
           {finishRows.map((f) => (
             <li key={f.name}>
-              <button className={`list-button ${selectedId === null ? 'selected-soft' : ''}`} onClick={onShowRoom} title="Edit room finishes">
+              <button
+                className={`list-button ${selectedId === null ? 'selected-soft' : ''}`}
+                onClick={onShowRoom}
+                title="Edit room finishes"
+              >
                 <span className="swatch" style={{ background: f.color }} />
                 <span className="item-name">{f.name}</span>
                 <span className="item-detail">{f.detail}</span>
@@ -94,7 +99,8 @@ export function Sidebar({ room, items, finishes, selectedId, overlaps, onSelect,
                   {FURNITURE_INFO[item.type].label}
                   {overlaps.has(item.id) && (
                     <span className="overlap-badge" title="Overlaps another piece">
-                      {' '}⚠
+                      {' '}
+                      ⚠
                     </span>
                   )}
                 </span>

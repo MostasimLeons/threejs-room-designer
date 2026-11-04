@@ -40,7 +40,14 @@ export function CameraRig({ view, resetKey, room }: CameraRigProps) {
     return (
       <>
         {/* The tiny z offset avoids a maths edge case when looking exactly straight down. */}
-        <OrthographicCamera key={`plan-cam-${room}-${resetKey}`} makeDefault position={[cx, 20, cz + 0.001]} zoom={zoom} near={0.1} far={100} />
+        <OrthographicCamera
+          key={`plan-cam-${room}-${resetKey}`}
+          makeDefault
+          position={[cx, 20, cz + 0.001]}
+          zoom={zoom}
+          near={0.1}
+          far={100}
+        />
         <OrbitControls
           key={`plan-ctl-${room}-${resetKey}`}
           makeDefault

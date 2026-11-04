@@ -7,8 +7,18 @@ export function CoffeeTable({ color, variant }: ModelProps) {
   const wood = useTintedMaterial(materials.woodLight, color)
   const round = variant === 'round'
   const legs: [number, number][] = round
-    ? [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]
-    : [[-0.52, -0.24], [0.52, -0.24], [-0.52, 0.24], [0.52, 0.24]]
+    ? [
+        [-0.25, -0.25],
+        [0.25, -0.25],
+        [-0.25, 0.25],
+        [0.25, 0.25],
+      ]
+    : [
+        [-0.52, -0.24],
+        [0.52, -0.24],
+        [-0.52, 0.24],
+        [0.52, 0.24],
+      ]
   return (
     <group>
       {legs.map(([x, z], i) => (
@@ -31,7 +41,13 @@ export function CoffeeTable({ color, variant }: ModelProps) {
         <Block size={[0.3, 0.035, 0.22]} position={[-0.3, 0.448, 0.02]} rotation={[0, 0.15, 0]} material={materials.bookA} />
         <Block size={[0.26, 0.03, 0.2]} position={[-0.29, 0.481, 0.02]} rotation={[0, -0.1, 0]} material={materials.bookB} />
       </group>
-      <Cylinder radiusTop={0.045} radiusBottom={0.06} height={0.16} position={[round ? 0.2 : 0.32, 0.51, -0.05]} material={materials.ceramic} />
+      <Cylinder
+        radiusTop={0.045}
+        radiusBottom={0.06}
+        height={0.16}
+        position={[round ? 0.2 : 0.32, 0.51, -0.05]}
+        material={materials.ceramic}
+      />
     </group>
   )
 }

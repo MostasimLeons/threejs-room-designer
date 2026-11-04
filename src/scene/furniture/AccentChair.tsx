@@ -8,7 +8,12 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
  */
 export function AccentChair({ color, variant }: ModelProps) {
   const fabric = useTintedMaterial(materials.creamUpholstery, color)
-  const legs: [number, number][] = [[-0.26, -0.26], [0.26, -0.26], [-0.26, 0.26], [0.26, 0.26]]
+  const legs: [number, number][] = [
+    [-0.26, -0.26],
+    [0.26, -0.26],
+    [-0.26, 0.26],
+    [0.26, 0.26],
+  ]
 
   return (
     <group>
@@ -41,7 +46,13 @@ export function AccentChair({ color, variant }: ModelProps) {
         </>
       )}
       {/* Small sand cushion */}
-      <Block size={[0.34, 0.3, 0.1]} radius={0.05} position={[0, 0.58, -0.14]} rotation={[-0.25, 0, 0.05]} material={materials.fabricSand} />
+      <Block
+        size={[0.34, 0.3, 0.1]}
+        radius={0.05}
+        position={[0, 0.58, -0.14]}
+        rotation={[-0.25, 0, 0.05]}
+        material={materials.fabricSand}
+      />
     </group>
   )
 }

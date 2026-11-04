@@ -291,7 +291,12 @@ function footprintCorners(item: FurnitureItem): Point[] {
   const cos = Math.cos(angle)
   const sin = Math.sin(angle)
   const [cx, cz] = item.position
-  return [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(
+  return [
+    [-w / 2, -d / 2],
+    [w / 2, -d / 2],
+    [w / 2, d / 2],
+    [-w / 2, d / 2],
+  ].map(
     // Same maths Three.js uses to rotate around the vertical (y) axis.
     ([x, z]): Point => [cx + x * cos + z * sin, cz - x * sin + z * cos],
   )

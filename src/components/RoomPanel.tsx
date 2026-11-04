@@ -52,11 +52,21 @@ export function RoomPanel({ room, finishes, onUpdateFinishes, onPreviewFinishes,
       <section className="card">
         <h2>Shortcuts</h2>
         <ul className="tips">
-          <li><kbd>Drag</kbd> furniture to move it</li>
-          <li><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> nudge 5 cm (<kbd>Shift</kbd> 25 cm)</li>
-          <li><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd> rotate 45°</li>
-          <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo</li>
-          <li><kbd>Esc</kbd> deselect</li>
+          <li>
+            <kbd>Drag</kbd> furniture to move it
+          </li>
+          <li>
+            <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> nudge 5 cm (<kbd>Shift</kbd> 25 cm)
+          </li>
+          <li>
+            <kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd> rotate 45°
+          </li>
+          <li>
+            <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo
+          </li>
+          <li>
+            <kbd>Esc</kbd> deselect
+          </li>
         </ul>
       </section>
     </aside>

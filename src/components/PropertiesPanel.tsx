@@ -54,8 +54,8 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         </div>
         {overlapping.length > 0 && (
           <p className="warning" role="status">
-            Overlaps {overlapping.map((other) => FURNITURE_INFO[other.type].label.toLowerCase()).join(' and ')}. Move or rotate it to
-            make space.
+            Overlaps {overlapping.map((other) => FURNITURE_INFO[other.type].label.toLowerCase()).join(' and ')}. Move or rotate it to make
+            space.
           </p>
         )}
       </section>
