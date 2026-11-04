@@ -13,8 +13,14 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms,
   - **Kitchen** (4 × 3.5 m): built-in units along the back wall (stone worktop, sink under the window, hob and extractor, splashback, wall units with an under-cabinet light), plus a movable island, three bar stools and a fridge (fridge-freezer or American style).
   - **Bathroom** (3 × 2.5 m): freestanding bath or walk-in shower, wall-hung vanity with basin(s) and mirror, towel rail, built-in toilet, tiled walls and a terrazzo floor.
 
-  Pick a room in the **room bar** at the bottom of the 3D view, or press `1`–`5`. The view fades briefly and shows that room. Only the selected room is drawn, which keeps the app fast. Each room keeps its own furniture, finishes, lighting and undo history, and furniture never moves between rooms: a bed can only be in the Bedroom, a sofa only in the Living Room.
+  Pick a room in the **room bar** at the bottom of the 3D view, or press `1`–`5`. The view fades briefly and shows that room. Only the selected room is drawn, which keeps the app fast. Each room keeps its own furniture, finishes, lighting and undo history. Pieces only go in rooms where they belong: a bed only in the Bedroom, a sofa only in the Living Room, while a plant or a chair can move around (see **Move to another room** below).
 
+- **Add furniture:** **+ Add** in the Objects list opens a catalog of every piece that belongs in the room, each with a small 3D picture (drawn in your browser the first time the catalog opens). Click one and it's placed at a free spot and selected, ready to drag into place.
+- **Delete, duplicate and move between rooms:** the **Actions** card in the right panel (or `Delete` / `Backspace` and `Ctrl+D`). A copy is put at a free spot next to the original. **Move to another room** lists the other rooms where the piece belongs; it's removed here and added there (one undo step in each room).
+- **Snap to walls:** dragging a piece close to a wall (within 12 cm) puts it flush against it, or into the corner. Hold `Alt` while dragging to place it freely.
+- **Measurements:** the selected piece shows its size (W × D) and dashed lines with the distance in cm to the nearest side wall and the nearest back or front wall.
+- **Save image:** the camera button in the top bar downloads a sharp PNG of the 3D view, about 4K on its long side (the same view as on screen, without the selection outline).
+- **Share link:** **Copy share link** in the Designs window copies a link that opens a copy of the whole house (about 1–3 K characters). The design is packed into the link itself, after `#`, so nothing is uploaded. Whoever opens it is asked first (**Open it** / **Keep mine**), and opening it can be undone.
 - **Select** furniture by clicking it in the 3D view or in the Objects list. The selected piece gets a blue 3D outline (parts hidden behind other things show in a darker blue).
 - **Edit walls and the floor in 3D:** click a wall and a small picker opens right there: paint or tiles, six colours, and "Use on all walls". Each wall can have its own finish, so you can make one feature wall. Click the floor to pick its material the same way. The right-hand panel has the full options, including a custom colour and "Match the rest of the room".
 - **Rotate ring:** the selected piece shows a blue ring with a handle in front. Drag the handle around to turn it in 15° steps (hold `Shift` for 1°). The ring is drawn on top, so furniture in the way can't hide it.
@@ -51,6 +57,7 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms,
   - named saves in the browser
   - an automatic save, so a page reload keeps your room
   - `.json` export and import for backups and sharing
+  - share links (see above)
 - **Responsive** layout for desktop, tablet and phone.
 
 ## Requirements
@@ -104,21 +111,22 @@ It also works with `npm run preview`, which gives more realistic numbers than th
 
 Measured in the Living Room with the default layout (draw calls and triangles depend on window size):
 
-| Date       | Change                                                                     | Draw calls  | Triangles     |
-| ---------- | -------------------------------------------------------------------------- | ----------- | ------------- |
-| 2026-11-04 | Phase 0 baseline                                                           | ~466        | ~166k         |
-| 2026-11-04 | Phase 1: post-processing, ceilings, shadows drawn once per frame           | ~560        | ~181k         |
-| 2026-11-04 | Phase 1, with a polished concrete floor (reflection)                       | ~640        | ~198k         |
-| 2026-11-04 | Phase 2: only the selected room is drawn                                   | ~300        | ~91k          |
-| 2026-11-04 | Phase 3, Dining Room (furnished)                                           | ~325        | ~81k          |
-| 2026-11-04 | Phase 3, Kitchen (furnished, the heaviest room)                            | ~500        | ~76k          |
-| 2026-11-04 | Phase 3, Bathroom (furnished, tiled walls)                                 | ~320        | ~110k         |
-| 2026-11-04 | Phase 4, by day (Living / Kitchen, the heaviest)                           | ~315 / ~510 |               |
-| 2026-11-04 | Phase 4, at night (room lights on; about 60 more in every room)            | ~375 / ~570 |               |
-| 2026-11-04 | Phase 5, something selected (outline redraws the scene's depth)            | ~410 / ~670 |               |
-| 2026-11-04 | Phase 6, overview with nothing selected (steady frame)                     | ~330 / ~530 |               |
-| 2026-11-04 | Phase 6, eye level (only part of the room is in view)                      | ~280 / ~350 |               |
-| 2026-11-04 | Phase 7, real models (fewer draw calls; more triangles, mostly the plants) | ~220 / ~445 | ~135k / ~122k |
+| Date       | Change                                                                                                 | Draw calls  | Triangles     |
+| ---------- | ------------------------------------------------------------------------------------------------------ | ----------- | ------------- |
+| 2026-11-04 | Phase 0 baseline                                                                                       | ~466        | ~166k         |
+| 2026-11-04 | Phase 1: post-processing, ceilings, shadows drawn once per frame                                       | ~560        | ~181k         |
+| 2026-11-04 | Phase 1, with a polished concrete floor (reflection)                                                   | ~640        | ~198k         |
+| 2026-11-04 | Phase 2: only the selected room is drawn                                                               | ~300        | ~91k          |
+| 2026-11-04 | Phase 3, Dining Room (furnished)                                                                       | ~325        | ~81k          |
+| 2026-11-04 | Phase 3, Kitchen (furnished, the heaviest room)                                                        | ~500        | ~76k          |
+| 2026-11-04 | Phase 3, Bathroom (furnished, tiled walls)                                                             | ~320        | ~110k         |
+| 2026-11-04 | Phase 4, by day (Living / Kitchen, the heaviest)                                                       | ~315 / ~510 |               |
+| 2026-11-04 | Phase 4, at night (room lights on; about 60 more in every room)                                        | ~375 / ~570 |               |
+| 2026-11-04 | Phase 5, something selected (outline redraws the scene's depth)                                        | ~410 / ~670 |               |
+| 2026-11-04 | Phase 6, overview with nothing selected (steady frame)                                                 | ~330 / ~530 |               |
+| 2026-11-04 | Phase 6, eye level (only part of the room is in view)                                                  | ~280 / ~350 |               |
+| 2026-11-04 | Phase 7, real models (fewer draw calls; more triangles, mostly the plants)                             | ~220 / ~445 | ~135k / ~122k |
+| 2026-11-04 | Phase 8, nothing selected: same as Phase 7 measured in the same window (280 = 280, narrow tall window) | unchanged   | unchanged     |
 
 The two shadow passes are still most of the cost. Without the once-per-frame shadow change, a reflective floor would add about 460 draw calls instead of about 85.
 
@@ -171,6 +179,12 @@ Exact versions are in `package.json`. `package-lock.json` pins them so every ins
 | Time of day        | Clock button above the 3D view, or the **Light** row under Finishes. Sliders and presets can be undone                          |
 | Switch room        | Click it in the room bar, or press `1`–`5`. With the bar focused, `←` / `→` move between rooms                                  |
 | Select             | Click a piece, or its row in **Objects**                                                                                        |
+| Add furniture      | **+ Add** in Objects, then click a piece in the catalog                                                                         |
+| Delete / Duplicate | **Actions** in the right panel, or `Delete` (`Backspace`) / `Ctrl+D`                                                            |
+| Move to a room     | **Move to another room** in Actions (only rooms where the piece belongs)                                                        |
+| Place freely       | Hold `Alt` while dragging (otherwise pieces snap flush to a wall within 12 cm)                                                  |
+| Save image         | Camera button in the top bar: downloads a PNG                                                                                   |
+| Share              | **Save / Load** → **Copy share link**                                                                                           |
 | Paint a wall       | Click the wall: pick paint/tiles and a colour in the picker that opens there                                                    |
 | Change the floor   | Click the floor (if something is selected, the first click just deselects it)                                                   |
 | Rotate by dragging | Drag the round handle on the blue ring (15° steps, `Shift` for 1°)                                                              |
@@ -216,7 +230,8 @@ src/
     WallPanel.tsx          Right-hand panel for a selected wall
     TimeOfDayPanel.tsx     Clock, presets, time slider and room orientation
     ColorPicker.tsx        Swatch grid + custom colour (used by both panels)
-    DesignsDialog.tsx      Save / load / export / import window
+    DesignsDialog.tsx      Save / load / export / import / share-link window
+    CatalogDrawer.tsx      "Add furniture" catalog for the current room
     ViewToggle.tsx         Perspective / Plan switch
     ErrorBoundary.tsx      Friendly message if the 3D view fails (e.g. no WebGL)
     icons.tsx              Small SVG icons
@@ -226,11 +241,12 @@ src/
     design.ts              RoomDesign type + validation of saved/imported data
     useDesignHistory.ts    Current design + undo/redo history
     storage.ts             localStorage saves, autosave, JSON export/import
+    share.ts               Share links: the house compressed into the link's #design= part
     viewerPrefs.ts         Per-browser extras (not part of a design): intro seen, room thumbnails
   utils/                   Small general-purpose helpers
     math.ts                clamp, angle helpers
     id.ts                  Unique ids (works on http:// too)
-    download.ts            File download helper
+    download.ts            File download helpers (JSON, pictures)
   scene/                   Everything inside the 3D canvas
     Scene.tsx              The <Canvas> (renders only when something changes)
     DevStats.tsx           Performance readout shown with ?perf in the URL (also window.roomDesigner3d for debugging)
@@ -238,10 +254,12 @@ src/
     sun.ts                 Time of day: sun position, light colours and strengths, presets
     cameraViews.ts         Each room's camera views, and fitting the overview to narrow screens
     RoomThumbnails.tsx     Takes the small room pictures for the room bar
+    SceneScreenshot.tsx    Save image: renders the view at about 4K and copies it
+    CatalogThumbnailRenderer.tsx  Draws the catalog's furniture pictures in a small hidden canvas
     selection.ts           Selection ids for walls ("wall:back") and the floor ("floor")
     interiorLight.ts       Shares how "on" the room lights are (0 day … 1 night) with lamps
     Ceiling.tsx            Ceiling with cove light line and downlights
-    FurnitureLayer.tsx     Draws furniture; click-to-select, drag-to-move, outlines
+    FurnitureLayer.tsx     Draws furniture; click-to-select, drag-to-move (snaps to walls), outlines, measurements
     RoomShell.tsx          Builds any room from its house.ts entry: floor, ceiling, 4 walls with windows/doors/skirting
     Cutaway.tsx            Hides walls (and the ceiling) that are between the camera and the room;
                            hidden walls still block the sun (shadow-only layer)
@@ -260,6 +278,7 @@ src/
     furniture/
       catalog.ts           Furniture types, options, swatches, default layout,
                            "stay inside the room" and overlap checks
+      placement.ts         Free spot for new pieces, snapping to walls, gaps to the walls
       FurnitureModel.tsx   Picks the 3D model for a furniture type (real model if there is one)
       models.ts            Which options use a real model, and how it's sized to the footprint
       GltfModel.tsx        Loads a model, recolours it, falls back to the code-built one
@@ -272,7 +291,7 @@ src/
       Bathtub.tsx, Vanity.tsx, TowelRail.tsx            Bathroom models
 ```
 
-Tests sit next to the code they check, as `*.test.ts` files. They cover undo/redo, reading saves and imported files, browser storage, and the furniture maths (staying inside the walls, overlaps, default layouts).
+Tests sit next to the code they check, as `*.test.ts` files. They cover undo/redo, reading saves and imported files, browser storage, the furniture maths (staying inside the walls, overlaps, default layouts, free spots, wall snapping) and share links.
 
 Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `vitest.config.ts` (tests).
 
@@ -291,8 +310,9 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 
 - Overlapping furniture is flagged but not blocked. You decide where things go.
 - The window and door are fixed parts of the walls.
-- There is no Add or Delete for furniture yet: each room always has its starting pieces.
-- Furniture can't be moved from one room to the other, by design: each room keeps its own pieces.
+- Moving a piece to another room is two undo steps, one in each room (each room has its own history).
+- Catalog pictures are drawn again on each visit (they aren't stored), which takes a second or two the first time the catalog opens.
+- Share links hold the design, not the room pictures or camera position. Very heavily edited houses make longer links (still well within browser limits).
 - Doors between rooms are closed. Each room is a separate scene, so there's nothing to see through them.
 - Built-in units (kitchen units, toilet, dining pendant) can't be moved or restyled. The pendant stays put if you move the dining table.
 - Selecting something costs extra drawing while it's selected: the outline redraws the scene's depth (about 95 more draw calls in the Living Room, 165 in the Kitchen).

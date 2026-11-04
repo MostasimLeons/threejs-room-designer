@@ -35,9 +35,22 @@ interface SidebarProps {
   lighting: RoomLighting
   /** Open the time-of-day panel. */
   onShowLighting: () => void
+  /** Open the furniture catalog. */
+  onAddFurniture: () => void
 }
 
-export function Sidebar({ room, items, finishes, selectedId, overlaps, onSelect, onShowRoom, lighting, onShowLighting }: SidebarProps) {
+export function Sidebar({
+  room,
+  items,
+  finishes,
+  selectedId,
+  overlaps,
+  onSelect,
+  onShowRoom,
+  lighting,
+  onShowLighting,
+  onAddFurniture,
+}: SidebarProps) {
   const { label, width, depth } = ROOMS[room]
   const fixtures = fixturesOf(room)
   const floor = getFloorOption(finishes.floor)
@@ -105,6 +118,9 @@ export function Sidebar({ room, items, finishes, selectedId, overlaps, onSelect,
       <section className="card grow">
         <h2>
           Objects <span className="count">{items.length + fixtures.length}</span>
+          <button className="add-button" onClick={onAddFurniture} title="Add furniture">
+            + Add
+          </button>
         </h2>
         <ul className="list">
           {items.map((item) => (

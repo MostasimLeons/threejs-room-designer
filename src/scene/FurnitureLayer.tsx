@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useThree, type RootState, type ThreeEvent } from '@react-three/fiber'
-import { Line } from '@react-three/drei'
+import { Html, Line } from '@react-three/drei'
 import { Select } from '@react-three/postprocessing'
 import { getVariant, type FurnitureItem } from './furniture/catalog'
 import { FurnitureModel } from './furniture/FurnitureModel'
+import { halfExtents, snapToWalls, toCm, wallGaps } from './furniture/placement'
 
 const SELECT_COLOR = '#2f6fed'
 const WARNING_COLOR = '#d92d20' // outline colour when a piece overlaps another
@@ -16,6 +17,8 @@ interface FurnitureLayerProps {
   items: FurnitureItem[]
   /** World position [x, z] of the room's centre. Item positions are measured from here. */
   origin: [number, number]
+  /** Inside size of the room, for snapping to walls and the distance guides. */
+  room: { width: number; depth: number }
   /** Only the selected room's furniture can be clicked and dragged; the other room is just shown. */
   interactive: boolean
   selectedId: string | null
@@ -76,6 +79,7 @@ function setCameraControlsEnabled(get: RootState['get'], enabled: boolean) {
 export function FurnitureLayer({
   items,
   origin,
+  room,
   interactive,
   selectedId,
   overlaps,
@@ -94,8 +98,8 @@ export function FurnitureLayer({
   // A turn in progress with the rotate ring: which piece, and its centre on the floor (world).
   const turn = useRef<{ id: string; cx: number; cz: number } | null>(null)
   // Always-current callbacks for the window listeners below.
-  const callbacks = useRef({ onMove, onRotate, onDragBoundary, origin })
-  callbacks.current = { onMove, onRotate, onDragBoundary, origin }
+  const callbacks = useRef({ onMove, onRotate, onDragBoundary, origin, items, room })
+  callbacks.current = { onMove, onRotate, onDragBoundary, origin, items, room }
 
   // Mouse cursor: open hand over furniture, closed hand while dragging.
   useEffect(() => {
@@ -132,7 +136,10 @@ export function FurnitureLayer({
       const [ox, oz] = callbacks.current.origin
       const x = Math.round((hit.x - ox + current.offsetX) / SNAP) * SNAP
       const z = Math.round((hit.z - oz + current.offsetZ) / SNAP) * SNAP
-      callbacks.current.onMove(current.id, [x, z])
+      const item = callbacks.current.items.find((i) => i.id === current.id)
+      // Close to a wall, the piece goes flush against it. Alt places it freely.
+      const position: [number, number] = item && !event.altKey ? snapToWalls({ ...item, position: [x, z] }, callbacks.current.room) : [x, z]
+      callbacks.current.onMove(current.id, position)
     }
 
     function handleUp() {
@@ -215,6 +222,7 @@ export function FurnitureLayer({
                 <SelectionOutline footprint={footprint} faint={!isOverlapping} color={isOverlapping ? WARNING_COLOR : SELECT_COLOR} />
               )}
             </group>
+            {isSelected && <DimensionGuides item={item} room={room} />}
             {isSelected && (
               <RotateRing
                 position={[item.position[0], 0, item.position[1]]}
@@ -226,6 +234,55 @@ export function FurnitureLayer({
           </group>
         )
       })}
+    </group>
+  )
+}
+
+/**
+ * Measurements for the selected piece: its size (W × D) in front of it, and lines
+ * with the distance to the nearest wall left/right and back/front.
+ */
+function DimensionGuides({ item, room }: { item: FurnitureItem; room: { width: number; depth: number } }) {
+  const [x, z] = item.position
+  const [hx, hz] = halfExtents(item)
+  const gaps = wallGaps(item, room)
+  const [w, d] = getVariant(item.type, item.variant).footprint
+  const y = 0.03
+  const guides: { from: [number, number, number]; to: [number, number, number]; cm: number }[] = []
+  // Along x: to whichever side wall is nearer (none when it's flush).
+  if (Math.min(gaps.left, gaps.right) > 0.015) {
+    const toLeft = gaps.left <= gaps.right
+    const edge = toLeft ? x - hx : x + hx
+    const wall = toLeft ? -room.width / 2 : room.width / 2
+    guides.push({ from: [edge, y, z], to: [wall, y, z], cm: toCm(toLeft ? gaps.left : gaps.right) })
+  }
+  // Along z: to the back or front wall.
+  if (Math.min(gaps.back, gaps.front) > 0.015) {
+    const toBack = gaps.back <= gaps.front
+    const edge = toBack ? z - hz : z + hz
+    const wall = toBack ? -room.depth / 2 : room.depth / 2
+    guides.push({ from: [x, y, edge], to: [x, y, wall], cm: toCm(toBack ? gaps.back : gaps.front) })
+  }
+  return (
+    <group>
+      {guides.map((guide, i) => (
+        <group key={i}>
+          <Line points={[guide.from, guide.to]} color={SELECT_COLOR} lineWidth={1.5} dashed dashSize={0.06} gapSize={0.04} />
+          <Html
+            position={[(guide.from[0] + guide.to[0]) / 2, y, (guide.from[2] + guide.to[2]) / 2]}
+            center
+            zIndexRange={[2, 0]}
+            className="dimension-anchor"
+          >
+            <span className="dimension-label">{guide.cm} cm</span>
+          </Html>
+        </group>
+      ))}
+      <Html position={[x, y, z + hz + 0.18]} center zIndexRange={[2, 0]} className="dimension-anchor">
+        <span className="dimension-label size">
+          {toCm(w)} × {toCm(d)} cm
+        </span>
+      </Html>
     </group>
   )
 }

@@ -9,8 +9,9 @@ import { FurnitureLayer } from './FurnitureLayer'
 import { DevStats, PERF_ENABLED } from './DevStats'
 import { PostEffects } from './PostEffects'
 import { RoomThumbnails } from './RoomThumbnails'
+import { SceneScreenshot } from './SceneScreenshot'
 import type { CameraViewId } from './cameraViews'
-import type { RoomId, WallSide } from './house'
+import { ROOMS, type RoomId, type WallSide } from './house'
 import type { ViewMode } from './roomConfig'
 import type { RoomDesign } from '../state/design'
 
@@ -38,6 +39,9 @@ interface SceneProps {
   /** Ask for a thumbnail of the room on screen (a new id = a new picture). */
   thumbnailRequest: { room: RoomId; id: number } | null
   onThumbnail: (room: RoomId, url: string) => void
+  /** Ask for a high-resolution picture (a new id = a new picture). */
+  screenshotRequest: number | null
+  onScreenshot: (image: Blob | null) => void
   /** A small panel shown in the 3D view, pinned to a point (the wall or floor picker). */
   popover?: { point: [number, number, number]; content: ReactNode } | null
 }
@@ -67,6 +71,8 @@ export function Scene({
   editable,
   thumbnailRequest,
   onThumbnail,
+  screenshotRequest,
+  onScreenshot,
 }: SceneProps) {
   return (
     // `shadows` turns on shadow maps ("percentage" = PCF filtering, the smooth mode in current Three.js).
@@ -80,6 +86,7 @@ export function Scene({
       <Selection>
         <CameraRig view={view} resetKey={resetKey} room={room} cameraViewId={cameraViewId} />
         <RoomThumbnails request={thumbnailRequest} onCapture={onThumbnail} />
+        <SceneScreenshot request={screenshotRequest} onCapture={onScreenshot} />
         {/* Also sets the background colour, which follows the time of day. */}
         <Lighting room={room} lighting={design.lighting} />
         {PERF_ENABLED && <DevStats />}
@@ -100,6 +107,7 @@ export function Scene({
           <FurnitureLayer
             items={design.items}
             origin={ROOM_ORIGIN}
+            room={ROOMS[room]}
             interactive={editable}
             selectedId={editable ? selectedId : null}
             overlaps={overlaps}

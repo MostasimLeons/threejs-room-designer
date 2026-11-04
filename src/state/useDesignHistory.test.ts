@@ -176,3 +176,32 @@ describe('houseReducer (one history per room)', () => {
     expect(houseReducer(initial, { room: 'dining', action: { type: 'undo' } })).toBe(initial)
   })
 })
+
+describe('adding and removing furniture', () => {
+  const lamp = { ...sofa(start()), id: 'new-piece', position: [100, 0] as [number, number], rotation: 370 }
+
+  it('adds a piece as one undo step, inside the walls', () => {
+    const state = run(start(), { type: 'addItem', item: lamp, bounds })
+    const added = state.present.items.find((item) => item.id === 'new-piece')!
+    expect(added.position[0]).toBeLessThanOrEqual(bounds.width / 2)
+    expect(added.rotation).toBe(10)
+    expect(state.past).toHaveLength(1)
+    expect(run(state, { type: 'undo' }).present.items.some((item) => item.id === 'new-piece')).toBe(false)
+  })
+
+  it('refuses a piece whose id is already in the room', () => {
+    const initial = start()
+    expect(run(initial, { type: 'addItem', item: sofa(initial), bounds })).toBe(initial)
+  })
+
+  it('removes a piece, and undo brings it back where it was', () => {
+    const removed = run(start(), { type: 'removeItem', id: 'sofa' })
+    expect(removed.present.items.some((item) => item.id === 'sofa')).toBe(false)
+    expect(sofa(run(removed, { type: 'undo' }))).toEqual(sofa(start()))
+  })
+
+  it('removing a piece that is not there changes nothing', () => {
+    const initial = start()
+    expect(run(initial, { type: 'removeItem', id: 'nope' })).toBe(initial)
+  })
+})

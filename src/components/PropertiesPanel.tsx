@@ -27,6 +27,13 @@ interface PropertiesPanelProps {
   onPreviewFinishes: (changes: FinishChanges) => void
   onCommit: () => void
   onDeselect: () => void
+  /** Copy the selected piece next to itself. */
+  onDuplicate: () => void
+  /** Remove the selected piece (undoable). */
+  onDelete: () => void
+  /** Other rooms this piece may go in (see FURNITURE_INFO.rooms). */
+  moveTargets: RoomId[]
+  onMoveTo: (room: RoomId) => void
 }
 
 /** Props that make a slider record ONE undo step when you let go. */
@@ -178,7 +185,37 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           aria-label="Back to front position"
           {...commitHandlers(onCommit)}
         />
-        <p className="muted small">Tip: drag it in the 3D view, or use the arrow keys.</p>
+        <p className="muted small">Tip: drag it in the 3D view (it snaps to walls; hold Alt to place freely), or use the arrow keys.</p>
+      </section>
+
+      <section className="card">
+        <h2>Actions</h2>
+        <div className="action-row">
+          <button className="ghost-button" onClick={props.onDuplicate} title="Duplicate (Ctrl+D)">
+            Duplicate
+          </button>
+          <button className="ghost-button danger" onClick={props.onDelete} title="Delete (Del)">
+            Delete
+          </button>
+        </div>
+        {props.moveTargets.length > 0 && (
+          <label className="field move-field">
+            <span>Move to another room</span>
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) props.onMoveTo(e.target.value as RoomId)
+              }}
+            >
+              <option value="">Choose a room…</option>
+              {props.moveTargets.map((target) => (
+                <option key={target} value={target}>
+                  {ROOMS[target].label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </section>
     </aside>
   )

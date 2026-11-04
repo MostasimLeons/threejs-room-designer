@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Scene } from './scene/Scene'
 import type { ViewMode } from './scene/roomConfig'
-import { findOverlaps, overlapName } from './scene/furniture/catalog'
+import { FURNITURE_INFO, findOverlaps, isAllowedIn, overlapName, type FurnitureItem, type FurnitureType } from './scene/furniture/catalog'
+import { findFreeSpot } from './scene/furniture/placement'
+import { createId } from './utils/id'
+import { downloadBlob } from './utils/download'
+import { decodeShare, shareCodeFromHash } from './state/share'
+import { CatalogDrawer, catalogFor } from './components/CatalogDrawer'
+import { CatalogThumbnailRenderer } from './scene/CatalogThumbnailRenderer'
 import { Sidebar } from './components/Sidebar'
 import { Toolbar } from './components/Toolbar'
 import { ViewToggle } from './components/ViewToggle'
@@ -29,6 +35,16 @@ import { ROOM_IDS, ROOMS, type RoomId, type WallSide } from './scene/house'
 /** Room switch: the view fades out this fast, the room swaps, then it fades back in (see .scene-layer in index.css). */
 const FADE_OUT_MS = 180
 
+/** The name of a piece of furniture, for messages. */
+const label = (item: FurnitureItem) => FURNITURE_INFO[item.type].label
+
+const pad = (n: number) => String(n).padStart(2, '0')
+
+/** Local date and time for file names, e.g. "2026-11-04 18.42". */
+function fileStamp(date: Date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}.${pad(date.getMinutes())}`
+}
+
 const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 export default function App() {
@@ -42,6 +58,15 @@ export default function App() {
   // Where a wall or the floor was clicked, so its quick picker appears right there.
   const [pick, setPick] = useState<{ id: string; point: [number, number, number] } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  /** The furniture catalog drawer, and its pictures (drawn the first time it opens; kept for this visit only). */
+  const [catalogOpen, setCatalogOpen] = useState(false)
+  /** A design from a share link, waiting for you to open it (or not). */
+  const [shared, setShared] = useState<HouseDesign | null>(null)
+  // Read once when the app starts (the address bar is cleared right after).
+  const [shareCode] = useState(() => shareCodeFromHash(window.location.hash))
+  /** A high-resolution picture in progress (its request id). */
+  const [screenshotRequest, setScreenshotRequest] = useState<number | null>(null)
+  const [catalogThumbs, setCatalogThumbs] = useState<Partial<Record<FurnitureType, string>>>({})
 
   // Camera view (Overview / Eye level / Corner). It stays the same when you switch rooms.
   const [cameraViewId, setCameraViewId] = useState<CameraViewId>('overview')
@@ -135,11 +160,29 @@ export default function App() {
     updateItem: history.updateItem,
     previewItem: history.previewItem,
     commit: history.commit,
+    removeSelected: handleDelete,
+    duplicateSelected: handleDuplicate,
     selectRoom: (index) => {
       const next = ROOM_IDS[index]
       if (next) handleRoomChange(next)
     },
   })
+
+  // Opened from a share link? Unpack it and offer it; your own design stays until you accept.
+  useEffect(() => {
+    if (!shareCode) return
+    // Take the design out of the address bar, so a reload doesn't offer it again.
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    let cancelled = false
+    decodeShare(shareCode).then((sharedHouse) => {
+      if (cancelled) return
+      if (sharedHouse) setShared(sharedHouse)
+      else setToast("That share link is damaged or out of date, so it couldn't be opened.")
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [shareCode])
 
   function handleLoad(loaded: HouseDesign, name: string) {
     loadHouse(loaded)
@@ -175,6 +218,71 @@ export default function App() {
       setShownRoom(next)
       setFading(false)
     }, FADE_OUT_MS)
+  }
+
+  function handleDelete() {
+    if (!selectedItem) return
+    history.removeItem(selectedItem.id)
+    setSelectedId(null)
+    setToast(`Removed ${label(selectedItem).toLowerCase()}. Undo brings it back.`)
+  }
+
+  function handleDuplicate() {
+    if (!selectedItem) return
+    const copy: FurnitureItem = { ...selectedItem, id: createId() }
+    const near: [number, number] = [selectedItem.position[0] + 0.3, selectedItem.position[1] + 0.3]
+    copy.position = findFreeSpot(copy, design.items, ROOMS[room], ROOMS[room].fixedZones, near)
+    history.addItem(copy)
+    setSelectedId(copy.id)
+  }
+
+  /** Adds a new piece (from the catalog) at a free spot near the middle of the room, and selects it. */
+  function handleAdd(type: FurnitureType) {
+    const info = FURNITURE_INFO[type]
+    const item: FurnitureItem = {
+      id: createId(),
+      type,
+      variant: info.variants[0].id,
+      position: [0, 0],
+      rotation: 0,
+      color: info.swatches[0].color,
+    }
+    item.position = findFreeSpot(item, design.items, ROOMS[room], ROOMS[room].fixedZones)
+    history.addItem(item)
+    setSelectedId(item.id)
+    setToast(`Added ${info.label.toLowerCase()}. Drag it into place.`)
+  }
+
+  /**
+   * Moves the selected piece to another room where it belongs: removed here, added
+   * there at a free spot. That's one undo step in each room.
+   */
+  function handleMoveTo(target: RoomId) {
+    if (!selectedItem || !isAllowedIn(selectedItem.type, target)) return
+    const targetHistory = forRoom(target)
+    const moved: FurnitureItem = { ...selectedItem, id: createId() }
+    moved.position = findFreeSpot(moved, targetHistory.design.items, ROOMS[target], ROOMS[target].fixedZones)
+    history.removeItem(selectedItem.id)
+    targetHistory.addItem(moved)
+    setSelectedId(null)
+    setToast(`Moved ${label(selectedItem).toLowerCase()} to the ${ROOMS[target].label}. Undo in each room to reverse.`)
+  }
+
+  /** Save image: deselect first (no outline or guides in the picture), then capture. */
+  function handleSaveImage() {
+    setSelectedId(null)
+    setPick(null)
+    setScreenshotRequest(Date.now())
+  }
+
+  function handleScreenshot(image: Blob | null) {
+    setScreenshotRequest(null)
+    if (!image) {
+      setToast("Couldn't make the picture. Try a smaller window.")
+      return
+    }
+    downloadBlob(image, `${ROOMS[room].label} ${fileStamp(new Date())}.png`)
+    setToast(`Saved a picture of the ${ROOMS[room].label}.`)
   }
 
   function handleThumbnail(thumbRoom: RoomId, url: string) {
@@ -245,6 +353,8 @@ export default function App() {
           }}
           onOpenDesigns={() => setDesignsOpen(true)}
           onShowcase={enterShowcase}
+          onSaveImage={handleSaveImage}
+          savingImage={screenshotRequest !== null}
         />
       </header>
 
@@ -259,6 +369,7 @@ export default function App() {
           onShowRoom={() => setSelectedId(null)}
           lighting={design.lighting}
           onShowLighting={() => setTimeOpen(true)}
+          onAddFurniture={() => setCatalogOpen(true)}
         />
 
         {/* Background follows the time of day, so the room-switch fade dips to the same tone as the 3D backdrop. */}
@@ -283,6 +394,8 @@ export default function App() {
                 editable={!showcase}
                 thumbnailRequest={thumbnailRequest}
                 onThumbnail={handleThumbnail}
+                screenshotRequest={screenshotRequest}
+                onScreenshot={handleScreenshot}
               />
             </ErrorBoundary>
           </div>
@@ -323,6 +436,36 @@ export default function App() {
               : 'Click furniture to select · drag it to move · drag empty space to pan · scroll to zoom'}
           </p>
 
+          {catalogOpen && !showcase && (
+            <CatalogDrawer
+              room={room}
+              thumbnails={catalogThumbs}
+              onAdd={(type) => {
+                handleAdd(type)
+                setCatalogOpen(false)
+              }}
+              onClose={() => setCatalogOpen(false)}
+            />
+          )}
+
+          {shared && (
+            <div className="share-banner" role="dialog" aria-label="Shared design">
+              <span>Someone shared a design with you.</span>
+              <button
+                className="primary-button"
+                onClick={() => {
+                  handleLoad(shared, 'shared design')
+                  setShared(null)
+                }}
+              >
+                Open it
+              </button>
+              <button className="ghost-button" onClick={() => setShared(null)}>
+                Keep mine
+              </button>
+            </div>
+          )}
+
           {toast && (
             <div className="toast" role="status">
               {toast}
@@ -344,8 +487,19 @@ export default function App() {
           onPreviewFinishes={history.previewFinishes}
           onCommit={history.commit}
           onDeselect={() => setSelectedId(null)}
+          onDuplicate={handleDuplicate}
+          onDelete={handleDelete}
+          moveTargets={selectedItem ? ROOM_IDS.filter((id) => id !== room && isAllowedIn(selectedItem.type, id)) : []}
+          onMoveTo={handleMoveTo}
         />
       </div>
+
+      {catalogOpen && (
+        <CatalogThumbnailRenderer
+          types={catalogFor(room).filter((type) => !catalogThumbs[type])}
+          onThumbnail={(type, url) => setCatalogThumbs((current) => ({ ...current, [type]: url }))}
+        />
+      )}
 
       {introOpen && <IntroScreen onStart={() => closeIntro(false)} onTour={() => closeIntro(true)} />}
 

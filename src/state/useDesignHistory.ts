@@ -30,6 +30,8 @@ export type RoomBounds = { width: number; depth: number }
 
 export type HistoryAction =
   | { type: 'updateItem'; id: string; changes: ItemChanges; transient: boolean; bounds: RoomBounds }
+  | { type: 'addItem'; item: FurnitureItem; bounds: RoomBounds }
+  | { type: 'removeItem'; id: string }
   | { type: 'updateFinishes'; changes: FinishChanges; transient: boolean }
   | { type: 'updateLighting'; changes: LightingChanges; transient: boolean }
   | { type: 'load'; design: RoomDesign }
@@ -80,6 +82,17 @@ export function historyReducer(state: HistoryState, action: HistoryAction): Hist
   switch (action.type) {
     case 'updateItem':
       return change(state, applyItemChanges(state.present, action.id, action.changes, action.bounds), action.transient)
+    case 'addItem': {
+      // Ids are unique within a room; a clash would make two pieces move together.
+      if (state.present.items.some((item) => item.id === action.item.id)) return state
+      const item = { ...action.item, rotation: normalizeDegrees(action.item.rotation) }
+      item.position = clampToRoom(item, action.bounds)
+      return change(state, { ...state.present, items: [...state.present.items, item] }, false)
+    }
+    case 'removeItem': {
+      const items = state.present.items.filter((item) => item.id !== action.id)
+      return items.length === state.present.items.length ? state : change(state, { ...state.present, items }, false)
+    }
     case 'updateLighting':
       return change(
         state,
@@ -148,6 +161,10 @@ export interface RoomHistory {
   updateItem: (id: string, changes: ItemChanges) => void
   /** Change an item live without recording yet (dragging, sliders). Call `commit` when done. */
   previewItem: (id: string, changes: ItemChanges) => void
+  /** Add a piece (kept inside the walls). One undo step. */
+  addItem: (item: FurnitureItem) => void
+  /** Remove a piece. One undo step. */
+  removeItem: (id: string) => void
   updateFinishes: (changes: FinishChanges) => void
   previewFinishes: (changes: FinishChanges) => void
   /** Time of day / orientation: one undo step (preset buttons). */
@@ -186,6 +203,8 @@ export function useHouseHistory(getInitialHouse: () => HouseDesign) {
             {
               updateItem: (id, changes) => send({ type: 'updateItem', id, changes, transient: false, bounds }),
               previewItem: (id, changes) => send({ type: 'updateItem', id, changes, transient: true, bounds }),
+              addItem: (item) => send({ type: 'addItem', item, bounds }),
+              removeItem: (id) => send({ type: 'removeItem', id }),
               updateFinishes: (changes) => send({ type: 'updateFinishes', changes, transient: false }),
               previewFinishes: (changes) => send({ type: 'updateFinishes', changes, transient: true }),
               updateLighting: (changes) => send({ type: 'updateLighting', changes, transient: false }),
