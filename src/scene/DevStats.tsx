@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useEffect } from 'react'
+import { addAfterEffect, useThree } from '@react-three/fiber'
 
 /**
  * Small performance readout in the corner of the 3D view, for measuring the
@@ -14,42 +14,42 @@ import { useFrame, useThree } from '@react-three/fiber'
  */
 export function DevStats() {
   const gl = useThree((state) => state.gl)
-  const panel = useRef<HTMLPreElement | null>(null)
-  const frames = useRef(0)
 
-  // A plain DOM element on top of the canvas. Updated directly (not via React
-  // state) so the readout itself never causes extra renders.
   useEffect(() => {
+    // A plain DOM element on top of the canvas. Updated directly (not via React
+    // state) so the readout itself never causes extra renders.
     const el = document.createElement('pre')
     el.className = 'dev-stats'
     gl.domElement.parentElement?.appendChild(el)
-    panel.current = el
+
     // Three.js normally zeroes its counters at the start of every render() call, so an
     // extra pass in a frame (shadow map, environment, render target) would overwrite the
     // main one. Counting the whole frame ourselves gives the real total.
     gl.info.autoReset = false
+    gl.info.reset()
+    let frames = 0
+
+    // Runs after each frame has been drawn, so the numbers are for the frame on screen.
+    const unsubscribe = addAfterEffect(() => {
+      frames += 1
+      const { render, memory, programs } = gl.info
+      el.textContent = [
+        `frames     ${frames}`,
+        `draw calls ${render.calls}`,
+        `triangles  ${render.triangles.toLocaleString()}`,
+        `geometries ${memory.geometries}`,
+        `textures   ${memory.textures}`,
+        `shaders    ${programs?.length ?? 0}`,
+      ].join('\n')
+      gl.info.reset()
+    })
+
     return () => {
+      unsubscribe()
       gl.info.autoReset = true
       el.remove()
     }
   }, [gl])
-
-  useFrame(() => {
-    frames.current += 1
-    const el = panel.current
-    if (!el) return
-    // Runs before this frame is drawn, so gl.info now holds the totals of the previous frame.
-    const { render, memory, programs } = gl.info
-    el.textContent = [
-      `frames     ${frames.current}`,
-      `draw calls ${render.calls}`,
-      `triangles  ${render.triangles.toLocaleString()}`,
-      `geometries ${memory.geometries}`,
-      `textures   ${memory.textures}`,
-      `shaders    ${programs?.length ?? 0}`,
-    ].join('\n')
-    gl.info.reset()
-  })
 
   return null
 }
