@@ -5,13 +5,15 @@ import { findOverlaps } from './scene/furniture/catalog'
 import { Sidebar } from './components/Sidebar'
 import { Toolbar } from './components/Toolbar'
 import { ViewToggle } from './components/ViewToggle'
+import { RoomSelector } from './components/RoomSelector'
 import { PropertiesPanel } from './components/PropertiesPanel'
 import { DesignsDialog } from './components/DesignsDialog'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useDesignHistory } from './state/useDesignHistory'
-import { DEFAULT_DESIGN, type RoomDesign } from './state/design'
+import { DEFAULT_BEDROOM_DESIGN, DEFAULT_DESIGN, DEFAULT_HOUSE, type HouseDesign } from './state/design'
 import { loadAutosave, writeAutosave } from './state/storage'
+import { ROOMS, type RoomId } from './scene/house'
 
 export default function App() {
   // App state: which camera view is active, and a counter used to reset the camera.
@@ -22,20 +24,29 @@ export default function App() {
   const [designsOpen, setDesignsOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
-  // The room design (furniture + finishes) plus undo/redo history.
-  // It starts from the autosave, so reloading the page keeps your work.
-  const history = useDesignHistory(() => loadAutosave() ?? DEFAULT_DESIGN)
+  // Which room you're viewing and editing.
+  const [room, setRoom] = useState<RoomId>('living')
+
+  // Each room has its own design (furniture + finishes) and its own undo/redo history.
+  // Both start from the autosave, so reloading the page keeps your work.
+  const [initialHouse] = useState<HouseDesign>(() => loadAutosave() ?? DEFAULT_HOUSE)
+  const living = useDesignHistory(() => initialHouse.living, { bounds: ROOMS.living, defaultDesign: DEFAULT_DESIGN })
+  const bedroom = useDesignHistory(() => initialHouse.bedroom, { bounds: ROOMS.bedroom, defaultDesign: DEFAULT_BEDROOM_DESIGN })
+  const house = useMemo<HouseDesign>(() => ({ living: living.design, bedroom: bedroom.design }), [living.design, bedroom.design])
+
+  // Everything below (toolbar, panels, shortcuts) works on the selected room's history.
+  const history = room === 'living' ? living : bedroom
   const { design } = history
   const selectedItem = design.items.find((item) => item.id === selectedId) ?? null
 
   // Which pieces overlap each other. Recalculated only when the furniture changes.
   const overlaps = useMemo(() => findOverlaps(design.items), [design.items])
 
-  // Autosave: write the design to browser storage shortly after every change.
+  // Autosave: write both rooms to browser storage shortly after every change.
   useEffect(() => {
-    const timer = setTimeout(() => writeAutosave(design), 400)
+    const timer = setTimeout(() => writeAutosave(house), 400)
     return () => clearTimeout(timer)
-  }, [design])
+  }, [house])
 
   // Hide the little notification after a few seconds.
   useEffect(() => {
@@ -54,17 +65,25 @@ export default function App() {
     commit: history.commit,
   })
 
-  function handleLoad(loaded: RoomDesign, name: string) {
-    history.load(loaded)
+  function handleLoad(loaded: HouseDesign, name: string) {
+    living.load(loaded.living)
+    bedroom.load(loaded.bedroom)
     setSelectedId(null)
     setDesignsOpen(false)
-    setToast(`Loaded "${name}". Press Undo to go back.`)
+    setToast(`Loaded "${name}" (both rooms). Undo goes back one room at a time.`)
   }
 
   function handleReset() {
     history.reset()
     setSelectedId(null)
-    setToast('Room reset to the starting design. Press Undo to go back.')
+    setToast(`${ROOMS[room].label} reset to its starting design. Press Undo to go back.`)
+  }
+
+  function handleRoomChange(next: RoomId) {
+    if (next === room) return
+    history.commit() // finish any drag/slide in the room you're leaving
+    setSelectedId(null)
+    setRoom(next)
   }
 
   const overlapping = selectedItem
@@ -78,7 +97,7 @@ export default function App() {
           <span className="logo" aria-hidden="true" />
           <span className="brand-name">Room Designer</span>
           <span className="divider" />
-          <span className="project-name">Living Room</span>
+          <span className="project-name">My House</span>
         </div>
         <Toolbar
           canUndo={history.canUndo}
@@ -93,6 +112,7 @@ export default function App() {
 
       <div className="workspace">
         <Sidebar
+          room={room}
           items={design.items}
           finishes={design.finishes}
           selectedId={selectedId}
@@ -106,8 +126,8 @@ export default function App() {
             <Scene
               view={view}
               resetKey={resetKey}
-              items={design.items}
-              finishes={design.finishes}
+              activeRoom={room}
+              house={house}
               selectedId={selectedId}
               overlaps={overlaps}
               onSelect={setSelectedId}
@@ -117,6 +137,7 @@ export default function App() {
           </ErrorBoundary>
 
           <div className="overlay-top">
+            <RoomSelector room={room} onChange={handleRoomChange} />
             <ViewToggle view={view} onChange={setView} />
           </div>
 
@@ -134,6 +155,7 @@ export default function App() {
         </main>
 
         <PropertiesPanel
+          room={room}
           item={selectedItem}
           finishes={design.finishes}
           overlapping={overlapping}
@@ -146,7 +168,7 @@ export default function App() {
         />
       </div>
 
-      <DesignsDialog open={designsOpen} design={design} onClose={() => setDesignsOpen(false)} onLoad={handleLoad} />
+      <DesignsDialog open={designsOpen} design={house} onClose={() => setDesignsOpen(false)} onLoad={handleLoad} />
     </div>
   )
 }

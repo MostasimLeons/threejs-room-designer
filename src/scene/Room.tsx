@@ -12,7 +12,7 @@ import { Door } from './furniture/Door'
 
 type Vec3 = [number, number, number]
 
-interface Opening {
+export interface Opening {
   center: number
   width: number
   bottom: number
@@ -23,6 +23,8 @@ interface WallProps extends Omit<ThreeElements['group'], 'children'> {
   length: number
   opening?: Opening
   material: THREE.Material
+  /** Defaults to the normal wall thickness. The shared wall uses two half-thickness layers. */
+  thickness?: number
 }
 
 /**
@@ -30,8 +32,9 @@ interface WallProps extends Omit<ThreeElements['group'], 'children'> {
  * the wall is assembled from up to four boxes around the hole, so light can
  * really shine through it.
  */
-function Wall({ length, opening, material, ...props }: WallProps) {
-  const { height: H, wallThickness: T } = ROOM
+export function Wall({ length, opening, material, thickness = ROOM.wallThickness, ...props }: WallProps) {
+  const { height: H } = ROOM
+  const T = thickness
   const pieces: { position: Vec3; size: Vec3 }[] = []
 
   if (!opening) {
@@ -65,25 +68,27 @@ function Wall({ length, opening, material, ...props }: WallProps) {
   )
 }
 
-// Each floor texture is drawn once and then reused when you switch back to it.
-const floorTextures = new Map<FloorId, THREE.CanvasTexture>()
+// Each floor texture is drawn once per material and room size, then reused.
+const floorTextures = new Map<string, THREE.CanvasTexture>()
 
-function getFloorTexture(id: FloorId) {
-  let texture = floorTextures.get(id)
+function getFloorTexture(id: FloorId, width: number, depth: number) {
+  const key = `${id}:${width}x${depth}`
+  let texture = floorTextures.get(key)
   if (!texture) {
     texture = createFloorTexture(id)
     const { tileSize } = getFloorOption(id)
-    texture.repeat.set(ROOM.width / tileSize, ROOM.depth / tileSize)
-    floorTextures.set(id, texture)
+    texture.repeat.set(width / tileSize, depth / tileSize)
+    floorTextures.set(key, texture)
   }
   return texture
 }
 
-function Floor({ floor }: { floor: FloorId }) {
-  const texture = getFloorTexture(floor)
+/** Textured floor. The size defaults to the Living Room; the Bedroom passes its own. */
+export function Floor({ floor, width = ROOM.width, depth = ROOM.depth }: { floor: FloorId; width?: number; depth?: number }) {
+  const texture = getFloorTexture(floor, width, depth)
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[ROOM.width, ROOM.depth]} />
+      <planeGeometry args={[width, depth]} />
       <meshStandardMaterial map={texture} roughness={getFloorOption(floor).roughness} metalness={0.02} />
     </mesh>
   )
@@ -93,7 +98,7 @@ function Floor({ floor }: { floor: FloorId }) {
  * "Cutaway" walls: hides its children whenever the camera is outside the room
  * behind them, so the wall never blocks your view. Checked every frame.
  */
-function Cutaway({ isBehind, children }: { isBehind: (camera: THREE.Camera) => boolean; children: ReactNode }) {
+export function Cutaway({ isBehind, children }: { isBehind: (camera: THREE.Camera) => boolean; children: ReactNode }) {
   const ref = useRef<THREE.Group>(null)
   useFrame(({ camera }) => {
     if (ref.current) ref.current.visible = !isBehind(camera)
@@ -101,8 +106,8 @@ function Cutaway({ isBehind, children }: { isBehind: (camera: THREE.Camera) => b
   return <group ref={ref}>{children}</group>
 }
 
-const SKIRTING_H = 0.09
-const SKIRTING_T = 0.015
+export const SKIRTING_H = 0.09
+export const SKIRTING_T = 0.015
 
 function BackWall({ wallMaterial }: { wallMaterial: THREE.Material }) {
   const { width: W, depth: D, wallThickness: T } = ROOM

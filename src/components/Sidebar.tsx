@@ -1,17 +1,32 @@
 import { DOOR_OPENING, ROOM, WINDOW_OPENING } from '../scene/roomConfig'
+import { BEDROOM_WINDOW, CONNECTING_DOOR, ROOMS, type RoomId } from '../scene/house'
 import { FURNITURE_INFO, getVariant, type FurnitureItem } from '../scene/furniture/catalog'
 import { getFloorOption, wallColorName, type RoomFinishes } from '../scene/finishes'
 
 const cm = (metres: number) => Math.round(metres * 100)
 
+const size = (opening: { width: number; top: number; bottom: number }) =>
+  `${cm(opening.width)} × ${cm(opening.top - opening.bottom)} cm`
+
 // Fixtures are built into the walls, so they can't be selected or moved.
-// Their sizes come from roomConfig, so this list can't go out of date.
-const FIXTURES = [
-  { name: 'Window', detail: `${cm(WINDOW_OPENING.width)} × ${cm(WINDOW_OPENING.top - WINDOW_OPENING.bottom)} cm`, color: '#cfe4ef' },
-  { name: 'Door', detail: `${cm(DOOR_OPENING.width)} × ${cm(DOOR_OPENING.top - DOOR_OPENING.bottom)} cm`, color: '#f4f1ea' },
-]
+// Their sizes come from roomConfig / house, so this list can't go out of date.
+const FIXTURES: Record<RoomId, { name: string; detail: string; color: string }[]> = {
+  living: [
+    { name: 'Window', detail: size(WINDOW_OPENING), color: '#cfe4ef' },
+    { name: 'Door', detail: size(DOOR_OPENING), color: '#f4f1ea' },
+    { name: 'Door to bedroom', detail: size(CONNECTING_DOOR), color: '#f4f1ea' },
+  ],
+  bedroom: [
+    { name: 'Window + curtains', detail: size(BEDROOM_WINDOW), color: '#cfe4ef' },
+    { name: 'Door to living room', detail: size(CONNECTING_DOOR), color: '#f4f1ea' },
+    { name: 'Oak slat wall', detail: 'behind bed', color: '#c49a6c' },
+    { name: 'Cream carpet', detail: '320 × 250 cm', color: '#ece3d2' },
+  ],
+}
 
 interface SidebarProps {
+  /** The room being viewed; everything in the sidebar is about this room. */
+  room: RoomId
   items: FurnitureItem[]
   finishes: RoomFinishes
   selectedId: string | null
@@ -22,7 +37,9 @@ interface SidebarProps {
   onShowRoom: () => void
 }
 
-export function Sidebar({ items, finishes, selectedId, overlaps, onSelect, onShowRoom }: SidebarProps) {
+export function Sidebar({ room, items, finishes, selectedId, overlaps, onSelect, onShowRoom }: SidebarProps) {
+  const { label, width, depth } = ROOMS[room]
+  const fixtures = FIXTURES[room]
   const floor = getFloorOption(finishes.floor)
   const finishRows = [
     { name: 'Floor', detail: floor.label, color: floor.swatch },
@@ -32,14 +49,14 @@ export function Sidebar({ items, finishes, selectedId, overlaps, onSelect, onSho
   return (
     <aside className="sidebar">
       <section className="card">
-        <h2>Room</h2>
+        <h2>{label}</h2>
         <div className="stats">
           <div>
-            <span className="stat-value">{ROOM.width.toFixed(1)} × {ROOM.depth.toFixed(1)} m</span>
+            <span className="stat-value">{width.toFixed(1)} × {depth.toFixed(1)} m</span>
             <span className="stat-label">Size</span>
           </div>
           <div>
-            <span className="stat-value">{ROOM.width * ROOM.depth} m²</span>
+            <span className="stat-value">{width * depth} m²</span>
             <span className="stat-label">Area</span>
           </div>
           <div>
@@ -66,7 +83,7 @@ export function Sidebar({ items, finishes, selectedId, overlaps, onSelect, onSho
 
       <section className="card grow">
         <h2>
-          Objects <span className="count">{items.length + FIXTURES.length}</span>
+          Objects <span className="count">{items.length + fixtures.length}</span>
         </h2>
         <ul className="list">
           {items.map((item) => (
@@ -85,7 +102,7 @@ export function Sidebar({ items, finishes, selectedId, overlaps, onSelect, onSho
               </button>
             </li>
           ))}
-          {FIXTURES.map((f) => (
+          {fixtures.map((f) => (
             <li key={f.name}>
               <span className="swatch" style={{ background: f.color }} />
               <span className="item-name">{f.name}</span>

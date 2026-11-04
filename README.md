@@ -6,6 +6,11 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Every 
 
 ## Features
 
+- **Two connected rooms in one house:**
+  - **Living Room** (7 × 6 m): sofa, armchair, coffee table, TV unit, plant, floor lamp.
+  - **Bedroom** (5 × 4 m, modern luxury): king bed with upholstered headboard, two bedside tables with lamps, sliding wardrobe, dressing table with mirror, accent chair, two plants, curtained window, oak slat accent wall and cream carpet.
+
+  The rooms share a wall with an open connecting door. Use the **Living Room | Bedroom** switch above the 3D view to choose which room you see and edit. Each room has its own furniture, finishes and undo history.
 - **Select** furniture by clicking it in the 3D view or in the Objects list.
 - **Move** furniture by:
   - dragging it across the floor
@@ -21,7 +26,7 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Every 
 - **Room finishes:**
   - six wall paint presets or a custom colour
   - five floor materials: oak, walnut, whitewashed ash, polished concrete and stone tiles
-- **Undo / Redo / Reset** covers furniture and finishes. Reset itself can be undone.
+- **Undo / Redo / Reset** covers furniture and finishes of the selected room. Reset itself can be undone.
 - **Perspective and Plan** (top-down) views.
 - **Save and restore:**
   - named saves in the browser
@@ -97,6 +102,7 @@ A whole drag, slider movement or held-down arrow key counts as **one** undo step
 
 - **Saved in this browser:** designs are stored in your browser's `localStorage`, so they exist only in that browser on that computer. Clearing site data removes them.
 - **Export file / Import file:** use these to back up a design, move it to another computer, or share it. Imported files are checked first: unknown furniture is skipped, and anything outside the room is moved back inside.
+- **Both rooms are always saved together:** saves, the autosave and exported files hold the whole house. Saves and files made before the Bedroom existed still load: they become the Living Room, and the Bedroom starts from its default layout.
 
 ## Project structure
 
@@ -110,6 +116,7 @@ src/
     Sidebar.tsx            Room stats, finishes summary, objects list
     PropertiesPanel.tsx    Selected furniture: options, colour, rotation, position
     RoomPanel.tsx          Nothing selected: wall paint and floor material
+    RoomSelector.tsx       Living Room / Bedroom switch
     ColorPicker.tsx        Swatch grid + custom colour (used by both panels)
     DesignsDialog.tsx      Save / load / export / import window
     ViewToggle.tsx         Perspective / Plan switch
@@ -128,7 +135,10 @@ src/
   scene/                   Everything inside the 3D canvas
     Scene.tsx              The <Canvas> (renders only when something changes)
     FurnitureLayer.tsx     Draws furniture; click-to-select, drag-to-move, outlines
-    Room.tsx               Floor, walls (with openings), skirting, rug, cutaway walls
+    Room.tsx               Living Room: floor, walls (with openings), skirting, rug, cutaway walls
+    Bedroom.tsx            Bedroom shell (floor, walls, curtained window, slat wall, carpet)
+                           and the shared wall with the connecting door
+    house.ts               House layout: room sizes and positions, shared wall, door, bedroom window
     CameraRig.tsx          Perspective / Plan cameras and mouse controls
     Lighting.tsx           Lights, shadows, environment reflections
     finishes.ts            Wall colour presets and floor material options
@@ -141,7 +151,9 @@ src/
                            "stay inside the room" and overlap checks
       FurnitureModel.tsx   Picks the 3D model for a furniture type
       useTintedMaterial.ts Per-piece copy of a material so recolouring is independent
-      Sofa.tsx … Door.tsx  One procedural model per object
+      Sofa.tsx … Door.tsx  One procedural model per object (Living Room)
+      Bed.tsx, BedsideTable.tsx, Wardrobe.tsx,
+      DressingTable.tsx, AccentChair.tsx   Bedroom models
 ```
 
 ## Troubleshooting
@@ -159,6 +171,7 @@ src/
 
 - Overlapping furniture is flagged but not blocked. You decide where things go.
 - The window and door are fixed parts of the walls.
-- There is no Add or Delete for furniture yet: the room always has the six starting pieces.
+- There is no Add or Delete for furniture yet: each room always has its starting pieces.
+- Furniture can't be moved from one room to the other.
 
 <!-- Last updated: 2026-11-02 12:11 UTC -->

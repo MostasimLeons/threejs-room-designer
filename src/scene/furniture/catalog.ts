@@ -1,7 +1,20 @@
 import { ROOM } from '../roomConfig'
 import { clamp, degToRad } from '../../utils/math'
 
-export type FurnitureType = 'sofa' | 'armchair' | 'coffeeTable' | 'tvUnit' | 'plant' | 'floorLamp'
+export type FurnitureType =
+  // Living Room
+  | 'sofa'
+  | 'armchair'
+  | 'coffeeTable'
+  | 'tvUnit'
+  | 'plant'
+  | 'floorLamp'
+  // Bedroom
+  | 'bed'
+  | 'bedsideTable'
+  | 'wardrobe'
+  | 'dressingTable'
+  | 'accentChair'
 
 /** One piece of furniture in the room. This plain data is what undo/redo and saving store. */
 export interface FurnitureItem {
@@ -57,6 +70,24 @@ const WOOD_SWATCHES: Swatch[] = [
   { color: '#8a5a3b', name: 'Teak' },
   { color: '#4a3426', name: 'Walnut' },
   { color: '#f2f0eb', name: 'White' },
+  { color: '#2a2a2c', name: 'Black' },
+]
+
+// Bedroom palette: cream whites and natural oak (modern luxury)
+const CREAM_SWATCHES: Swatch[] = [
+  { color: '#efe6d6', name: 'Cream' },
+  { color: '#f6f2ea', name: 'Ivory white' },
+  { color: '#e2d3bb', name: 'Champagne' },
+  { color: '#cbb89c', name: 'Latte' },
+  { color: '#9aa391', name: 'Sage' },
+  { color: '#5c6470', name: 'Slate' },
+]
+const OAK_SWATCHES: Swatch[] = [
+  { color: '#c49a6c', name: 'Natural oak' },
+  { color: '#dcc0a0', name: 'Light oak' },
+  { color: '#a87c52', name: 'Honey oak' },
+  { color: '#6f4a31', name: 'Smoked oak' },
+  { color: '#f1ebdf', name: 'Cream' },
   { color: '#2a2a2c', name: 'Black' },
 ]
 
@@ -143,6 +174,58 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
       { color: '#ffffff', name: 'White' },
     ],
   },
+  bed: {
+    label: 'Bed',
+    variantLabel: 'Size',
+    variants: [
+      // Footprint = frame + headboard around a 180 × 200 (or 160 × 200) mattress
+      { id: 'king', label: 'King', detail: '180 × 200 cm', footprint: [1.9, 2.17] },
+      { id: 'queen', label: 'Queen', detail: '160 × 200 cm', footprint: [1.7, 2.17] },
+    ],
+    colorLabel: 'Upholstery',
+    swatches: CREAM_SWATCHES,
+  },
+  bedsideTable: {
+    label: 'Bedside table',
+    variantLabel: 'Style',
+    variants: [
+      { id: 'drawers', label: 'Two drawers', detail: 'with lamp', footprint: [0.5, 0.4] },
+      { id: 'shelf', label: 'Drawer + shelf', detail: 'with lamp', footprint: [0.5, 0.4] },
+    ],
+    colorLabel: 'Wood',
+    swatches: OAK_SWATCHES,
+  },
+  wardrobe: {
+    label: 'Sliding wardrobe',
+    variantLabel: 'Size',
+    variants: [
+      { id: '2-door', label: '2 doors', detail: '200 cm', footprint: [2.0, 0.62] },
+      { id: '3-door', label: '3 doors', detail: '270 cm', footprint: [2.7, 0.62] },
+    ],
+    colorLabel: 'Doors',
+    swatches: CREAM_SWATCHES,
+  },
+  dressingTable: {
+    label: 'Dressing table',
+    variantLabel: 'Mirror',
+    variants: [
+      // Depth includes the stool tucked in front
+      { id: 'round', label: 'Round mirror', detail: '100 cm', footprint: [1.0, 0.75] },
+      { id: 'tall', label: 'Tall mirror', detail: '100 cm', footprint: [1.0, 0.75] },
+    ],
+    colorLabel: 'Wood',
+    swatches: OAK_SWATCHES,
+  },
+  accentChair: {
+    label: 'Accent chair',
+    variantLabel: 'Style',
+    variants: [
+      { id: 'tub', label: 'Tub', detail: '75 cm', footprint: [0.75, 0.75] },
+      { id: 'wingback', label: 'Wingback', detail: '75 cm', footprint: [0.75, 0.75] },
+    ],
+    colorLabel: 'Fabric',
+    swatches: CREAM_SWATCHES,
+  },
 }
 
 /** Looks up a variant, falling back to the default if the id is unknown. */
@@ -151,7 +234,7 @@ export function getVariant(type: FurnitureType, variant: string): VariantInfo {
   return variants.find((v) => v.id === variant) ?? variants[0]
 }
 
-/** The starting arrangement. "Reset" returns to this. */
+/** The Living Room's starting arrangement. "Reset" returns to this. */
 export const DEFAULT_LAYOUT: FurnitureItem[] = [
   { id: 'sofa', type: 'sofa', variant: '3-seat', position: [0.3, -2.5], rotation: 0, color: '#f1eee8' },
   { id: 'coffee-table', type: 'coffeeTable', variant: 'rectangle', position: [0.3, -1.15], rotation: 0, color: '#c49a6c' },
@@ -162,18 +245,40 @@ export const DEFAULT_LAYOUT: FurnitureItem[] = [
 ]
 
 /**
+ * The Bedroom's starting arrangement (5 × 4 m). Positions are measured from the
+ * bedroom's centre: x -2.5…2.5, z -2…2 (back wall at z = -2, shared wall at x = -2.5).
+ */
+export const DEFAULT_BEDROOM_LAYOUT: FurnitureItem[] = [
+  // King bed centred on the oak slat wall, headboard against the back wall
+  { id: 'bed', type: 'bed', variant: 'king', position: [-0.35, -0.915], rotation: 0, color: '#efe6d6' },
+  { id: 'bedside-left', type: 'bedsideTable', variant: 'drawers', position: [-1.61, -1.78], rotation: 0, color: '#c49a6c' },
+  { id: 'bedside-right', type: 'bedsideTable', variant: 'drawers', position: [0.91, -1.78], rotation: 0, color: '#c49a6c' },
+  // Sliding wardrobe against the shared wall (sliding doors need no swing space beside the bed)
+  { id: 'wardrobe', type: 'wardrobe', variant: '2-door', position: [-2.19, -1.0], rotation: 90, color: '#efe6d6' },
+  // Dressing table on the right wall, near the front
+  { id: 'dressing-table', type: 'dressingTable', variant: 'round', position: [2.125, 0.6], rotation: 270, color: '#c49a6c' },
+  { id: 'accent-chair', type: 'accentChair', variant: 'tub', position: [1.0, 1.3], rotation: 225, color: '#e2d3bb' },
+  { id: 'bedroom-plant', type: 'plant', variant: 'large', position: [2.2, 1.7], rotation: 0, color: '#ecebe6' },
+  { id: 'bedroom-plant-small', type: 'plant', variant: 'small', position: [-2.28, 0.4], rotation: 0, color: '#c9b393' },
+]
+
+/**
  * Keeps a piece of furniture inside the room walls. A rotated object takes up
  * a different amount of space along x and z, so the rotation is included.
  */
-export function clampToRoom(item: Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation'>): [number, number] {
+export function clampToRoom(
+  item: Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation'>,
+  /** Room size; defaults to the Living Room. */
+  room: { width: number; depth: number } = ROOM,
+): [number, number] {
   const [w, d] = getVariant(item.type, item.variant).footprint
   const angle = degToRad(item.rotation)
   const cos = Math.abs(Math.cos(angle))
   const sin = Math.abs(Math.sin(angle))
   const halfX = (cos * w + sin * d) / 2
   const halfZ = (sin * w + cos * d) / 2
-  const maxX = ROOM.width / 2 - halfX
-  const maxZ = ROOM.depth / 2 - halfZ
+  const maxX = room.width / 2 - halfX
+  const maxZ = room.depth / 2 - halfZ
   return [clamp(item.position[0], -maxX, maxX), clamp(item.position[1], -maxZ, maxZ)]
 }
 

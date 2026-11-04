@@ -643,6 +643,13 @@ kbd {
   top: 16px;
   left: 50%;
   transform: translateX(-50%);
+  /* Room selector + view switch side by side; they wrap onto two rows on phones */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100% - 24px);
 }
 
 .view-toggle {

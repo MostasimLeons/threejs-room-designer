@@ -1,8 +1,10 @@
+import { ROOMS, type RoomId } from '../scene/house'
 import { FLOOR_OPTIONS, WALL_SWATCHES, wallColorName, type RoomFinishes } from '../scene/finishes'
 import type { FinishChanges } from '../state/useDesignHistory'
 import { ColorPicker } from './ColorPicker'
 
 interface RoomPanelProps {
+  room: RoomId
   finishes: RoomFinishes
   onUpdateFinishes: (changes: FinishChanges) => void
   onPreviewFinishes: (changes: FinishChanges) => void
@@ -10,12 +12,12 @@ interface RoomPanelProps {
 }
 
 /** Right-hand panel when nothing is selected: wall paint, floor material and shortcut tips. */
-export function RoomPanel({ finishes, onUpdateFinishes, onPreviewFinishes, onCommit }: RoomPanelProps) {
+export function RoomPanel({ room, finishes, onUpdateFinishes, onPreviewFinishes, onCommit }: RoomPanelProps) {
   return (
     <aside className="properties">
       <section className="card">
         <h2>Room</h2>
-        <p className="item-title">Living room</p>
+        <p className="item-title">{ROOMS[room].label}</p>
         <p className="muted">Select furniture to edit it, or style the room below.</p>
       </section>
 

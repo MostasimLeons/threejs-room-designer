@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import type { RoomDesign } from '../state/design'
+import type { HouseDesign } from '../state/design'
 import { deleteSave, exportDesign, importDesign, listSaves, saveDesign, type SavedDesign } from '../state/storage'
 
 interface DesignsDialogProps {
   open: boolean
-  design: RoomDesign
+  /** Both rooms: saving and exporting always include the whole house. */
+  design: HouseDesign
   onClose: () => void
-  /** Called with a design to restore (from a save or an imported file). */
-  onLoad: (design: RoomDesign, name: string) => void
+  /** Called with a house to restore (from a save or an imported file). */
+  onLoad: (design: HouseDesign, name: string) => void
 }
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
@@ -107,7 +108,7 @@ export function DesignsDialog({ open, design, onClose, onLoad }: DesignsDialogPr
               <div>
                 <span className="item-name">{save.name}</span>
                 <span className="item-detail">
-                  {formatDate(save.savedAt)} · {save.design.items.length} items
+                  {formatDate(save.savedAt)} · {save.design.living.items.length + save.design.bedroom.items.length} items in 2 rooms
                 </span>
               </div>
               <button className="ghost-button" onClick={() => onLoad(save.design, save.name)}>
@@ -122,7 +123,7 @@ export function DesignsDialog({ open, design, onClose, onLoad }: DesignsDialogPr
       )}
 
       <h3>File</h3>
-      <p className="muted small">Export a .json file to back up or share a design, and import it on any computer.</p>
+      <p className="muted small">Saves and files include both rooms. Export a .json file to back up or share a design, and import it on any computer.</p>
       <div className="file-row">
         <button className="ghost-button" onClick={() => exportDesign(design, name.trim() || 'room-design')}>
           Export file

@@ -1,11 +1,13 @@
 import { FURNITURE_INFO, getVariant, type FurnitureItem } from '../scene/furniture/catalog'
 import type { RoomFinishes } from '../scene/finishes'
-import { ROOM } from '../scene/roomConfig'
+import { ROOMS, type RoomId } from '../scene/house'
 import type { FinishChanges, ItemChanges } from '../state/useDesignHistory'
 import { ColorPicker } from './ColorPicker'
 import { RoomPanel } from './RoomPanel'
 
 interface PropertiesPanelProps {
+  /** The room being edited: sets the slider ranges and the Room panel title. */
+  room: RoomId
   item: FurnitureItem | null
   finishes: RoomFinishes
   /** Other pieces the selected item currently overlaps. */
@@ -27,8 +29,9 @@ function commitHandlers(onCommit: () => void) {
 
 /** Right-hand panel: edits the selected furniture, or the room when nothing is selected. */
 export function PropertiesPanel(props: PropertiesPanelProps) {
-  const { item, overlapping, onUpdate, onPreview, onCommit, onDeselect } = props
+  const { room, item, overlapping, onUpdate, onPreview, onCommit, onDeselect } = props
   if (!item) return <RoomPanel {...props} />
+  const { width, depth } = ROOMS[room]
 
   const info = FURNITURE_INFO[item.type]
   const variant = getVariant(item.type, item.variant)
@@ -119,8 +122,8 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         </label>
         <input
           type="range"
-          min={-ROOM.width / 2}
-          max={ROOM.width / 2}
+          min={-width / 2}
+          max={width / 2}
           step={0.05}
           value={x}
           onChange={(e) => onPreview({ position: [Number(e.target.value), z] })}
@@ -133,8 +136,8 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         </label>
         <input
           type="range"
-          min={-ROOM.depth / 2}
-          max={ROOM.depth / 2}
+          min={-depth / 2}
+          max={depth / 2}
           step={0.05}
           value={z}
           onChange={(e) => onPreview({ position: [x, Number(e.target.value)] })}

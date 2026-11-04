@@ -6,6 +6,11 @@ import { CoffeeTable } from './CoffeeTable'
 import { TvUnit } from './TvUnit'
 import { Plant } from './Plant'
 import { FloorLamp } from './FloorLamp'
+import { Bed } from './Bed'
+import { BedsideTable } from './BedsideTable'
+import { Wardrobe } from './Wardrobe'
+import { DressingTable } from './DressingTable'
+import { AccentChair } from './AccentChair'
 
 /**
  * Picks the right 3D model for a furniture type.
@@ -27,5 +32,15 @@ export const FurnitureModel = memo(function FurnitureModel({ type, variant, colo
       return <Plant color={color} variant={variant} />
     case 'floorLamp':
       return <FloorLamp color={color} variant={variant} />
+    case 'bed':
+      return <Bed color={color} variant={variant} />
+    case 'bedsideTable':
+      return <BedsideTable color={color} variant={variant} />
+    case 'wardrobe':
+      return <Wardrobe color={color} variant={variant} />
+    case 'dressingTable':
+      return <DressingTable color={color} variant={variant} />
+    case 'accentChair':
+      return <AccentChair color={color} variant={variant} />
   }
 })

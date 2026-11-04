@@ -48,4 +48,16 @@ export const materials = {
 
   // Unlit material for the bright "sky" seen through the window.
   sky: new THREE.MeshBasicMaterial({ color: '#e4f0f7', toneMapped: false }),
+
+  // ---- Bedroom (modern luxury: cream, natural oak, brass) ----
+  linen: new THREE.MeshStandardMaterial({ color: '#f4eee3', roughness: 0.97 }),
+  creamUpholstery: new THREE.MeshStandardMaterial({ color: '#efe6d6', roughness: 0.95 }),
+  creamLacquer: new THREE.MeshStandardMaterial({ color: '#f1ebdf', roughness: 0.35 }),
+  curtain: new THREE.MeshStandardMaterial({ color: '#efe7d8', roughness: 1, side: THREE.DoubleSide }),
+  slatBacking: new THREE.MeshStandardMaterial({ color: '#2f2b27', roughness: 0.95 }),
+  carpet: new THREE.MeshStandardMaterial({ color: '#ece3d2', roughness: 1 }),
+  carpetBorder: new THREE.MeshStandardMaterial({ color: '#d9ccb4', roughness: 1 }),
+  // A fully metallic mirror would reflect the (mostly dark) surroundings and look black,
+  // so it's a pale, glossy silver instead.
+  mirror: new THREE.MeshStandardMaterial({ color: '#dbe4ea', roughness: 0.08, metalness: 0.35 }),
 }

@@ -12,6 +12,10 @@ const FLOOR_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0) // the floor,
 
 interface FurnitureLayerProps {
   items: FurnitureItem[]
+  /** World position [x, z] of the room's centre. Item positions are measured from here. */
+  origin: [number, number]
+  /** Only the selected room's furniture can be clicked and dragged; the other room is just shown. */
+  interactive: boolean
   selectedId: string | null
   /** Items that overlap another item: their outline turns red. */
   overlaps: Map<string, string[]>
@@ -53,7 +57,7 @@ function SelectionOutline({ footprint, faint, color }: OutlineProps) {
 }
 
 /** Renders all furniture and handles clicking (select) and dragging (move). */
-export function FurnitureLayer({ items, selectedId, overlaps, onSelect, onMove, onDragBoundary }: FurnitureLayerProps) {
+export function FurnitureLayer({ items, origin, interactive, selectedId, overlaps, onSelect, onMove, onDragBoundary }: FurnitureLayerProps) {
   const gl = useThree((state) => state.gl)
   const get = useThree((state) => state.get)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -62,8 +66,8 @@ export function FurnitureLayer({ items, selectedId, overlaps, onSelect, onMove, 
   // Information about the drag in progress (a ref, because it changes on every mouse move).
   const drag = useRef<{ id: string; offsetX: number; offsetZ: number } | null>(null)
   // Always-current callbacks for the window listeners below.
-  const callbacks = useRef({ onMove, onDragBoundary })
-  callbacks.current = { onMove, onDragBoundary }
+  const callbacks = useRef({ onMove, onDragBoundary, origin })
+  callbacks.current = { onMove, onDragBoundary, origin }
 
   // Pause/resume the orbit controls so the camera doesn't move while dragging furniture.
   const setCameraControlsEnabled = (enabled: boolean) => {
@@ -91,8 +95,10 @@ export function FurnitureLayer({ items, selectedId, overlaps, onSelect, onMove, 
       // Shoot a ray from the camera through the mouse and see where it hits the floor.
       raycaster.setFromCamera(pointer, get().camera)
       if (!raycaster.ray.intersectPlane(FLOOR_PLANE, hit)) return
-      const x = Math.round((hit.x + current.offsetX) / SNAP) * SNAP
-      const z = Math.round((hit.z + current.offsetZ) / SNAP) * SNAP
+      // The floor hit is in world space; furniture positions are relative to the room centre.
+      const [ox, oz] = callbacks.current.origin
+      const x = Math.round((hit.x - ox + current.offsetX) / SNAP) * SNAP
+      const z = Math.round((hit.z - oz + current.offsetZ) / SNAP) * SNAP
       callbacks.current.onMove(current.id, [x, z])
     }
 
@@ -122,30 +128,34 @@ export function FurnitureLayer({ items, selectedId, overlaps, onSelect, onMove, 
     const hit = event.ray.intersectPlane(FLOOR_PLANE, new THREE.Vector3())
     if (!hit) return
     // Remember where on the object you grabbed it, so it doesn't jump to the cursor.
-    drag.current = { id: item.id, offsetX: item.position[0] - hit.x, offsetZ: item.position[1] - hit.z }
+    drag.current = { id: item.id, offsetX: item.position[0] - (hit.x - origin[0]), offsetZ: item.position[1] - (hit.z - origin[1]) }
     setDragging(true)
     setCameraControlsEnabled(false)
     onDragBoundary()
   }
 
   return (
-    <group>
+    <group position={[origin[0], 0, origin[1]]}>
       {items.map((item) => {
-        const isSelected = item.id === selectedId
-        const isHovered = !isSelected && item.id === hoveredId && !dragging
-        const isOverlapping = overlaps.has(item.id)
+        const isSelected = interactive && item.id === selectedId
+        const isHovered = interactive && !isSelected && item.id === hoveredId && !dragging
+        const isOverlapping = interactive && overlaps.has(item.id)
         const showOutline = isSelected || isHovered || isOverlapping
         return (
           <group
             key={item.id}
             position={[item.position[0], 0, item.position[1]]}
             rotation={[0, (item.rotation * Math.PI) / 180, 0]}
-            onPointerDown={handlePointerDown(item)}
-            onPointerOver={(e) => {
-              e.stopPropagation()
-              setHoveredId(item.id)
-            }}
-            onPointerOut={() => setHoveredId((id) => (id === item.id ? null : id))}
+            onPointerDown={interactive ? handlePointerDown(item) : undefined}
+            onPointerOver={
+              interactive
+                ? (e) => {
+                    e.stopPropagation()
+                    setHoveredId(item.id)
+                  }
+                : undefined
+            }
+            onPointerOut={interactive ? () => setHoveredId((id) => (id === item.id ? null : id)) : undefined}
           >
             <FurnitureModel type={item.type} variant={item.variant} color={item.color} />
             {showOutline && (
