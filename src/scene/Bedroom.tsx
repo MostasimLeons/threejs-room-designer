@@ -82,7 +82,7 @@ function SlatAccentWall() {
       mesh.setMatrixAt(i, matrix)
     }
     mesh.instanceMatrix.needsUpdate = true
-  }, [count])
+  }, [count, from])
 
   return (
     <group>

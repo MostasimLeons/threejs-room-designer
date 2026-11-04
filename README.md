@@ -65,6 +65,22 @@ Open **http://localhost:5173** in your browser. Press `Ctrl + C` in the terminal
 | `npm run typecheck` | Checks the TypeScript types without building                            |
 | `npm run build`     | Type-checks, then creates an optimised production build in `dist/`      |
 | `npm run preview`   | Serves the `dist/` build locally so you can test it                     |
+| `npm test`          | Runs the unit tests once (`npm run test:watch` re-runs them as you edit) |
+| `npm run lint`      | Checks the code for likely bugs with Oxlint                             |
+| `npm run format`    | Formats all files with Prettier (`format:check` only reports)           |
+| `npm run check`     | Lint + format check + type check + tests. Run this before committing.   |
+
+### Checking performance
+
+Add `?perf` to the address, for example **http://localhost:5173/?perf**. A small readout appears in the bottom-left corner of the 3D view:
+
+| Line | Meaning |
+| --- | --- |
+| frames | Frames drawn so far. The view only redraws when something changes, so this stands still while you're idle. |
+| draw calls / triangles | GPU work for the last frame, including shadow passes. Lower is faster. |
+| geometries / textures / shaders | What's loaded on the GPU. These should not keep growing while you edit. |
+
+It also works with `npm run preview`, which gives more realistic numbers than the dev server. Baseline on 2026-11-04 (Living Room, default layout): about 466 draw calls and 166k triangles per frame. Roughly 80% of that is the two shadow passes.
 
 ## Dependencies
 
@@ -76,6 +92,9 @@ Open **http://localhost:5173** in your browser. Press `Ctrl + C` in the terminal
 | `@react-three/drei`           | Ready-made helpers: camera controls, rounded boxes, lines, lighting environment |
 | `vite`, `@vitejs/plugin-react` | Development server and build tool (dev only)              |
 | `typescript`, `@types/*`      | Type checking (dev only)                                   |
+| `vitest`                      | Unit tests (dev only)                                      |
+| `oxlint`                      | Linter (dev only). Used instead of ESLint because ESLint's TypeScript parser doesn't support TypeScript 7 yet. |
+| `prettier`                    | Code formatter (dev only)                                  |
 
 Exact versions are in `package.json`. `package-lock.json` pins them so every install is identical.
 
@@ -134,6 +153,7 @@ src/
     download.ts            File download helper
   scene/                   Everything inside the 3D canvas
     Scene.tsx              The <Canvas> (renders only when something changes)
+    DevStats.tsx           Performance readout shown with ?perf in the URL
     FurnitureLayer.tsx     Draws furniture; click-to-select, drag-to-move, outlines
     Room.tsx               Living Room: floor, walls (with openings), skirting, rug, cutaway walls
     Bedroom.tsx            Bedroom shell (floor, walls, curtained window, slat wall, carpet)
@@ -156,6 +176,10 @@ src/
       DressingTable.tsx, AccentChair.tsx   Bedroom models
 ```
 
+Tests sit next to the code they check, as `*.test.ts` files. They cover undo/redo, reading saves and imported files, browser storage, and the furniture maths (staying inside the walls, overlaps, default layouts).
+
+Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `vitest.config.ts` (tests).
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -174,4 +198,4 @@ src/
 - There is no Add or Delete for furniture yet: each room always has its starting pieces.
 - Furniture can't be moved from one room to the other.
 
-<!-- Last updated: 2026-11-02 12:11 UTC -->
+<!-- Last updated: 2026-11-04 10:08 UTC -->

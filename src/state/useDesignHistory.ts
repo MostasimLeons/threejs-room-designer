@@ -16,7 +16,7 @@ export type FinishChanges = Partial<RoomFinishes>
  * - `pending`: while you drag or slide, the design from *before* you started,
  *   so a whole drag becomes ONE undo step instead of hundreds.
  */
-interface HistoryState {
+export interface HistoryState {
   past: RoomDesign[]
   present: RoomDesign
   future: RoomDesign[]
@@ -24,9 +24,9 @@ interface HistoryState {
 }
 
 /** Size of the room this history belongs to, so moved furniture stays inside its own walls. */
-type RoomBounds = { width: number; depth: number }
+export type RoomBounds = { width: number; depth: number }
 
-type Action =
+export type HistoryAction =
   | { type: 'updateItem'; id: string; changes: ItemChanges; transient: boolean; bounds: RoomBounds }
   | { type: 'updateFinishes'; changes: FinishChanges; transient: boolean }
   | { type: 'load'; design: RoomDesign }
@@ -35,7 +35,7 @@ type Action =
   | { type: 'redo' }
   | { type: 'reset'; design: RoomDesign }
 
-const MAX_HISTORY = 100
+export const MAX_HISTORY = 100
 
 function applyItemChanges(design: RoomDesign, id: string, changes: ItemChanges, bounds: RoomBounds): RoomDesign {
   return {
@@ -72,7 +72,8 @@ function change(state: HistoryState, next: RoomDesign, transient: boolean): Hist
   return { past: [...base.past, base.present].slice(-MAX_HISTORY), present: next, future: [], pending: null }
 }
 
-function reducer(state: HistoryState, action: Action): HistoryState {
+/** Pure undo/redo logic, exported so it can be unit-tested without React. */
+export function historyReducer(state: HistoryState, action: HistoryAction): HistoryState {
   switch (action.type) {
     case 'updateItem':
       return change(state, applyItemChanges(state.present, action.id, action.changes, action.bounds), action.transient)
@@ -123,7 +124,7 @@ export function useDesignHistory(
   { bounds, defaultDesign }: HistoryOptions = { bounds: ROOM, defaultDesign: DEFAULT_DESIGN },
 ) {
   // The third argument runs `getInitialDesign` only once, on the first render.
-  const [state, dispatch] = useReducer(reducer, getInitialDesign, (getDesign) => ({
+  const [state, dispatch] = useReducer(historyReducer, getInitialDesign, (getDesign) => ({
     past: [],
     present: getDesign(),
     future: [],

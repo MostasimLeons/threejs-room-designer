@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { useThree, type ThreeEvent } from '@react-three/fiber'
+import { useThree, type RootState, type ThreeEvent } from '@react-three/fiber'
 import { Line } from '@react-three/drei'
 import { getVariant, type FurnitureItem } from './furniture/catalog'
 import { FurnitureModel } from './furniture/FurnitureModel'
@@ -56,6 +56,12 @@ function SelectionOutline({ footprint, faint, color }: OutlineProps) {
   )
 }
 
+/** Pause/resume the orbit controls so the camera doesn't move while dragging furniture. */
+function setCameraControlsEnabled(get: RootState['get'], enabled: boolean) {
+  const controls = get().controls as unknown as { enabled: boolean } | null
+  if (controls) controls.enabled = enabled
+}
+
 /** Renders all furniture and handles clicking (select) and dragging (move). */
 export function FurnitureLayer({ items, origin, interactive, selectedId, overlaps, onSelect, onMove, onDragBoundary }: FurnitureLayerProps) {
   const gl = useThree((state) => state.gl)
@@ -68,12 +74,6 @@ export function FurnitureLayer({ items, origin, interactive, selectedId, overlap
   // Always-current callbacks for the window listeners below.
   const callbacks = useRef({ onMove, onDragBoundary, origin })
   callbacks.current = { onMove, onDragBoundary, origin }
-
-  // Pause/resume the orbit controls so the camera doesn't move while dragging furniture.
-  const setCameraControlsEnabled = (enabled: boolean) => {
-    const controls = get().controls as unknown as { enabled: boolean } | null
-    if (controls) controls.enabled = enabled
-  }
 
   // Mouse cursor: open hand over furniture, closed hand while dragging.
   useEffect(() => {
@@ -106,7 +106,7 @@ export function FurnitureLayer({ items, origin, interactive, selectedId, overlap
       if (!drag.current) return
       drag.current = null
       setDragging(false)
-      setCameraControlsEnabled(true)
+      setCameraControlsEnabled(get, true)
       callbacks.current.onDragBoundary()
     }
 
@@ -130,7 +130,7 @@ export function FurnitureLayer({ items, origin, interactive, selectedId, overlap
     // Remember where on the object you grabbed it, so it doesn't jump to the cursor.
     drag.current = { id: item.id, offsetX: item.position[0] - (hit.x - origin[0]), offsetZ: item.position[1] - (hit.z - origin[1]) }
     setDragging(true)
-    setCameraControlsEnabled(false)
+    setCameraControlsEnabled(get, false)
     onDragBoundary()
   }
 

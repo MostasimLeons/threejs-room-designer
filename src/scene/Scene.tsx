@@ -4,6 +4,7 @@ import { Lighting } from './Lighting'
 import { Room } from './Room'
 import { BedroomShell, SharedWall } from './Bedroom'
 import { FurnitureLayer } from './FurnitureLayer'
+import { DevStats, PERF_ENABLED } from './DevStats'
 import { ROOM_IDS, ROOMS, type RoomId } from './house'
 import type { ViewMode } from './roomConfig'
 import type { HouseDesign } from '../state/design'
@@ -36,6 +37,7 @@ export function Scene({ view, resetKey, activeRoom, house, selectedId, overlaps,
       <color attach="background" args={['#ebe7e0']} />
       <CameraRig view={view} resetKey={resetKey} room={activeRoom} />
       <Lighting room={activeRoom} />
+      {PERF_ENABLED && <DevStats />}
 
       {/* Living Room: floor, walls, window and front door (unchanged) */}
       <Room finishes={house.living.finishes} />
