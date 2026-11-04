@@ -9,6 +9,7 @@ import { Cutaway, Floor, SKIRTING_H, SKIRTING_T, Wall } from './Room'
 import { useTintedMaterial } from './furniture/useTintedMaterial'
 import { Window } from './furniture/Window'
 import { Door } from './furniture/Door'
+import { Ceiling } from './Ceiling'
 
 const T = ROOM.wallThickness
 const BED = ROOMS.bedroom
@@ -119,14 +120,23 @@ function Carpet() {
 
 interface BedroomShellProps {
   finishes: RoomFinishes
+  /** True while you're editing the Bedroom: only then does a polished floor reflect. */
+  active: boolean
 }
+
+/** Downlights at the foot of the bed and over the dressing-table side. */
+const BEDROOM_DOWNLIGHTS: [number, number][] = [
+  [-1.5, 1.1],
+  [1.5, 1.1],
+  [1.7, -0.9],
+]
 
 /**
  * Bedroom floor, back wall (window + curtains + slat accent wall), right wall and carpet.
  * Built in bedroom-local coordinates (origin = bedroom centre), then moved into place.
  * The shared wall with the Living Room is a separate component (below).
  */
-export function BedroomShell({ finishes }: BedroomShellProps) {
+export function BedroomShell({ finishes, active }: BedroomShellProps) {
   const wallMaterial = useTintedMaterial(materials.wall, finishes.wallColor)
   // The back wall runs from the shared wall to past the right wall, covering that corner.
   const backLength = BED.width + T
@@ -134,8 +144,9 @@ export function BedroomShell({ finishes }: BedroomShellProps) {
 
   return (
     <group position={[CX, 0, CZ]}>
-      <Floor floor={finishes.floor} width={BED.width} depth={BED.depth} />
+      <Floor floor={finishes.floor} width={BED.width} depth={BED.depth} reflect={active} />
       <Carpet />
+      <Ceiling width={BED.width} depth={BED.depth} downlights={BEDROOM_DOWNLIGHTS} />
 
       {/* Back wall, lined up with the Living Room's back wall */}
       <Cutaway isBehind={(camera) => camera.position.z < CZ - HALF_D}>

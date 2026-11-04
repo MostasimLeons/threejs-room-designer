@@ -30,6 +30,13 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Every 
   - five floor materials: oak, walnut, whitewashed ash, polished concrete and stone tiles
 - **Undo / Redo / Reset** covers furniture and finishes of the selected room. Reset itself can be undone.
 - **Perspective and Plan** (top-down) views.
+- **Realistic rendering**, all generated in code with no image downloads:
+  - soft contact shadows where things meet (ambient occlusion)
+  - a gentle glow around lamps, ceiling lights and the daylight in windows (bloom)
+  - colour-accurate "Neutral" tone mapping, so paint and fabric look like their swatches
+  - surface detail on floors (plank seams, grout, concrete) and on fabrics, rugs and curtains
+  - polished concrete and stone tiles reflect the room
+  - a ceiling with a glowing cove line and downlights. It's hidden while the camera is above the room and appears when you orbit down below 2.8 m.
 - **Save and restore:**
   - named saves in the browser
   - an automatic save, so a page reload keeps your room
@@ -82,21 +89,32 @@ Add `?perf` to the address, for example **http://localhost:5173/?perf**. A small
 | draw calls / triangles          | GPU work for the last frame, including shadow passes. Lower is faster.                                     |
 | geometries / textures / shaders | What's loaded on the GPU. These should not keep growing while you edit.                                    |
 
-It also works with `npm run preview`, which gives more realistic numbers than the dev server. Baseline on 2026-11-04 (Living Room, default layout): about 466 draw calls and 166k triangles per frame. Roughly 80% of that is the two shadow passes.
+It also works with `npm run preview`, which gives more realistic numbers than the dev server.
+
+Measured in the Living Room with the default layout (draw calls and triangles depend on window size):
+
+| Date       | Change                                                           | Draw calls | Triangles |
+| ---------- | ---------------------------------------------------------------- | ---------- | --------- |
+| 2026-11-04 | Phase 0 baseline                                                 | ~466       | ~166k     |
+| 2026-11-04 | Phase 1: post-processing, ceilings, shadows drawn once per frame | ~560       | ~181k     |
+| 2026-11-04 | Phase 1, with a polished concrete floor (reflection)             | ~640       | ~198k     |
+
+The two shadow passes are still most of the cost. Without the once-per-frame shadow change, a reflective floor would add about 460 draw calls instead of about 85.
 
 ## Dependencies
 
-| Package                        | Purpose                                                                                                        |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `react`, `react-dom`           | User interface                                                                                                 |
-| `three`                        | 3D engine (WebGL)                                                                                              |
-| `@react-three/fiber`           | Lets you write Three.js scenes as React components                                                             |
-| `@react-three/drei`            | Ready-made helpers: camera controls, rounded boxes, lines, lighting environment                                |
-| `vite`, `@vitejs/plugin-react` | Development server and build tool (dev only)                                                                   |
-| `typescript`, `@types/*`       | Type checking (dev only)                                                                                       |
-| `vitest`                       | Unit tests (dev only)                                                                                          |
-| `oxlint`                       | Linter (dev only). Used instead of ESLint because ESLint's TypeScript parser doesn't support TypeScript 7 yet. |
-| `prettier`                     | Code formatter (dev only)                                                                                      |
+| Package                                         | Purpose                                                                                                        |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `react`, `react-dom`                            | User interface                                                                                                 |
+| `three`                                         | 3D engine (WebGL)                                                                                              |
+| `@react-three/fiber`                            | Lets you write Three.js scenes as React components                                                             |
+| `@react-three/drei`                             | Ready-made helpers: camera controls, rounded boxes, lines, lighting environment, floor reflections             |
+| `@react-three/postprocessing`, `postprocessing` | Image effects: ambient occlusion (N8AO), bloom, tone mapping, vignette, antialiasing (SMAA)                    |
+| `vite`, `@vitejs/plugin-react`                  | Development server and build tool (dev only)                                                                   |
+| `typescript`, `@types/*`                        | Type checking (dev only)                                                                                       |
+| `vitest`                                        | Unit tests (dev only)                                                                                          |
+| `oxlint`                                        | Linter (dev only). Used instead of ESLint because ESLint's TypeScript parser doesn't support TypeScript 7 yet. |
+| `prettier`                                      | Code formatter (dev only)                                                                                      |
 
 Exact versions are in `package.json`. `package-lock.json` pins them so every install is identical.
 
@@ -156,15 +174,17 @@ src/
   scene/                   Everything inside the 3D canvas
     Scene.tsx              The <Canvas> (renders only when something changes)
     DevStats.tsx           Performance readout shown with ?perf in the URL
+    PostEffects.tsx        Ambient occlusion, bloom, tone mapping, vignette, antialiasing
+    Ceiling.tsx            Ceiling with cove light line and downlights
     FurnitureLayer.tsx     Draws furniture; click-to-select, drag-to-move, outlines
     Room.tsx               Living Room: floor, walls (with openings), skirting, rug, cutaway walls
     Bedroom.tsx            Bedroom shell (floor, walls, curtained window, slat wall, carpet)
                            and the shared wall with the connecting door
     house.ts               House layout: room sizes and positions, shared wall, door, bedroom window
     CameraRig.tsx          Perspective / Plan cameras and mouse controls
-    Lighting.tsx           Lights, shadows, environment reflections
+    Lighting.tsx           Lights, shadows (drawn once per frame), procedural environment
     finishes.ts            Wall colour presets and floor material options
-    textures.ts            Procedural floor textures (planks, concrete, tiles)
+    textures.ts            Procedural textures: floor colour/normal/roughness maps, fabric weave
     materials.ts           Shared materials
     roomConfig.ts          Room size and window/door positions
     parts.tsx              Reusable Block / Cylinder helpers
@@ -199,5 +219,9 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 - The window and door are fixed parts of the walls.
 - There is no Add or Delete for furniture yet: each room always has its starting pieces.
 - Furniture can't be moved from one room to the other.
+- Ambient occlusion runs at full resolution. N8AO's faster half-resolution mode crashes with Three.js 0.187 (its multi-texture render target isn't compatible), so it stays off until N8AO is updated.
+- Floor reflections aren't blurred. Drei's reflection blur creates two GPU images it never frees, so softness comes from a lower reflection resolution instead.
+- The ceiling lights and lamp shades only glow; they don't light the room. Real lights for them come with the time-of-day work (Phase 3).
+- Post-processing adds about 160 KB (gzipped) to the download. It's in its own `effects` file, so the browser caches it separately.
 
-<!-- Last updated: 2026-11-04 10:08 UTC -->
+<!-- Last updated: 2026-11-04 10:46 UTC -->

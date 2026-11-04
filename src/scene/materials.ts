@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { createFabricNormalMap } from './textures'
 
 // Shared materials. Creating each one once and reusing it is faster than
 // making a new material for every mesh.
@@ -46,8 +47,18 @@ export const materials = {
   bookA: new THREE.MeshStandardMaterial({ color: '#30475e', roughness: 0.8 }),
   bookB: new THREE.MeshStandardMaterial({ color: '#d9c7a7', roughness: 0.8 }),
 
-  // Unlit material for the bright "sky" seen through the window.
-  sky: new THREE.MeshBasicMaterial({ color: '#e4f0f7', toneMapped: false }),
+  // Unlit material for the bright "sky" seen through the window. Brighter than white
+  // (values above 1), so the window reads as daylight and gets a soft glow from Bloom.
+  sky: new THREE.MeshBasicMaterial({ color: new THREE.Color('#e4f0f7').multiplyScalar(1.6) }),
+
+  // ---- Ceiling (see Ceiling.tsx) ----
+  // Nothing lights a ceiling's underside directly (the lights are above it, and real
+  // rooms light it with light bouncing off the floor), so a faint self-glow stands in
+  // for that bounce. Otherwise it renders a muddy brown.
+  ceiling: new THREE.MeshStandardMaterial({ color: '#f7f5f1', roughness: 0.95, emissive: '#f3ece2', emissiveIntensity: 0.55 }),
+  // Warm-white glow for the cove line and downlights; above 1 so Bloom picks it up.
+  coveLight: new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff1dc').multiplyScalar(3) }),
+  downlightTrim: new THREE.MeshStandardMaterial({ color: '#e9e6e1', roughness: 0.4, metalness: 0.5 }),
 
   // ---- Bedroom (modern luxury: cream, natural oak, brass) ----
   linen: new THREE.MeshStandardMaterial({ color: '#f4eee3', roughness: 0.97 }),
@@ -60,4 +71,34 @@ export const materials = {
   // A fully metallic mirror would reflect the (mostly dark) surroundings and look black,
   // so it's a pale, glossy silver instead.
   mirror: new THREE.MeshStandardMaterial({ color: '#dbe4ea', roughness: 0.08, metalness: 0.35 }),
+}
+
+/**
+ * Soft furnishings get a fabric "weave" normal map so light catches their surface.
+ * Pieces made from these materials (and recoloured copies of them) inherit it.
+ * Canvas textures need a browser, so this is skipped when there is no document (tests).
+ */
+if (typeof document !== 'undefined') {
+  const fabric = createFabricNormalMap()
+  fabric.repeat.set(2, 2)
+  // Rugs and carpets are big flat boxes, so the same texture is tiled more often there.
+  const rug = fabric.clone()
+  rug.repeat.set(10, 10)
+
+  const soft: [THREE.MeshStandardMaterial, THREE.Texture, number][] = [
+    [materials.fabricWhite, fabric, 0.35],
+    [materials.fabricSage, fabric, 0.35],
+    [materials.fabricSand, fabric, 0.35],
+    [materials.linen, fabric, 0.25],
+    [materials.creamUpholstery, fabric, 0.35],
+    [materials.curtain, fabric, 0.2],
+    [materials.rug, rug, 0.6],
+    [materials.rugBorder, rug, 0.6],
+    [materials.carpet, rug, 0.7],
+    [materials.carpetBorder, rug, 0.7],
+  ]
+  for (const [material, map, strength] of soft) {
+    material.normalMap = map
+    material.normalScale.set(strength, strength)
+  }
 }

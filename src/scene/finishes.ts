@@ -16,14 +16,19 @@ interface FloorOption {
   tileSize: number
   /** 0 = shiny, 1 = matte. */
   roughness: number
+  /**
+   * How strongly the floor mirrors the room (0 = not at all). Only polished floors
+   * reflect, because a mirror reflection costs an extra render of the scene.
+   */
+  reflection: number
 }
 
 export const FLOOR_OPTIONS: FloorOption[] = [
-  { id: 'oak', label: 'Oak planks', swatch: '#b98a5c', tileSize: 1.6, roughness: 0.5 },
-  { id: 'walnut', label: 'Walnut planks', swatch: '#6f4a31', tileSize: 1.6, roughness: 0.45 },
-  { id: 'ash', label: 'Whitewashed ash', swatch: '#e0cdb2', tileSize: 1.6, roughness: 0.55 },
-  { id: 'concrete', label: 'Polished concrete', swatch: '#b1aea8', tileSize: 2.5, roughness: 0.35 },
-  { id: 'tiles', label: 'Stone tiles', swatch: '#e4ded4', tileSize: 2.4, roughness: 0.3 },
+  { id: 'oak', label: 'Oak planks', swatch: '#b98a5c', tileSize: 1.6, roughness: 0.5, reflection: 0 },
+  { id: 'walnut', label: 'Walnut planks', swatch: '#6f4a31', tileSize: 1.6, roughness: 0.45, reflection: 0 },
+  { id: 'ash', label: 'Whitewashed ash', swatch: '#e0cdb2', tileSize: 1.6, roughness: 0.55, reflection: 0 },
+  { id: 'concrete', label: 'Polished concrete', swatch: '#b1aea8', tileSize: 2.5, roughness: 0.35, reflection: 0.4 },
+  { id: 'tiles', label: 'Stone tiles', swatch: '#e4ded4', tileSize: 2.4, roughness: 0.3, reflection: 0.35 },
 ]
 
 export const WALL_SWATCHES = [

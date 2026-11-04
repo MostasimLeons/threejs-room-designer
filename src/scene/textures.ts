@@ -108,11 +108,7 @@ function drawTiles(ctx: CanvasRenderingContext2D, rand: () => number) {
   }
 }
 
-/**
- * Draws a floor finish onto a 2D canvas and turns it into a Three.js texture.
- * This avoids downloading any image files.
- */
-export function createFloorTexture(floor: FloorId): THREE.CanvasTexture {
+function drawFloor(floor: FloorId): HTMLCanvasElement {
   const canvas = document.createElement('canvas')
   canvas.width = SIZE
   canvas.height = SIZE
@@ -136,11 +132,159 @@ export function createFloorTexture(floor: FloorId): THREE.CanvasTexture {
       drawTiles(ctx, rand)
       break
   }
+  return canvas
+}
 
+/** Brightness of every pixel, 0…1. Used as a "height": dark seams and grout read as grooves. */
+function luminance(canvas: HTMLCanvasElement): Float32Array {
+  const { data } = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height)
+  const out = new Float32Array(canvas.width * canvas.height)
+  for (let i = 0; i < out.length; i++) {
+    out[i] = (0.2126 * data[i * 4] + 0.7152 * data[i * 4 + 1] + 0.0722 * data[i * 4 + 2]) / 255
+  }
+  return out
+}
+
+function canvasFromPixels(size: number, fill: (pixels: Uint8ClampedArray) => void): HTMLCanvasElement {
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const image = ctx.createImageData(size, size)
+  fill(image.data)
+  ctx.putImageData(image, 0, 0)
+  return canvas
+}
+
+/**
+ * Turns a height field into a tangent-space normal map: the purple-blue image
+ * that tells the renderer which way each pixel's surface tilts, so light catches
+ * seams, grain and weave without any extra geometry. Edges wrap, so it tiles.
+ */
+function normalMapFromHeight(height: Float32Array, size: number, strength: number): HTMLCanvasElement {
+  const at = (x: number, y: number) => height[((y + size) % size) * size + ((x + size) % size)]
+  return canvasFromPixels(size, (px) => {
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        // Slope left→right, and bottom→top (canvas rows run downwards, texture v runs upwards).
+        const dx = (at(x + 1, y) - at(x - 1, y)) * strength
+        const dy = (at(x, y - 1) - at(x, y + 1)) * strength
+        const len = Math.hypot(dx, dy, 1)
+        const i = (y * size + x) * 4
+        px[i] = (-dx / len) * 127.5 + 127.5
+        px[i + 1] = (-dy / len) * 127.5 + 127.5
+        px[i + 2] = (1 / len) * 127.5 + 127.5
+        px[i + 3] = 255
+      }
+    }
+  })
+}
+
+/**
+ * Roughness map: 1 = fully matte. The material's own `roughness` is multiplied by
+ * this, so darker seams/grout come out a little rougher than the polished surface.
+ */
+function roughnessFromHeight(height: Float32Array, size: number, variation: number): HTMLCanvasElement {
+  let min = 1
+  let max = 0
+  for (const h of height) {
+    if (h < min) min = h
+    if (h > max) max = h
+  }
+  const range = Math.max(max - min, 1e-6)
+  return canvasFromPixels(size, (px) => {
+    for (let i = 0; i < height.length; i++) {
+      const value = 255 * (1 - variation * ((height[i] - min) / range))
+      px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = value
+      px[i * 4 + 3] = 255
+    }
+  })
+}
+
+function toTexture(canvas: HTMLCanvasElement, srgb: boolean): THREE.CanvasTexture {
   const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
+  // Colour images are sRGB; normal and roughness maps hold plain numbers, so they stay linear.
+  if (srgb) texture.colorSpace = THREE.SRGBColorSpace
   texture.wrapS = THREE.RepeatWrapping
   texture.wrapT = THREE.RepeatWrapping
   texture.anisotropy = 8
   return texture
+}
+
+export interface SurfaceMaps {
+  map: THREE.CanvasTexture
+  normalMap: THREE.CanvasTexture
+  roughnessMap: THREE.CanvasTexture
+}
+
+/** How strongly seams/grout dent the surface, and how much rougher they are. */
+const FLOOR_RELIEF: Record<FloorId, { strength: number; roughness: number }> = {
+  oak: { strength: 3, roughness: 0.35 },
+  walnut: { strength: 4, roughness: 0.35 },
+  ash: { strength: 3, roughness: 0.35 },
+  concrete: { strength: 1.2, roughness: 0.3 },
+  tiles: { strength: 4, roughness: 0.55 },
+}
+
+/**
+ * Draws a floor finish onto a 2D canvas and turns it into colour, normal and
+ * roughness textures. Everything is generated in code, so nothing is downloaded.
+ */
+export function createFloorMaps(floor: FloorId): SurfaceMaps {
+  const colour = drawFloor(floor)
+  const height = luminance(colour)
+  const { strength, roughness } = FLOOR_RELIEF[floor]
+  return {
+    map: toTexture(colour, true),
+    normalMap: toTexture(normalMapFromHeight(height, SIZE, strength), false),
+    roughnessMap: toTexture(roughnessFromHeight(height, SIZE, roughness), false),
+  }
+}
+
+/** Eases 0…1 so noise blends without visible grid lines. */
+const smoothstep = (t: number) => t * t * (3 - 2 * t)
+
+/**
+ * Smooth random bumps that wrap around the edges (so the texture tiles), made
+ * by blending random values on a coarse `cells` × `cells` grid.
+ */
+function tileableNoise(size: number, cells: number, rand: () => number): Float32Array {
+  const grid = Array.from({ length: cells * cells }, rand)
+  const value = (cx: number, cy: number) => grid[(cy % cells) * cells + (cx % cells)]
+  const out = new Float32Array(size * size)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const gx = (x / size) * cells
+      const gy = (y / size) * cells
+      const x0 = Math.floor(gx)
+      const y0 = Math.floor(gy)
+      const tx = smoothstep(gx - x0)
+      const ty = smoothstep(gy - y0)
+      const top = value(x0, y0) * (1 - tx) + value(x0 + 1, y0) * tx
+      const bottom = value(x0, y0 + 1) * (1 - tx) + value(x0 + 1, y0 + 1) * tx
+      out[y * size + x] = top * (1 - ty) + bottom * ty
+    }
+  }
+  return out
+}
+
+/**
+ * Fabric surface: a fine criss-cross weave plus soft irregular "slub" bumps.
+ * Shared by sofas, chairs, bedding, curtains and rugs; only its tiling changes.
+ */
+export function createFabricNormalMap(): THREE.CanvasTexture {
+  const size = 512
+  const rand = createRandom(11)
+  const coarse = tileableNoise(size, 8, rand)
+  const fine = tileableNoise(size, 64, rand)
+  const threads = 128 // weave repeats per texture: must divide evenly so it tiles
+  const height = new Float32Array(size * size)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const weave = Math.sin((2 * Math.PI * x * threads) / size) * Math.sin((2 * Math.PI * y * threads) / size)
+      const i = y * size + x
+      height[i] = 0.25 * weave + 0.45 * coarse[i] + 0.3 * fine[i]
+    }
+  }
+  return toTexture(normalMapFromHeight(height, size, 1.5), false)
 }

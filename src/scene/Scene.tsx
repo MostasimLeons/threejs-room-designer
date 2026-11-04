@@ -5,6 +5,7 @@ import { Room } from './Room'
 import { BedroomShell, SharedWall } from './Bedroom'
 import { FurnitureLayer } from './FurnitureLayer'
 import { DevStats, PERF_ENABLED } from './DevStats'
+import { PostEffects } from './PostEffects'
 import { ROOM_IDS, ROOMS, type RoomId } from './house'
 import type { ViewMode } from './roomConfig'
 import type { HouseDesign } from '../state/design'
@@ -33,22 +34,23 @@ export function Scene({ view, resetKey, activeRoom, house, selectedId, overlaps,
     // `frameloop="demand"` draws a new frame only when something changes (camera move, furniture
     // edit) instead of 60 times a second, so the GPU rests while you're just looking.
     // `onPointerMissed` fires when you click empty space → deselect.
-    <Canvas shadows="percentage" dpr={[1, 2]} frameloop="demand" onPointerMissed={() => onSelect(null)}>
+    // `flat` + `antialias: false`: tone mapping and antialiasing happen in PostEffects instead.
+    <Canvas shadows="percentage" dpr={[1, 2]} frameloop="demand" flat gl={{ antialias: false }} onPointerMissed={() => onSelect(null)}>
       <color attach="background" args={['#ebe7e0']} />
       <CameraRig view={view} resetKey={resetKey} room={activeRoom} />
       <Lighting room={activeRoom} />
       {PERF_ENABLED && <DevStats />}
 
-      {/* Living Room: floor, walls, window and front door (unchanged) */}
-      <Room finishes={house.living.finishes} />
+      {/* Living Room: floor, ceiling, walls, window and front door */}
+      <Room finishes={house.living.finishes} active={activeRoom === 'living'} />
       {/* Wall between the rooms, with the connecting door */}
       <SharedWall
         livingWallColor={house.living.finishes.wallColor}
         bedroomWallColor={house.bedroom.finishes.wallColor}
         activeRoom={activeRoom}
       />
-      {/* Bedroom: floor, walls, curtained window, slat accent wall, carpet */}
-      <BedroomShell finishes={house.bedroom.finishes} />
+      {/* Bedroom: floor, ceiling, walls, curtained window, slat accent wall, carpet */}
+      <BedroomShell finishes={house.bedroom.finishes} active={activeRoom === 'bedroom'} />
 
       {/* Movable furniture for each room, placed relative to that room's centre */}
       {ROOM_IDS.map((room) => (
@@ -64,6 +66,8 @@ export function Scene({ view, resetKey, activeRoom, house, selectedId, overlaps,
           onDragBoundary={onDragBoundary}
         />
       ))}
+
+      <PostEffects view={view} />
     </Canvas>
   )
 }

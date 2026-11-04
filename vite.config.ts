@@ -12,7 +12,10 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             { name: 'three', test: /node_modules[\\/]three[\\/]/ },
-            { name: 'r3f', test: /node_modules[\\/](@react-three|three-stdlib|camera-controls|maath)[\\/]/ },
+            // `(?!postprocessing)`: @react-three/postprocessing goes in the effects group instead.
+            { name: 'r3f', test: /node_modules[\\/](@react-three[\\/](?!postprocessing)|three-stdlib|camera-controls|maath)/ },
+            // Post-processing (ambient occlusion, bloom, tone mapping).
+            { name: 'effects', test: /node_modules[\\/](postprocessing|n8ao|@react-three[\\/]postprocessing)[\\/]/ },
             { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
           ],
         },

@@ -1,14 +1,16 @@
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ComponentRef, type ReactNode } from 'react'
 import * as THREE from 'three'
 import { useFrame, type ThreeElements } from '@react-three/fiber'
 import { DOOR_OPENING, ROOM, WINDOW_OPENING } from './roomConfig'
-import { createFloorTexture } from './textures'
+import { MeshReflectorMaterial } from '@react-three/drei'
+import { createFloorMaps, type SurfaceMaps } from './textures'
 import { materials } from './materials'
 import { getFloorOption, type FloorId, type RoomFinishes } from './finishes'
 import { useTintedMaterial } from './furniture/useTintedMaterial'
 import { Block } from './parts'
 import { Window } from './furniture/Window'
 import { Door } from './furniture/Door'
+import { Ceiling } from './Ceiling'
 
 type Vec3 = [number, number, number]
 
@@ -68,28 +70,84 @@ export function Wall({ length, opening, material, thickness = ROOM.wallThickness
   )
 }
 
-// Each floor texture is drawn once per material and room size, then reused.
-const floorTextures = new Map<string, THREE.CanvasTexture>()
+// Each floor's textures are drawn once per material and room size, then reused.
+const floorMaps = new Map<string, SurfaceMaps>()
 
-function getFloorTexture(id: FloorId, width: number, depth: number) {
+function getFloorMaps(id: FloorId, width: number, depth: number): SurfaceMaps {
   const key = `${id}:${width}x${depth}`
-  let texture = floorTextures.get(key)
-  if (!texture) {
-    texture = createFloorTexture(id)
+  let maps = floorMaps.get(key)
+  if (!maps) {
+    maps = createFloorMaps(id)
     const { tileSize } = getFloorOption(id)
-    texture.repeat.set(width / tileSize, depth / tileSize)
-    floorTextures.set(key, texture)
+    for (const texture of Object.values(maps)) texture.repeat.set(width / tileSize, depth / tileSize)
+    floorMaps.set(key, maps)
   }
-  return texture
+  return maps
+}
+
+interface FloorProps {
+  floor: FloorId
+  width?: number
+  depth?: number
+  /**
+   * Polished floors mirror the room, but only in the room you're editing:
+   * each reflection is an extra render of the whole scene.
+   */
+  reflect?: boolean
+}
+
+type ReflectorRef = ComponentRef<typeof MeshReflectorMaterial>
+
+/**
+ * Floor material that mirrors the room, softly blurred like polished stone.
+ * Drei's reflector never frees its off-screen images (render targets) when it is
+ * removed, so switching rooms or floors would slowly fill GPU memory. The cleanup
+ * below frees them.
+ */
+function ReflectiveMaterial({ maps, roughness, strength }: { maps: SurfaceMaps; roughness: number; strength: number }) {
+  const ref = useRef<ReflectorRef>(null)
+  useEffect(() => {
+    const material = ref.current
+    return () => {
+      if (!material) return
+      for (const texture of [material.tDiffuse, material.tDiffuseBlur]) texture?.renderTarget?.dispose()
+      material.tDepth?.dispose()
+    }
+  }, [])
+  return (
+    <MeshReflectorMaterial
+      ref={ref}
+      {...maps}
+      roughness={roughness}
+      metalness={0.02}
+      // Softness comes from the low resolution (it is smoothed when stretched over the
+      // floor) and from the floor's own surface detail rippling the reflection.
+      // Drei's blur is left off on purpose: it allocates two more off-screen images
+      // that it never frees and that this component can't reach to clean up.
+      resolution={256}
+      blur={[0, 0]}
+      distortionMap={maps.normalMap}
+      distortion={0.15}
+      mixStrength={strength}
+      mixContrast={1}
+      mirror={0}
+    />
+  )
 }
 
 /** Textured floor. The size defaults to the Living Room; the Bedroom passes its own. */
-export function Floor({ floor, width = ROOM.width, depth = ROOM.depth }: { floor: FloorId; width?: number; depth?: number }) {
-  const texture = getFloorTexture(floor, width, depth)
+export function Floor({ floor, width = ROOM.width, depth = ROOM.depth, reflect = false }: FloorProps) {
+  const maps = getFloorMaps(floor, width, depth)
+  const { roughness, reflection } = getFloorOption(floor)
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
       <planeGeometry args={[width, depth]} />
-      <meshStandardMaterial map={texture} roughness={getFloorOption(floor).roughness} metalness={0.02} />
+      {reflect && reflection > 0 ? (
+        // key: switching between floors with different settings rebuilds the reflection cleanly.
+        <ReflectiveMaterial key={floor} maps={maps} roughness={roughness} strength={reflection} />
+      ) : (
+        <meshStandardMaterial {...maps} roughness={roughness} metalness={0.02} />
+      )}
     </mesh>
   )
 }
@@ -170,14 +228,23 @@ function Rug() {
   )
 }
 
-/** Floor, rug, back wall (with window) and left wall (with door), in the chosen finishes. */
-export function Room({ finishes }: { finishes: RoomFinishes }) {
+/** Four downlights in a grid, clear of the walls. */
+const LIVING_DOWNLIGHTS: [number, number][] = [
+  [-1.8, -1.5],
+  [1.8, -1.5],
+  [-1.8, 1.5],
+  [1.8, 1.5],
+]
+
+/** Floor, rug, ceiling, back wall (with window) and left wall (with door), in the chosen finishes. */
+export function Room({ finishes, active }: { finishes: RoomFinishes; active: boolean }) {
   // One paint material shared by every wall piece, recoloured when you pick a new wall colour.
   const wallMaterial = useTintedMaterial(materials.wall, finishes.wallColor)
   return (
     <group>
-      <Floor floor={finishes.floor} />
+      <Floor floor={finishes.floor} reflect={active} />
       <Rug />
+      <Ceiling width={ROOM.width} depth={ROOM.depth} downlights={LIVING_DOWNLIGHTS} />
       <BackWall wallMaterial={wallMaterial} />
       <LeftWall wallMaterial={wallMaterial} />
     </group>
