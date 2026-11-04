@@ -35,6 +35,10 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Every 
   - seven floor materials: oak, walnut, whitewashed ash, polished concrete, stone tiles, white marble and terrazzo
 - **Undo / Redo / Reset** covers furniture and finishes of the selected room. Reset itself can be undone.
 - **Perspective and Plan** (top-down) views.
+- **Camera views:** in Perspective, pick **Overview** (outside and above, as before), **Eye level** (standing inside the room, like a photo: ceiling, lights and all four walls) or **Corner** (from a front corner across the room). The camera glides smoothly to the chosen view and keeps it when you switch rooms. On tall, narrow screens the overview steps back so the whole room fits.
+- **Showcase mode:** the **Showcase** button hides the editing panels for a clean, full-screen view with just the camera views, the time of day and the room bar. Nothing can be changed by accident. `Esc` or **Exit showcase** goes back.
+- **Intro screen** on the first visit: **Start designing** or **Take a tour** (showcase at eye level). Add `?intro` to the address to see it again.
+- **Room thumbnails:** once you've visited a room, its button in the room bar shows a small picture of it (taken as you leave; kept in this browser). Narrow layouts keep the icons.
 - **Time of day and sun:** click the clock button (☀ 2:30 PM) above the 3D view. Pick a preset (Sunrise, Morning, Midday, Golden hour, Dusk, Night) or drag the time slider from 5 AM to 9 PM, and turn the room to change which way its windows face. The sun moves from east to west and only shines in through the windows when it's on that side; a low sun is warm and orange, and the sky in the windows changes colour. As it gets dark the ceiling lights, lamps and bulbs come on, the room's own lights light it, and the backdrop turns night blue. Each room keeps its own time and orientation, and every change can be undone.
 - **Realistic rendering**, all generated in code with no image downloads:
   - soft contact shadows where things meet (ambient occlusion)
@@ -111,6 +115,8 @@ Measured in the Living Room with the default layout (draw calls and triangles de
 | 2026-11-04 | Phase 4, by day (Living / Kitchen, the heaviest)                 | ~315 / ~510 |           |
 | 2026-11-04 | Phase 4, at night (room lights on; about 60 more in every room)  | ~375 / ~570 |           |
 | 2026-11-04 | Phase 5, something selected (outline redraws the scene's depth)  | ~410 / ~670 |           |
+| 2026-11-04 | Phase 6, overview with nothing selected (steady frame)           | ~330 / ~530 |           |
+| 2026-11-04 | Phase 6, eye level (only part of the room is in view)            | ~280 / ~350 |           |
 
 The two shadow passes are still most of the cost. Without the once-per-frame shadow change, a reflective floor would add about 460 draw calls instead of about 85.
 
@@ -133,25 +139,27 @@ Exact versions are in `package.json`. `package-lock.json` pins them so every ins
 
 ## How to use it
 
-| Action             | How                                                                                                       |
-| ------------------ | --------------------------------------------------------------------------------------------------------- |
-| Rotate camera      | Left-drag empty space (Perspective view)                                                                  |
-| Pan                | Right-drag (Perspective) or drag empty space (Plan)                                                       |
-| Zoom               | Mouse wheel                                                                                               |
-| Time of day        | Clock button above the 3D view, or the **Light** row under Finishes. Sliders and presets can be undone    |
-| Switch room        | Click it in the room bar, or press `1`–`5`. With the bar focused, `←` / `→` move between rooms            |
-| Select             | Click a piece, or its row in **Objects**                                                                  |
-| Paint a wall       | Click the wall: pick paint/tiles and a colour in the picker that opens there                              |
-| Change the floor   | Click the floor (if something is selected, the first click just deselects it)                             |
-| Rotate by dragging | Drag the round handle on the blue ring (15° steps, `Shift` for 1°)                                        |
-| Deselect           | Click empty floor, press `Esc`, or click ✕                                                                |
-| Move               | Drag the piece, use the Position sliders, or arrow keys: 5 cm per press, 25 cm with `Shift`               |
-| Rotate             | ⟲ / ⟳ buttons, slider, or `R` / `Shift+R`                                                                 |
-| Furniture options  | Size / Style / Shape list in the right panel                                                              |
-| Walls and floor    | Deselect everything (or click **Finishes** on the left), then use the **Room** panel                      |
-| Undo / Redo        | Toolbar buttons, `Ctrl+Z` / `Ctrl+Y` (`Ctrl+Shift+Z` also redoes)                                         |
-| Reset              | **Reset** puts furniture and finishes back to the start (undoable). **Reset view** moves only the camera. |
-| Save / Load        | **Save / Load** opens the Designs window                                                                  |
+| Action             | How                                                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| Rotate camera      | Left-drag empty space (Perspective view)                                                                                        |
+| Pan                | Right-drag (Perspective) or drag empty space (Plan)                                                                             |
+| Zoom               | Mouse wheel                                                                                                                     |
+| Time of day        | Clock button above the 3D view, or the **Light** row under Finishes. Sliders and presets can be undone                          |
+| Switch room        | Click it in the room bar, or press `1`–`5`. With the bar focused, `←` / `→` move between rooms                                  |
+| Select             | Click a piece, or its row in **Objects**                                                                                        |
+| Paint a wall       | Click the wall: pick paint/tiles and a colour in the picker that opens there                                                    |
+| Change the floor   | Click the floor (if something is selected, the first click just deselects it)                                                   |
+| Rotate by dragging | Drag the round handle on the blue ring (15° steps, `Shift` for 1°)                                                              |
+| Deselect           | Click empty floor, press `Esc`, or click ✕                                                                                      |
+| Move               | Drag the piece, use the Position sliders, or arrow keys: 5 cm per press, 25 cm with `Shift`                                     |
+| Rotate             | ⟲ / ⟳ buttons, slider, or `R` / `Shift+R`                                                                                       |
+| Furniture options  | Size / Style / Shape list in the right panel                                                                                    |
+| Walls and floor    | Deselect everything (or click **Finishes** on the left), then use the **Room** panel                                            |
+| Undo / Redo        | Toolbar buttons, `Ctrl+Z` / `Ctrl+Y` (`Ctrl+Shift+Z` also redoes)                                                               |
+| Reset              | **Reset** puts furniture and finishes back to the start (undoable). **Reset view** moves only the camera, back to the overview. |
+| Camera views       | **Overview / Eye level / Corner** above the 3D view (Perspective only)                                                          |
+| Showcase           | **Showcase** in the top bar; `Esc` to leave                                                                                     |
+| Save / Load        | **Save / Load** opens the Designs window                                                                                        |
 
 A whole drag, slider movement or held-down arrow key counts as **one** undo step.
 
@@ -173,7 +181,9 @@ src/
     Sidebar.tsx            Room stats, finishes summary, objects list
     PropertiesPanel.tsx    Selected furniture: options, colour, rotation, position
     RoomPanel.tsx          Nothing selected: wall paint and floor material
-    RoomBar.tsx            Glass room bar at the bottom of the 3D view (icons, keyboard)
+    RoomBar.tsx            Glass room bar at the bottom of the 3D view (icons, thumbnails, keyboard)
+    CameraViewPicker.tsx   Overview / Eye level / Corner
+    IntroScreen.tsx        First-visit welcome screen
     SurfacePopover.tsx     Quick wall / floor picker that opens where you click in 3D
     WallPanel.tsx          Right-hand panel for a selected wall
     TimeOfDayPanel.tsx     Clock, presets, time slider and room orientation
@@ -188,6 +198,7 @@ src/
     design.ts              RoomDesign type + validation of saved/imported data
     useDesignHistory.ts    Current design + undo/redo history
     storage.ts             localStorage saves, autosave, JSON export/import
+    viewerPrefs.ts         Per-browser extras (not part of a design): intro seen, room thumbnails
   utils/                   Small general-purpose helpers
     math.ts                clamp, angle helpers
     id.ts                  Unique ids (works on http:// too)
@@ -197,6 +208,8 @@ src/
     DevStats.tsx           Performance readout shown with ?perf in the URL (also window.roomDesigner3d for debugging)
     PostEffects.tsx        Ambient occlusion, bloom, tone mapping, vignette, antialiasing
     sun.ts                 Time of day: sun position, light colours and strengths, presets
+    cameraViews.ts         Each room's camera views, and fitting the overview to narrow screens
+    RoomThumbnails.tsx     Takes the small room pictures for the room bar
     selection.ts           Selection ids for walls ("wall:back") and the floor ("floor")
     interiorLight.ts       Shares how "on" the room lights are (0 day … 1 night) with lamps
     Ceiling.tsx            Ceiling with cove light line and downlights
@@ -253,11 +266,12 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 - Doors between rooms are closed. Each room is a separate scene, so there's nothing to see through them.
 - Built-in units (kitchen units, toilet, dining pendant) can't be moved or restyled. The pendant stays put if you move the dining table.
 - Selecting something costs extra drawing while it's selected: the outline redraws the scene's depth (about 95 more draw calls in the Living Room, 165 in the Kitchen).
-- The start camera doesn't adapt to a tall, narrow 3D view (a mid-size window with both panels open), so part of the room can be cropped. Zoom out or use Plan view.
 - Ambient occlusion runs at full resolution. N8AO's faster half-resolution mode crashes with Three.js 0.187 (its multi-texture render target isn't compatible), so it stays off until N8AO is updated.
 - Floor reflections aren't blurred. Drei's reflection blur creates two GPU images it never frees, so softness comes from a lower reflection resolution instead.
 - At night each room has two real ceiling lights (plus the living-room floor lamp). The other lamps, the bedside lamps and the pendant only glow, because every extra light makes every material slower to draw.
 - The sun model is a simple textbook one for a mid-latitude summer day (sunrise about 4:35, sunset about 19:25). It isn't tied to a real date or place.
 - Post-processing adds about 160 KB (gzipped) to the download. It's in its own `effects` file, so the browser caches it separately.
+- The smooth camera (camera-controls) adds about 13 KB (gzipped). Since Phase 6 the build puts React in the same file as React Three Fiber.
+- The first frames after switching rooms can cost more (the readout may briefly show a higher number); steady frames are in the table above.
 
-<!-- Last updated: 2026-11-04 11:56 UTC -->
+<!-- Last updated: 2026-11-04 12:06 UTC -->

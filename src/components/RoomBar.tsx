@@ -13,6 +13,8 @@ const ICONS: Record<RoomId, ComponentType> = {
 interface RoomBarProps {
   room: RoomId
   onChange: (room: RoomId) => void
+  /** Pictures of rooms you've visited (taken when you leave them). Rooms without one show their icon. */
+  thumbnails?: Partial<Record<RoomId, string>>
 }
 
 /**
@@ -24,7 +26,7 @@ interface RoomBarProps {
  * Keyboard: Tab reaches it, ← / → move between rooms, Enter or Space switches.
  * The number keys 1–5 switch rooms from anywhere (see useKeyboardShortcuts).
  */
-export function RoomBar({ room, onChange }: RoomBarProps) {
+export function RoomBar({ room, onChange, thumbnails = {} }: RoomBarProps) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
 
   // If the bar ever has to scroll sideways, keep the current room in view.
@@ -53,13 +55,14 @@ export function RoomBar({ room, onChange }: RoomBarProps) {
             ref={(el) => {
               buttons.current[index] = el
             }}
-            className={`room-tab ${active ? 'active' : ''}`}
+            className={`room-tab ${active ? 'active' : ''} ${thumbnails[id] ? 'has-thumb' : ''}`}
             aria-current={active ? 'true' : undefined}
             aria-label={label}
             title={`${label} (${index + 1})`}
             onClick={() => onChange(id)}
             onKeyDown={(event) => handleKeyDown(event, index)}
           >
+            {thumbnails[id] && <img className="room-thumb" src={thumbnails[id]} alt="" draggable={false} />}
             <Icon />
             <span className="room-label" aria-hidden="true">
               <span className="long">{label}</span>

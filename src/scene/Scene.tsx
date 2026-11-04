@@ -8,6 +8,8 @@ import { RoomShell } from './RoomShell'
 import { FurnitureLayer } from './FurnitureLayer'
 import { DevStats, PERF_ENABLED } from './DevStats'
 import { PostEffects } from './PostEffects'
+import { RoomThumbnails } from './RoomThumbnails'
+import type { CameraViewId } from './cameraViews'
 import type { RoomId, WallSide } from './house'
 import type { ViewMode } from './roomConfig'
 import type { RoomDesign } from '../state/design'
@@ -29,9 +31,19 @@ interface SceneProps {
   /** Clicked a wall / the floor in 3D (the point is where, in room coordinates). */
   onPickWall: (side: WallSide, point: [number, number, number]) => void
   onPickFloor: (point: [number, number, number]) => void
+  /** Which camera view (Overview / Eye level / Corner) the Perspective camera shows. */
+  cameraViewId: CameraViewId
+  /** False in showcase mode: nothing can be selected, moved or painted. */
+  editable: boolean
+  /** Ask for a thumbnail of the room on screen (a new id = a new picture). */
+  thumbnailRequest: { room: RoomId; id: number } | null
+  onThumbnail: (room: RoomId, url: string) => void
   /** A small panel shown in the 3D view, pinned to a point (the wall or floor picker). */
   popover?: { point: [number, number, number]; content: ReactNode } | null
 }
+
+/** In showcase mode walls and the floor ignore clicks. */
+const noPick = () => {}
 
 /** Every room is centred on the origin, so furniture positions are already world positions. */
 const ROOM_ORIGIN: [number, number] = [0, 0]
@@ -51,6 +63,10 @@ export function Scene({
   onPickWall,
   onPickFloor,
   popover,
+  cameraViewId,
+  editable,
+  thumbnailRequest,
+  onThumbnail,
 }: SceneProps) {
   return (
     // `shadows` turns on shadow maps ("percentage" = PCF filtering, the smooth mode in current Three.js).
@@ -62,7 +78,8 @@ export function Scene({
     <Canvas shadows="percentage" dpr={[1, 2]} frameloop="demand" flat gl={{ antialias: false }} onPointerMissed={() => onSelect(null)}>
       {/* Selection: anything inside a <Select enabled> gets the blue outline (PostEffects). */}
       <Selection>
-        <CameraRig view={view} resetKey={resetKey} room={room} />
+        <CameraRig view={view} resetKey={resetKey} room={room} cameraViewId={cameraViewId} />
+        <RoomThumbnails request={thumbnailRequest} onCapture={onThumbnail} />
         {/* Also sets the background colour, which follows the time of day. */}
         <Lighting room={room} lighting={design.lighting} />
         {PERF_ENABLED && <DevStats />}
@@ -73,12 +90,18 @@ export function Scene({
         floor textures are cached, so coming back to a room is quick.
       */}
         <group key={room}>
-          <RoomShell room={room} finishes={design.finishes} selectedId={selectedId} onPickWall={onPickWall} onPickFloor={onPickFloor} />
+          <RoomShell
+            room={room}
+            finishes={design.finishes}
+            selectedId={editable ? selectedId : null}
+            onPickWall={editable ? onPickWall : noPick}
+            onPickFloor={editable ? onPickFloor : noPick}
+          />
           <FurnitureLayer
             items={design.items}
             origin={ROOM_ORIGIN}
-            interactive
-            selectedId={selectedId}
+            interactive={editable}
+            selectedId={editable ? selectedId : null}
             overlaps={overlaps}
             onSelect={onSelect}
             onMove={onMove}

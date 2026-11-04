@@ -1,4 +1,4 @@
-import { RedoIcon, ResetIcon, SaveIcon, UndoIcon } from './icons'
+import { RedoIcon, ResetIcon, SaveIcon, ShowcaseIcon, UndoIcon } from './icons'
 
 interface ToolbarProps {
   canUndo: boolean
@@ -8,10 +8,11 @@ interface ToolbarProps {
   onReset: () => void
   onResetView: () => void
   onOpenDesigns: () => void
+  onShowcase: () => void
 }
 
 /** The buttons in the top bar. On medium screens only the icons are shown. */
-export function Toolbar({ canUndo, canRedo, onUndo, onRedo, onReset, onResetView, onOpenDesigns }: ToolbarProps) {
+export function Toolbar({ canUndo, canRedo, onUndo, onRedo, onReset, onResetView, onOpenDesigns, onShowcase }: ToolbarProps) {
   return (
     <div className="toolbar">
       <button className="ghost-button" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
@@ -29,6 +30,10 @@ export function Toolbar({ canUndo, canRedo, onUndo, onRedo, onReset, onResetView
       </button>
       <button className="ghost-button" onClick={onResetView} title="Move the camera back to the start">
         Reset view
+      </button>
+      <button className="ghost-button" onClick={onShowcase} title="Full-screen view without the editing panels" aria-label="Showcase">
+        <ShowcaseIcon />
+        <span className="label">Showcase</span>
       </button>
       <span className="divider" />
       <button className="primary-button" onClick={onOpenDesigns} title="Save, load, export or import designs" aria-label="Save / Load">

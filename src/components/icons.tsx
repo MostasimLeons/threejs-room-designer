@@ -102,3 +102,12 @@ export const MoonIcon = () => (
     <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
   </Icon>
 )
+
+/** Showcase mode: a play/presentation symbol. */
+export const ShowcaseIcon = () => (
+  <Icon>
+    <rect x="3" y="4" width="18" height="13" rx="2" />
+    <path d="m10 8.5 4 2-4 2Z" />
+    <path d="M8 21h8M12 17v4" />
+  </Icon>
+)
