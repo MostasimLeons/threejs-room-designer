@@ -43,6 +43,9 @@ const TYPE_LIMITS: Partial<Record<FurnitureType, Partial<SizeLimits>>> = {
   barStool: { height: [0.55, 1.1] },
   drawerUnit: { width: [0.3, 0.6], depth: [0.4, 0.8], height: [0.45, 0.8] },
   pcTower: { width: [0.12, 0.3], depth: [0.25, 0.6], height: [0.2, 0.6] },
+  // Up to 125 cm high, so a sit-stand desk can be shown standing.
+  officeDesk: { width: [0.8, 2.4], depth: [0.5, 1.0], height: [0.6, 1.25] },
+  officeChair: { width: [0.5, 0.8], depth: [0.5, 0.8], height: [0.85, 1.35] },
 }
 
 const cm = (metres: number) => Math.round(metres * 100) / 100

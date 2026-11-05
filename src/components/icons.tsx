@@ -88,6 +88,14 @@ export const BathroomIcon = () => (
   </Icon>
 )
 
+/** Office: a monitor on a desk. */
+export const OfficeIcon = () => (
+  <Icon>
+    <rect x="5" y="4" width="14" height="9" rx="1" />
+    <path d="M12 13v3M9 16h6M3 19h18" />
+  </Icon>
+)
+
 // ---------- Time of day ----------
 
 export const SunIcon = () => (

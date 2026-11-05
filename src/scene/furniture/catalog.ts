@@ -48,6 +48,9 @@ export type FurnitureType =
   // Phase 15: under the desk
   | 'drawerUnit'
   | 'pcTower'
+  // Phase 16: the Office
+  | 'officeDesk'
+  | 'officeChair'
 
 /** Groups for the catalog ("Add furniture"), in the order they're shown. */
 export type FurnitureCategory = 'seating' | 'tables' | 'beds' | 'storage' | 'office' | 'lighting' | 'decor' | 'kitchen' | 'bathroom'
@@ -286,7 +289,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   plant: {
     label: 'Indoor plant',
     category: 'decor',
-    rooms: ['living', 'bedroom', 'dining', 'kitchen', 'bathroom'],
+    rooms: ['living', 'bedroom', 'dining', 'kitchen', 'bathroom', 'office'],
     variantLabel: 'Size',
     variants: [
       { id: 'large', label: 'Large', detail: '130 cm', footprint: [0.6, 0.6] },
@@ -305,7 +308,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   floorLamp: {
     label: 'Floor lamp',
     category: 'lighting',
-    rooms: ['living', 'bedroom', 'dining'],
+    rooms: ['living', 'bedroom', 'dining', 'office'],
     variantLabel: 'Shade',
     variants: [
       { id: 'tapered', label: 'Tapered', detail: '150 cm', footprint: [0.46, 0.46] },
@@ -379,7 +382,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   accentChair: {
     label: 'Accent chair',
     category: 'seating',
-    rooms: ['bedroom', 'living'],
+    rooms: ['bedroom', 'living', 'office'],
     tuck: { kind: 'seat', under: 0.5 },
     variantLabel: 'Style',
     variants: [
@@ -536,7 +539,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   sideTable: {
     label: 'Side table',
     category: 'tables',
-    rooms: ['living', 'bedroom'],
+    rooms: ['living', 'bedroom', 'office'],
     variantLabel: 'Style',
     variants: [
       { id: 'round', label: 'Round', detail: 'Ø 45 cm', footprint: [0.45, 0.45], round: true },
@@ -549,7 +552,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   desk: {
     label: 'Desk',
     category: 'tables',
-    rooms: ['bedroom', 'living'],
+    rooms: ['bedroom', 'living', 'office'],
     kneeBelowTop: 0.12,
     variantLabel: 'Size',
     variants: [
@@ -563,7 +566,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   deskChair: {
     label: 'Desk chair',
     category: 'seating',
-    rooms: ['bedroom', 'living'],
+    rooms: ['bedroom', 'living', 'office'],
     tuck: { kind: 'seat', under: 0.6 },
     variantLabel: 'Style',
     variants: [
@@ -591,7 +594,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   bookshelf: {
     label: 'Bookshelf',
     category: 'storage',
-    rooms: ['living', 'bedroom', 'dining', 'kitchen'],
+    rooms: ['living', 'bedroom', 'dining', 'kitchen', 'office'],
     variantLabel: 'Size',
     variants: [
       { id: 'open', label: 'Open shelves', detail: '90 × 35 cm, 180 tall', footprint: [0.9, 0.35] },
@@ -631,7 +634,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   wallArt: {
     label: 'Wall art',
     category: 'decor',
-    rooms: ['living', 'bedroom', 'dining', 'kitchen', 'bathroom'],
+    rooms: ['living', 'bedroom', 'dining', 'kitchen', 'bathroom', 'office'],
     mount: 'wall',
     variantLabel: 'Print',
     variants: [
@@ -646,7 +649,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   wallMirror: {
     label: 'Mirror',
     category: 'decor',
-    rooms: ['living', 'bedroom', 'dining', 'bathroom'],
+    rooms: ['living', 'bedroom', 'dining', 'bathroom', 'office'],
     mount: 'wall',
     variantLabel: 'Shape',
     variants: [
@@ -659,7 +662,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   wallShelf: {
     label: 'Wall shelf',
     category: 'storage',
-    rooms: ['living', 'bedroom', 'dining', 'kitchen', 'bathroom'],
+    rooms: ['living', 'bedroom', 'dining', 'kitchen', 'bathroom', 'office'],
     mount: 'wall',
     variantLabel: 'Style',
     variants: [
@@ -675,7 +678,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   drawerUnit: {
     label: 'Drawer unit',
     category: 'office',
-    rooms: ['bedroom', 'living'],
+    rooms: ['bedroom', 'living', 'office'],
     tuck: { kind: 'low' },
     variantLabel: 'Style',
     variants: [
@@ -689,7 +692,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   pcTower: {
     label: 'PC tower',
     category: 'office',
-    rooms: ['bedroom', 'living'],
+    rooms: ['bedroom', 'living', 'office'],
     tuck: { kind: 'low' },
     variantLabel: 'Size',
     variants: [
@@ -702,6 +705,37 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
       { color: '#f2f0eb', name: 'White' },
       { color: '#9ea3a8', name: 'Silver' },
     ],
+  },
+
+  // ---------- Phase 16: the Office ----------
+  officeDesk: {
+    label: 'Office desk',
+    category: 'office',
+    rooms: ['office', 'bedroom', 'living'],
+    kneeBelowTop: 0.1,
+    variantLabel: 'Style',
+    variants: [
+      { id: 'straight', label: 'Straight', detail: '160 × 80 cm, steel frame', footprint: [1.6, 0.8] },
+      { id: 'compact', label: 'Compact', detail: '120 × 70 cm, steel frame', footprint: [1.2, 0.7] },
+      { id: 'standing', label: 'Sit-stand', detail: '140 × 70 cm, 72–125 cm high', footprint: [1.4, 0.7] },
+    ],
+    colorLabel: 'Top',
+    swatches: OAK_SWATCHES,
+    frame: { label: 'Frame', options: ['black', 'white', 'chrome'] },
+  },
+  officeChair: {
+    label: 'Office chair',
+    category: 'office',
+    rooms: ['office', 'bedroom', 'living'],
+    tuck: { kind: 'seat', under: 0.6 },
+    variantLabel: 'Style',
+    variants: [
+      { id: 'ergonomic', label: 'Ergonomic', detail: 'mesh back, headrest, 68 cm', footprint: [0.68, 0.68], round: true },
+      { id: 'task', label: 'Task chair', detail: 'mesh back, 60 cm', footprint: [0.6, 0.6], round: true },
+    ],
+    colorLabel: 'Seat',
+    swatches: FABRIC_SWATCHES,
+    frame: { label: 'Base', options: ['black', 'chrome', 'white'] },
   },
 }
 
@@ -837,6 +871,21 @@ const BATHROOM_LAYOUT: FurnitureItem[] = [
   { id: 'bathroom-plant', type: 'plant', variant: 'small', position: [0.2, 1.0], rotation: 0, color: '#ecebe6' },
 ]
 
+/**
+ * Office (4.5 × 4 m): x -2.25…2.25, z -2…2. The desk sits under the window with the
+ * chair tucked in, the PC and a drawer unit under it; a bookshelf beside the window.
+ */
+const OFFICE_LAYOUT: FurnitureItem[] = [
+  { id: 'office-desk', type: 'officeDesk', variant: 'straight', position: [0, -1.6], rotation: 0, color: '#c49a6c' },
+  { id: 'office-chair', type: 'officeChair', variant: 'ergonomic', position: [0, -0.98], rotation: 180, color: '#3a3a3c' },
+  { id: 'office-pc', type: 'pcTower', variant: 'mid', position: [-0.58, -1.65], rotation: 0, color: '#2a2a2c' },
+  { id: 'office-drawers', type: 'drawerUnit', variant: 'castors', position: [0.52, -1.65], rotation: 0, color: '#f1ebdf' },
+  { id: 'office-bookshelf', type: 'bookshelf', variant: 'open', position: [1.7, -1.82], rotation: 0, color: '#c49a6c' },
+  { id: 'office-plant', type: 'plant', variant: 'large', position: [-1.85, -1.6], rotation: 0, color: '#ecebe6' },
+  { id: 'office-lamp', type: 'floorLamp', variant: 'tapered', position: [-1.95, 0.42], rotation: 0, color: '#f6eedd' },
+  { id: 'office-art', type: 'wallArt', variant: 'landscape', position: [-2.23, -0.4], rotation: 90, color: '#41556b' },
+]
+
 /** Each room's starting arrangement, measured from the room's centre. "Reset" returns to it. */
 export const DEFAULT_LAYOUTS: Record<RoomId, FurnitureItem[]> = {
   living: LIVING_LAYOUT,
@@ -844,6 +893,7 @@ export const DEFAULT_LAYOUTS: Record<RoomId, FurnitureItem[]> = {
   dining: DINING_LAYOUT,
   kitchen: KITCHEN_LAYOUT,
   bathroom: BATHROOM_LAYOUT,
+  office: OFFICE_LAYOUT,
 }
 
 /**

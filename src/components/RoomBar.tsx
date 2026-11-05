@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ComponentType, type KeyboardEvent } from 'react'
 import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'
-import { BathroomIcon, BedroomIcon, DiningRoomIcon, KitchenIcon, LivingRoomIcon } from './icons'
+import { BathroomIcon, BedroomIcon, DiningRoomIcon, KitchenIcon, LivingRoomIcon, OfficeIcon } from './icons'
 
 const ICONS: Record<RoomId, ComponentType> = {
   living: LivingRoomIcon,
@@ -8,6 +8,7 @@ const ICONS: Record<RoomId, ComponentType> = {
   dining: DiningRoomIcon,
   kitchen: KitchenIcon,
   bathroom: BathroomIcon,
+  office: OfficeIcon,
 }
 
 interface RoomBarProps {

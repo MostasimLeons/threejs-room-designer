@@ -24,10 +24,10 @@ import { ROOM } from './roomConfig'
  * another corner, as the Bathroom does to keep its vanity wall in view.
  */
 
-export type RoomId = 'living' | 'bedroom' | 'dining' | 'kitchen' | 'bathroom'
+export type RoomId = 'living' | 'bedroom' | 'dining' | 'kitchen' | 'bathroom' | 'office'
 
-/** The order rooms appear in the room bar (and the 1–5 keyboard shortcuts). */
-export const ROOM_IDS: RoomId[] = ['living', 'bedroom', 'dining', 'kitchen', 'bathroom']
+/** The order rooms appear in the room bar (and the 1–6 keyboard shortcuts). */
+export const ROOM_IDS: RoomId[] = ['living', 'bedroom', 'dining', 'kitchen', 'bathroom', 'office']
 
 /** The four walls. Defined in finishes.ts (as WallName) so per-wall finishes can use it too. */
 export type WallSide = WallName
@@ -239,6 +239,33 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
     features: [{ name: 'Toilet', detail: 'wall-mounted', color: '#f6f5f2' }],
     fixedZones: [],
     builtIns: toiletZones,
+  },
+
+  // Phase 16: a home office. The desk sits under the wide window for daylight.
+  office: {
+    id: 'office',
+    label: 'Office',
+    shortLabel: 'Office',
+    width: 4.5,
+    depth: 4,
+    height: ROOM.height,
+    wallThickness: ROOM.wallThickness,
+    openings: {
+      back: [{ kind: 'window', label: 'Window', at: 0, width: 1.8, bottom: 0.9, top: 2.3, curtains: true }],
+      left: [{ kind: 'door', label: 'Door', at: 1.1, width: 0.9, bottom: 0, top: DOOR_HEIGHT }],
+    },
+    downlights: [
+      [-1.1, -0.9],
+      [1.1, -0.9],
+      [-1.1, 1.0],
+      [1.1, 1.0],
+    ],
+    camera: { position: [4.4, 4.0, 4.8], target: [0, 0.8, -0.4] },
+    lights: { ceiling: [3, 7, 4] },
+    defaultFinishes: { wallColor: '#c9cfc0', walls: 'paint', floor: 'oak' },
+    defaultItems: DEFAULT_LAYOUTS.office,
+    features: [],
+    fixedZones: [],
   },
 }
 

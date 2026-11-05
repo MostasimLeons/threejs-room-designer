@@ -19,6 +19,8 @@ export const ROOM_DECOR: Record<RoomId, { floor?: ComponentType; walls?: Partial
   // The units hide with the back wall, so they never block the view from behind.
   kitchen: { walls: { back: KitchenUnits } },
   bathroom: { floor: Toilet },
+  // The office keeps its whole floor free for furniture.
+  office: {},
 }
 
 const T = ROOM.wallThickness
