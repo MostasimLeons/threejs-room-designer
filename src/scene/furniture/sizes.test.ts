@@ -21,7 +21,14 @@ import { ROOMS } from '../house'
 
 const sofaOf = (state: HistoryState) => state.present.items.find((item) => item.id === 'sofa')!
 
-function piece(type: FurnitureType, variant: string, position: [number, number], rotation = 0, id: string = type, size?: [number, number, number]): FurnitureItem {
+function piece(
+  type: FurnitureType,
+  variant: string,
+  position: [number, number],
+  rotation = 0,
+  id: string = type,
+  size?: [number, number, number],
+): FurnitureItem {
   return { id, type, variant, position, rotation, color: '#c49a6c', ...(size ? { size } : {}) }
 }
 
@@ -93,7 +100,10 @@ describe('saving and undo', () => {
   const living = DEFAULT_HOUSE.living
 
   it('a custom size is saved and loads back', () => {
-    const design = { ...living, items: living.items.map((item) => (item.id === 'sofa' ? { ...item, size: [2.5, 0.95, 0.8] as [number, number, number] } : item)) }
+    const design = {
+      ...living,
+      items: living.items.map((item) => (item.id === 'sofa' ? { ...item, size: [2.5, 0.95, 0.8] as [number, number, number] } : item)),
+    }
     const loaded = parseDesign(JSON.parse(JSON.stringify(design)), 'living')!
     expect(loaded.items.find((item) => item.id === 'sofa')?.size).toEqual([2.5, 0.95, 0.8])
   })
@@ -124,7 +134,10 @@ describe('saving and undo', () => {
   const start: HistoryState = { past: [], present: living, future: [], pending: null }
 
   it('dragging a size slider is one undo step', () => {
-    let state = [resize([2.3, 0.9, 0.85], true), resize([2.4, 0.9, 0.85], true), resize([2.5, 0.9, 0.85], true)].reduce(historyReducer, start)
+    let state = [resize([2.3, 0.9, 0.85], true), resize([2.4, 0.9, 0.85], true), resize([2.5, 0.9, 0.85], true)].reduce(
+      historyReducer,
+      start,
+    )
     state = historyReducer(state, { type: 'commit' })
     expect(sofaOf(state).size).toEqual([2.5, 0.9, 0.85])
     expect(state.past).toHaveLength(1)
