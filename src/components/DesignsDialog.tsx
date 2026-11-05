@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import type { RoomDesign } from '../state/design'
+import type { HouseDesign } from '../state/design'
 import { deleteSave, exportDesign, importDesign, listSaves, saveDesign, type SavedDesign } from '../state/storage'
+import { shareUrl } from '../state/share'
+import { ROOM_IDS } from '../scene/house'
 
 interface DesignsDialogProps {
   open: boolean
-  design: RoomDesign
+  /** Every room: saving and exporting always include the whole house. */
+  design: HouseDesign
   onClose: () => void
-  /** Called with a design to restore (from a save or an imported file). */
-  onLoad: (design: RoomDesign, name: string) => void
+  /** Called with a house to restore (from a save or an imported file). */
+  onLoad: (design: HouseDesign, name: string) => void
 }
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
@@ -60,6 +63,16 @@ export function DesignsDialog({ open, design, onClose, onLoad }: DesignsDialogPr
     setMessage({ text: `Deleted "${save.name}".` })
   }
 
+  async function handleCopyLink() {
+    try {
+      const url = await shareUrl(design)
+      await navigator.clipboard.writeText(url)
+      setMessage({ text: `Link copied (${Math.ceil(url.length / 1000)} K characters). Anyone who opens it gets a copy of all five rooms.` })
+    } catch {
+      setMessage({ text: "Couldn't copy the link. Your browser may have blocked the clipboard.", error: true })
+    }
+  }
+
   async function handleImport(file: File | undefined) {
     if (!file) return
     try {
@@ -95,7 +108,11 @@ export function DesignsDialog({ open, design, onClose, onLoad }: DesignsDialogPr
         </button>
       </form>
 
-      {message && <p className={`dialog-message ${message.error ? 'error' : ''}`} role="status">{message.text}</p>}
+      {message && (
+        <p className={`dialog-message ${message.error ? 'error' : ''}`} role="status">
+          {message.text}
+        </p>
+      )}
 
       <h3>Saved in this browser</h3>
       {saves.length === 0 ? (
@@ -107,7 +124,8 @@ export function DesignsDialog({ open, design, onClose, onLoad }: DesignsDialogPr
               <div>
                 <span className="item-name">{save.name}</span>
                 <span className="item-detail">
-                  {formatDate(save.savedAt)} · {save.design.items.length} items
+                  {formatDate(save.savedAt)} · {ROOM_IDS.reduce((sum, id) => sum + save.design[id].items.length, 0)} items in{' '}
+                  {ROOM_IDS.length} rooms
                 </span>
               </div>
               <button className="ghost-button" onClick={() => onLoad(save.design, save.name)}>
@@ -121,8 +139,20 @@ export function DesignsDialog({ open, design, onClose, onLoad }: DesignsDialogPr
         </ul>
       )}
 
+      <h3>Share</h3>
+      <p className="muted small">
+        A link that opens a copy of this design (all rooms). The design is packed into the link itself; nothing is uploaded.
+      </p>
+      <div className="file-row">
+        <button className="ghost-button" onClick={handleCopyLink}>
+          Copy share link
+        </button>
+      </div>
+
       <h3>File</h3>
-      <p className="muted small">Export a .json file to back up or share a design, and import it on any computer.</p>
+      <p className="muted small">
+        Saves and files include all rooms. Export a .json file to back up or share a design, and import it on any computer.
+      </p>
       <div className="file-row">
         <button className="ghost-button" onClick={() => exportDesign(design, name.trim() || 'room-design')}>
           Export file

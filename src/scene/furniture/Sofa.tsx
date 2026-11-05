@@ -16,7 +16,12 @@ export function Sofa({ color, variant }: ModelProps) {
   // x position of each seat/back cushion, centred around 0
   const cushionX = Array.from({ length: cushions }, (_, i) => (i - (cushions - 1) / 2) * (cushionW + 0.02))
   const legX = width / 2 - 0.1
-  const legs: [number, number][] = [[-legX, -0.36], [legX, -0.36], [-legX, 0.36], [legX, 0.36]]
+  const legs: [number, number][] = [
+    [-legX, -0.36],
+    [legX, -0.36],
+    [-legX, 0.36],
+    [legX, 0.36],
+  ]
   const pillowX = inner / 2 - 0.26
 
   return (
@@ -43,8 +48,20 @@ export function Sofa({ color, variant }: ModelProps) {
       ))}
 
       {/* Throw pillows */}
-      <Block size={[0.42, 0.42, 0.12]} radius={0.06} position={[-pillowX, 0.66, -0.05]} rotation={[-0.25, 0, 0.1]} material={materials.fabricSage} />
-      <Block size={[0.42, 0.42, 0.12]} radius={0.06} position={[pillowX, 0.66, -0.05]} rotation={[-0.25, 0, -0.1]} material={materials.fabricSand} />
+      <Block
+        size={[0.42, 0.42, 0.12]}
+        radius={0.06}
+        position={[-pillowX, 0.66, -0.05]}
+        rotation={[-0.25, 0, 0.1]}
+        material={materials.fabricSage}
+      />
+      <Block
+        size={[0.42, 0.42, 0.12]}
+        radius={0.06}
+        position={[pillowX, 0.66, -0.05]}
+        rotation={[-0.25, 0, -0.1]}
+        material={materials.fabricSand}
+      />
     </group>
   )
 }

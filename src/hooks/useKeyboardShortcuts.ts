@@ -12,6 +12,11 @@ interface ShortcutActions {
   /** Change the selected item live; `commit` records it later. */
   previewItem: (id: string, changes: ItemChanges) => void
   commit: () => void
+  /** Switch to the room at this position in the room bar (0 = first). */
+  selectRoom: (index: number) => void
+  /** Delete / duplicate the selected piece. */
+  removeSelected: () => void
+  duplicateSelected: () => void
 }
 
 const NUDGE = 0.05 // metres per arrow-key press
@@ -27,7 +32,8 @@ const ARROWS: Record<string, [number, number]> = {
 
 /**
  * Global keyboard shortcuts:
- * Ctrl+Z / Ctrl+Y undo/redo · Esc deselect · R / Shift+R rotate · arrows move (Shift = faster).
+ * Ctrl+Z / Ctrl+Y undo/redo · Esc deselect · R / Shift+R rotate · arrows move (Shift = faster)
+ * · 1–5 switch room · Delete/Backspace remove · Ctrl+D duplicate.
  *
  * The listener is added once. It reads the latest values through a ref, so it
  * doesn't need to be removed and re-added on every render.
@@ -37,7 +43,14 @@ export function useKeyboardShortcuts(actions: ShortcutActions) {
   latest.current = actions
 
   useEffect(() => {
-    let nudging = false
+    // Arrow keys currently held down for a nudge. The move stays one undo step
+    // until ALL of them are released, e.g. holding ↓ while tapping ←.
+    const heldArrows = new Set<string>()
+
+    function finishNudge() {
+      heldArrows.clear()
+      latest.current.commit()
+    }
 
     function handleKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement
@@ -46,7 +59,7 @@ export function useKeyboardShortcuts(actions: ShortcutActions) {
       if (inInput && (target as HTMLInputElement).type !== 'range') return
       if (document.querySelector('dialog[open]')) return
 
-      const { selectedItem, undo, redo, deselect, updateItem, previewItem } = latest.current
+      const { selectedItem, undo, redo, deselect, updateItem, previewItem, selectRoom, removeSelected, duplicateSelected } = latest.current
       const ctrl = event.ctrlKey || event.metaKey
       const key = event.key.toLowerCase()
 
@@ -56,6 +69,14 @@ export function useKeyboardShortcuts(actions: ShortcutActions) {
       } else if (ctrl && (key === 'y' || (key === 'z' && event.shiftKey))) {
         event.preventDefault()
         redo()
+      } else if ((key === 'delete' || key === 'backspace') && selectedItem && !inInput) {
+        event.preventDefault() // Backspace must not navigate back
+        removeSelected()
+      } else if (ctrl && key === 'd' && selectedItem) {
+        event.preventDefault() // not the browser's bookmark shortcut
+        duplicateSelected()
+      } else if (/^[1-9]$/.test(event.key) && !ctrl && !event.altKey && !inInput) {
+        selectRoom(Number(event.key) - 1)
       } else if (key === 'escape') {
         deselect()
       } else if (key === 'r' && !ctrl && selectedItem) {
@@ -66,24 +87,30 @@ export function useKeyboardShortcuts(actions: ShortcutActions) {
         const [dx, dz] = ARROWS[event.key]
         const step = event.shiftKey ? NUDGE_FAST : NUDGE
         const [x, z] = selectedItem.position
-        // Live change while the key is held; released key = one undo step.
+        // Live change while keys are held; releasing the last one = one undo step.
         previewItem(selectedItem.id, { position: [x + dx * step, z + dz * step] })
-        nudging = true
+        heldArrows.add(event.key)
       }
     }
 
     function handleKeyUp(event: KeyboardEvent) {
-      if (nudging && event.key in ARROWS) {
-        nudging = false
-        latest.current.commit()
-      }
+      if (!heldArrows.delete(event.key)) return // not an arrow we were nudging with
+      if (heldArrows.size === 0) finishNudge()
+    }
+
+    // Switching windows (Alt+Tab) while holding an arrow means the browser never
+    // sends its keyup, so finish the move here instead of leaving it open.
+    function handleBlur() {
+      if (heldArrows.size > 0) finishNudge()
     }
 
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
+    window.addEventListener('blur', handleBlur)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
+      window.removeEventListener('blur', handleBlur)
     }
   }, [])
 }

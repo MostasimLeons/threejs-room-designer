@@ -8,7 +8,12 @@ export function Armchair({ color, variant }: ModelProps) {
   const armless = variant === 'armless'
   const width = armless ? 0.7 : 0.92
   const lx = width / 2 - 0.08
-  const legs: [number, number][] = [[-lx, -0.32], [lx, -0.32], [-lx, 0.32], [lx, 0.32]]
+  const legs: [number, number][] = [
+    [-lx, -0.32],
+    [lx, -0.32],
+    [-lx, 0.32],
+    [lx, 0.32],
+  ]
   return (
     <group>
       {legs.map(([x, z], i) => (
@@ -21,9 +26,21 @@ export function Armchair({ color, variant }: ModelProps) {
           <Block size={[0.16, 0.48, 0.82]} radius={0.07} position={[0.38, 0.42, 0]} material={fabric} />
         </>
       )}
-      <Block size={[armless ? 0.68 : 0.6, armless ? 0.62 : 0.5, 0.18]} radius={0.07} position={[0, armless ? 0.66 : 0.6, -0.32]} rotation={[-0.1, 0, 0]} material={fabric} />
+      <Block
+        size={[armless ? 0.68 : 0.6, armless ? 0.62 : 0.5, 0.18]}
+        radius={0.07}
+        position={[0, armless ? 0.66 : 0.6, -0.32]}
+        rotation={[-0.1, 0, 0]}
+        material={fabric}
+      />
       <Block size={[armless ? 0.68 : 0.6, 0.15, 0.62]} radius={0.06} position={[0, 0.41, 0.08]} material={fabric} />
-      <Block size={[0.38, 0.36, 0.11]} radius={0.05} position={[0, 0.64, -0.18]} rotation={[-0.25, 0, 0.06]} material={materials.fabricSand} />
+      <Block
+        size={[0.38, 0.36, 0.11]}
+        radius={0.05}
+        position={[0, 0.64, -0.18]}
+        rotation={[-0.25, 0, 0.06]}
+        material={materials.fabricSand}
+      />
     </group>
   )
 }

@@ -1,8 +1,10 @@
-import { FLOOR_OPTIONS, WALL_SWATCHES, wallColorName, type RoomFinishes } from '../scene/finishes'
+import { ROOMS, type RoomId } from '../scene/house'
+import { FLOOR_OPTIONS, hasMixedWalls, WALL_STYLES, WALL_SWATCHES, wallColorName, type RoomFinishes } from '../scene/finishes'
 import type { FinishChanges } from '../state/useDesignHistory'
 import { ColorPicker } from './ColorPicker'
 
 interface RoomPanelProps {
+  room: RoomId
   finishes: RoomFinishes
   onUpdateFinishes: (changes: FinishChanges) => void
   onPreviewFinishes: (changes: FinishChanges) => void
@@ -10,17 +12,29 @@ interface RoomPanelProps {
 }
 
 /** Right-hand panel when nothing is selected: wall paint, floor material and shortcut tips. */
-export function RoomPanel({ finishes, onUpdateFinishes, onPreviewFinishes, onCommit }: RoomPanelProps) {
+export function RoomPanel({ room, finishes, onUpdateFinishes, onPreviewFinishes, onCommit }: RoomPanelProps) {
   return (
     <aside className="properties">
       <section className="card">
         <h2>Room</h2>
-        <p className="item-title">Living room</p>
-        <p className="muted">Select furniture to edit it, or style the room below.</p>
+        <p className="item-title">{ROOMS[room].label}</p>
+        <p className="muted">Select furniture to edit it, or style the room below. Tip: click a wall or the floor in the 3D view.</p>
       </section>
 
       <section className="card">
         <h2>Walls · {wallColorName(finishes.wallColor)}</h2>
+        <div className="segmented" role="group" aria-label="Wall finish">
+          {WALL_STYLES.map((style) => (
+            <button
+              key={style.id}
+              className={style.id === finishes.walls ? 'active' : ''}
+              aria-pressed={style.id === finishes.walls}
+              onClick={() => onUpdateFinishes({ walls: style.id })}
+            >
+              {style.label}
+            </button>
+          ))}
+        </div>
         <ColorPicker
           swatches={WALL_SWATCHES}
           value={finishes.wallColor}
@@ -28,6 +42,14 @@ export function RoomPanel({ finishes, onUpdateFinishes, onPreviewFinishes, onCom
           onPreview={(wallColor) => onPreviewFinishes({ wallColor })}
           onCommit={onCommit}
         />
+        {hasMixedWalls(finishes) && (
+          <p className="muted small">
+            Some walls have their own finish and keep it.{' '}
+            <button className="text-button" onClick={() => onUpdateFinishes({ wallFinishes: undefined })}>
+              Make all walls match
+            </button>
+          </p>
+        )}
       </section>
 
       <section className="card">
@@ -50,11 +72,21 @@ export function RoomPanel({ finishes, onUpdateFinishes, onPreviewFinishes, onCom
       <section className="card">
         <h2>Shortcuts</h2>
         <ul className="tips">
-          <li><kbd>Drag</kbd> furniture to move it</li>
-          <li><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> nudge 5 cm (<kbd>Shift</kbd> 25 cm)</li>
-          <li><kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd> rotate 45°</li>
-          <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo</li>
-          <li><kbd>Esc</kbd> deselect</li>
+          <li>
+            <kbd>Drag</kbd> furniture to move it
+          </li>
+          <li>
+            <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> nudge 5 cm (<kbd>Shift</kbd> 25 cm)
+          </li>
+          <li>
+            <kbd>R</kbd> / <kbd>Shift</kbd>+<kbd>R</kbd> rotate 45°
+          </li>
+          <li>
+            <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo
+          </li>
+          <li>
+            <kbd>Esc</kbd> deselect
+          </li>
         </ul>
       </section>
     </aside>

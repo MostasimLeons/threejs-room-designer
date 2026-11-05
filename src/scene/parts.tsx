@@ -15,17 +15,7 @@ interface BlockProps extends MeshProps {
 /** A box that casts and receives shadows. Rounded when `radius` is given. */
 export function Block({ size, material, radius, ...props }: BlockProps) {
   if (radius) {
-    return (
-      <RoundedBox
-        args={size}
-        radius={radius}
-        smoothness={4}
-        material={material}
-        castShadow
-        receiveShadow
-        {...props}
-      />
-    )
+    return <RoundedBox args={size} radius={radius} smoothness={4} material={material} castShadow receiveShadow {...props} />
   }
   return (
     <mesh material={material} castShadow receiveShadow {...props}>

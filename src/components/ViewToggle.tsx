@@ -10,7 +10,11 @@ interface ViewToggleProps {
 export function ViewToggle({ view, onChange }: ViewToggleProps) {
   return (
     <div className="view-toggle" role="group" aria-label="Camera view">
-      <button className={view === 'perspective' ? 'active' : ''} aria-pressed={view === 'perspective'} onClick={() => onChange('perspective')}>
+      <button
+        className={view === 'perspective' ? 'active' : ''}
+        aria-pressed={view === 'perspective'}
+        onClick={() => onChange('perspective')}
+      >
         <CubeIcon />
         Perspective
       </button>

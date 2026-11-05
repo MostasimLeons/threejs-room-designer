@@ -33,8 +33,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       <div className="error-panel" role="alert">
         <p className="empty-title">The 3D view couldn't start</p>
         <p className="muted">
-          Your browser or graphics card may not support WebGL, or something went wrong while drawing the room. Your design is
-          still saved. Try reloading, or open the app in an up-to-date Chrome, Edge or Firefox.
+          Your browser or graphics card may not support WebGL, or something went wrong while drawing the room. Your design is still saved.
+          Try reloading, or open the app in an up-to-date Chrome, Edge or Firefox.
         </p>
         <p className="muted small">Details: {this.state.error.message}</p>
         <button className="primary-button" onClick={() => window.location.reload()}>

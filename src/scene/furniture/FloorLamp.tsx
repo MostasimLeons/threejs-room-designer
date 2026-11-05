@@ -1,10 +1,15 @@
+import { useContext } from 'react'
 import { materials } from '../materials'
+import { InteriorLightContext } from '../interiorLight'
 import { Cylinder } from '../parts'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 
 /** Floor lamp with a glowing fabric shade and a warm point light inside. */
 export function FloorLamp({ color, variant }: ModelProps) {
   const shade = useTintedMaterial(materials.lampShade, color)
+  // Brighter in the evening (0 = daylight, 1 = night). The shade is this lamp's own copy, so it's set here.
+  const interior = useContext(InteriorLightContext)
+  shade.emissiveIntensity = 0.25 + 1.0 * interior
   const shadeY = 1.5
   // [top radius, bottom radius, height] of the shade
   const [top, bottom, height] = variant === 'drum' ? [0.21, 0.21, 0.28] : [0.15, 0.22, 0.3]
@@ -22,7 +27,7 @@ export function FloorLamp({ color, variant }: ModelProps) {
       </mesh>
 
       {/* Warm light. `decay` 2 = physically realistic fall-off. */}
-      <pointLight position={[0, shadeY - 0.05, 0]} color="#ffcf8f" intensity={2.2} distance={6} decay={2} />
+      <pointLight position={[0, shadeY - 0.05, 0]} color="#ffcf8f" intensity={0.4 + 2.6 * interior} distance={6} decay={2} />
     </group>
   )
 }

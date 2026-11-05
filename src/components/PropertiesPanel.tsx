@@ -1,15 +1,24 @@
 import { FURNITURE_INFO, getVariant, type FurnitureItem } from '../scene/furniture/catalog'
 import type { RoomFinishes } from '../scene/finishes'
-import { ROOM } from '../scene/roomConfig'
+import { ROOMS, type RoomId } from '../scene/house'
 import type { FinishChanges, ItemChanges } from '../state/useDesignHistory'
 import { ColorPicker } from './ColorPicker'
+import { modelFor } from '../scene/furniture/models'
 import { RoomPanel } from './RoomPanel'
+import { WallPanel } from './WallPanel'
+import { setAllWalls, setWallFinish, wallFinishOf } from '../scene/finishes'
+import type { WallSide } from '../scene/house'
+import { wallLabel } from '../scene/selection'
 
 interface PropertiesPanelProps {
+  /** The room being edited: sets the slider ranges and the Room panel title. */
+  room: RoomId
   item: FurnitureItem | null
+  /** The selected wall, if a wall (not furniture) is selected. */
+  wall: WallSide | null
   finishes: RoomFinishes
-  /** Other pieces the selected item currently overlaps. */
-  overlapping: FurnitureItem[]
+  /** Names of what the selected item currently overlaps (other pieces, built-in units). */
+  overlapping: string[]
   /** Apply a change and record an undo step. */
   onUpdate: (changes: ItemChanges) => void
   /** Apply a change live (while sliding); `onCommit` records it when you let go. */
@@ -18,6 +27,13 @@ interface PropertiesPanelProps {
   onPreviewFinishes: (changes: FinishChanges) => void
   onCommit: () => void
   onDeselect: () => void
+  /** Copy the selected piece next to itself. */
+  onDuplicate: () => void
+  /** Remove the selected piece (undoable). */
+  onDelete: () => void
+  /** Other rooms this piece may go in (see FURNITURE_INFO.rooms). */
+  moveTargets: RoomId[]
+  onMoveTo: (room: RoomId) => void
 }
 
 /** Props that make a slider record ONE undo step when you let go. */
@@ -27,11 +43,31 @@ function commitHandlers(onCommit: () => void) {
 
 /** Right-hand panel: edits the selected furniture, or the room when nothing is selected. */
 export function PropertiesPanel(props: PropertiesPanelProps) {
-  const { item, overlapping, onUpdate, onPreview, onCommit, onDeselect } = props
+  const { room, item, overlapping, onUpdate, onPreview, onCommit, onDeselect } = props
+  if (props.wall) {
+    const { wall, finishes, onUpdateFinishes, onPreviewFinishes } = props
+    return (
+      <WallPanel
+        label={wallLabel(wall)}
+        finish={wallFinishOf(finishes, wall)}
+        custom={Boolean(finishes.wallFinishes?.[wall])}
+        onChange={(finish) => onUpdateFinishes(setWallFinish(finishes, wall, finish))}
+        onPreview={(finish) => onPreviewFinishes(setWallFinish(finishes, wall, finish))}
+        onCommit={onCommit}
+        onAllWalls={() => onUpdateFinishes(setAllWalls(wallFinishOf(finishes, wall)))}
+        onMatchRoom={() => onUpdateFinishes(setWallFinish(finishes, wall, { color: finishes.wallColor, style: finishes.walls }))}
+        onDeselect={onDeselect}
+      />
+    )
+  }
   if (!item) return <RoomPanel {...props} />
+  const { width, depth } = ROOMS[room]
 
   const info = FURNITURE_INFO[item.type]
   const variant = getVariant(item.type, item.variant)
+  // Real models whose texture covers several materials can't be recoloured (see models.ts).
+  const model = modelFor(item.type, item.variant)
+  const fixedFinish = model !== undefined && model.tint.length === 0
   const [x, z] = item.position
 
   return (
@@ -51,8 +87,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         </div>
         {overlapping.length > 0 && (
           <p className="warning" role="status">
-            Overlaps {overlapping.map((other) => FURNITURE_INFO[other.type].label.toLowerCase()).join(' and ')}. Move or rotate it to
-            make space.
+            Overlaps {overlapping.join(' and ')}. Move or rotate it to make space.
           </p>
         )}
       </section>
@@ -74,19 +109,28 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         </div>
       </section>
 
-      <section className="card">
-        <h2>Colour · {info.colorLabel}</h2>
-        <ColorPicker
-          swatches={info.swatches}
-          value={item.color}
-          onPick={(color) => onUpdate({ color })}
-          onPreview={(color) => onPreview({ color })}
-          onCommit={onCommit}
-        />
-        <p className="muted small">
-          Current: {info.swatches.find((s) => s.color.toLowerCase() === item.color.toLowerCase())?.name ?? item.color.toUpperCase()}
-        </p>
-      </section>
+      {fixedFinish ? (
+        <section className="card">
+          <h2>Colour</h2>
+          <p className="muted small">
+            This model keeps its own natural finish ({variant.label.toLowerCase()}). Pick another option to choose a colour.
+          </p>
+        </section>
+      ) : (
+        <section className="card">
+          <h2>Colour · {info.colorLabel}</h2>
+          <ColorPicker
+            swatches={info.swatches}
+            value={item.color}
+            onPick={(color) => onUpdate({ color })}
+            onPreview={(color) => onPreview({ color })}
+            onCommit={onCommit}
+          />
+          <p className="muted small">
+            Current: {info.swatches.find((s) => s.color.toLowerCase() === item.color.toLowerCase())?.name ?? item.color.toUpperCase()}
+          </p>
+        </section>
+      )}
 
       <section className="card">
         <h2>Rotation</h2>
@@ -119,8 +163,8 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         </label>
         <input
           type="range"
-          min={-ROOM.width / 2}
-          max={ROOM.width / 2}
+          min={-width / 2}
+          max={width / 2}
           step={0.05}
           value={x}
           onChange={(e) => onPreview({ position: [Number(e.target.value), z] })}
@@ -133,15 +177,45 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         </label>
         <input
           type="range"
-          min={-ROOM.depth / 2}
-          max={ROOM.depth / 2}
+          min={-depth / 2}
+          max={depth / 2}
           step={0.05}
           value={z}
           onChange={(e) => onPreview({ position: [x, Number(e.target.value)] })}
           aria-label="Back to front position"
           {...commitHandlers(onCommit)}
         />
-        <p className="muted small">Tip: drag it in the 3D view, or use the arrow keys.</p>
+        <p className="muted small">Tip: drag it in the 3D view (it snaps to walls; hold Alt to place freely), or use the arrow keys.</p>
+      </section>
+
+      <section className="card">
+        <h2>Actions</h2>
+        <div className="action-row">
+          <button className="ghost-button" onClick={props.onDuplicate} title="Duplicate (Ctrl+D)">
+            Duplicate
+          </button>
+          <button className="ghost-button danger" onClick={props.onDelete} title="Delete (Del)">
+            Delete
+          </button>
+        </div>
+        {props.moveTargets.length > 0 && (
+          <label className="field move-field">
+            <span>Move to another room</span>
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) props.onMoveTo(e.target.value as RoomId)
+              }}
+            >
+              <option value="">Choose a room…</option>
+              {props.moveTargets.map((target) => (
+                <option key={target} value={target}>
+                  {ROOMS[target].label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </section>
     </aside>
   )
