@@ -58,7 +58,13 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms,
   - an automatic save, so a page reload keeps your room
   - `.json` export and import for backups and sharing
   - share links (see above)
-- **Responsive** layout for desktop, tablet and phone.
+- **3D quality: Auto, High, Medium, Low** (bottom of the left panel). Auto picks a level for the device (High on desktops, Medium on phones, tablets and modest computers, Low on very weak ones) and steps down if drawing gets slow while you move around. Medium uses smaller shadows, cheaper soft corner shadows, smaller floor reflections and caps screen sharpness at 1.5×. Low turns off corner shadows, floor reflections and glow, and only the sun casts shadows. The choice is kept in this browser.
+- **Shadows are only redrawn when something changes** (a piece moves, the time of day changes, a model finishes loading, a wall hides). Orbiting and zooming reuse them, which takes about a third off the drawing time while you move the camera.
+- **Responsive** layout for desktop, tablet and phone:
+  - on phones, tapping a piece slides its settings up as a sheet over the bottom of the 3D view (✕ closes it), so you don't have to scroll down to edit it
+  - touch help text (tap, drag, pinch, two fingers to pan)
+  - "+ Add" scrolls the catalog into view
+- **Loading screen** while the app's code downloads.
 
 ## Requirements
 
@@ -85,17 +91,17 @@ Open **http://localhost:5173** in your browser. Press `Ctrl + C` in the terminal
 
 ### Scripts
 
-| Command             | What it does                                                                                                                    |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`       | Starts the development server with instant reload                                                                               |
-| `npm run typecheck` | Checks the TypeScript types without building                                                                                    |
-| `npm run build`     | Type-checks, then creates an optimised production build in `dist/`                                                              |
-| `npm run preview`   | Serves the `dist/` build locally so you can test it                                                                             |
-| `npm test`          | Runs the unit tests once (`npm run test:watch` re-runs them as you edit)                                                        |
-| `npm run lint`      | Checks the code for likely bugs with Oxlint                                                                                     |
-| `npm run format`    | Formats all files with Prettier (`format:check` only reports)                                                                   |
-| `npm run check`     | Lint + format check + type check + tests. Run this before committing.                                                           |
-| `npm run models`    | Rebuilds the web-ready 3D models in `public/models/` from the originals in `assets-src/` (`-- --inspect` lists their materials) |
+| Command             | What it does                                                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`       | Starts the development server with instant reload                                                                                                                         |
+| `npm run typecheck` | Checks the TypeScript types without building                                                                                                                              |
+| `npm run build`     | Type-checks, then creates an optimised production build in `dist/`                                                                                                        |
+| `npm run preview`   | Serves the `dist/` build locally so you can test it                                                                                                                       |
+| `npm test`          | Runs the unit tests once (`npm run test:watch` re-runs them as you edit)                                                                                                  |
+| `npm run lint`      | Checks the code for likely bugs with Oxlint                                                                                                                               |
+| `npm run format`    | Formats all files with Prettier (`format:check` only reports)                                                                                                             |
+| `npm run check`     | Lint + format check + type check + tests. Run this before committing. GitHub runs it too (plus the build) on every push and pull request (`.github/workflows/check.yml`). |
+| `npm run models`    | Rebuilds the web-ready 3D models in `public/models/` from the originals in `assets-src/` (`-- --inspect` lists their materials)                                           |
 
 ### Checking performance
 
@@ -127,8 +133,20 @@ Measured in the Living Room with the default layout (draw calls and triangles de
 | 2026-11-04 | Phase 6, eye level (only part of the room is in view)                                                  | ~280 / ~350 |               |
 | 2026-11-04 | Phase 7, real models (fewer draw calls; more triangles, mostly the plants)                             | ~220 / ~445 | ~135k / ~122k |
 | 2026-11-04 | Phase 8, nothing selected: same as Phase 7 measured in the same window (280 = 280, narrow tall window) | unchanged   | unchanged     |
+| 2026-11-05 | Phase 9, while orbiting (shadows reused; same window as Phase 8's 280)                                 | ~225        | ~135k         |
 
-The two shadow passes are still most of the cost. Without the once-per-frame shadow change, a reflective floor would add about 460 draw calls instead of about 85.
+Since Phase 9 the two shadow passes only run in frames where something that casts a shadow changed, so camera moves don't pay for them. Without the shadow changes from Phases 1 and 9, a reflective floor would add about 460 draw calls instead of about 85.
+
+**GPU time per frame (Phase 9)**, measured with the browser's GPU timer on an NVIDIA RTX 3060, Living Room overview in a small window (about 400 × 850 pixels at 1×), steady frames:
+
+| Setting                                    | GPU time per frame |
+| ------------------------------------------ | ------------------ |
+| High, shadows redrawn every frame (before) | ~4.2 ms            |
+| High, shadows reused (now)                 | ~2.5–3.2 ms        |
+| Medium                                     | ~2.7 ms            |
+| Low                                        | ~1.2 ms            |
+
+Bigger windows and sharper screens cost more (the work grows with the number of pixels), which is where Medium and Low help most.
 
 ## 3D models
 
@@ -197,6 +215,7 @@ Exact versions are in `package.json`. `package-lock.json` pins them so every ins
 | Reset              | **Reset** puts furniture and finishes back to the start (undoable). **Reset view** moves only the camera, back to the overview. |
 | Camera views       | **Overview / Eye level / Corner** above the 3D view (Perspective only)                                                          |
 | Showcase           | **Showcase** in the top bar; `Esc` to leave                                                                                     |
+| 3D quality         | **3D quality** at the bottom of the left panel: Auto, High, Medium or Low                                                       |
 | Save / Load        | **Save / Load** opens the Designs window                                                                                        |
 
 A whole drag, slider movement or held-down arrow key counts as **one** undo step.
@@ -231,6 +250,7 @@ src/
     TimeOfDayPanel.tsx     Clock, presets, time slider and room orientation
     ColorPicker.tsx        Swatch grid + custom colour (used by both panels)
     DesignsDialog.tsx      Save / load / export / import / share-link window
+    QualityControl.tsx     The 3D quality setting (left panel)
     CatalogDrawer.tsx      "Add furniture" catalog for the current room
     ViewToggle.tsx         Perspective / Plan switch
     ErrorBoundary.tsx      Friendly message if the 3D view fails (e.g. no WebGL)
@@ -251,6 +271,9 @@ src/
     Scene.tsx              The <Canvas> (renders only when something changes)
     DevStats.tsx           Performance readout shown with ?perf in the URL (also window.roomDesigner3d for debugging)
     PostEffects.tsx        Ambient occlusion, bloom, tone mapping, vignette, antialiasing
+    quality.ts             Quality levels (High / Medium / Low), Auto's starting guess and step-down rule
+    AutoQuality.tsx        Measures frame times while the view moves; steps quality down when slow
+    shadowUpdates.ts       Fingerprint of everything that affects shadows (redraw only when it changes)
     sun.ts                 Time of day: sun position, light colours and strengths, presets
     cameraViews.ts         Each room's camera views, and fitting the overview to narrow screens
     RoomThumbnails.tsx     Takes the small room pictures for the room bar
@@ -316,6 +339,8 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 - Doors between rooms are closed. Each room is a separate scene, so there's nothing to see through them.
 - Built-in units (kitchen units, toilet, dining pendant) can't be moved or restyled. The pendant stays put if you move the dining table.
 - Selecting something costs extra drawing while it's selected: the outline redraws the scene's depth (about 95 more draw calls in the Living Room, 165 in the Kitchen).
+- Phase 9 was tested on a desktop graphics card and in the browser's phone emulation, not yet on real phones or tablets. Touch gestures (dragging furniture with a finger, pinch zoom) still need checking on a real device.
+- Auto quality only steps down during a visit, never back up, so the picture doesn't keep changing. Pick High yourself to go back.
 - Ambient occlusion runs at full resolution. N8AO's faster half-resolution mode crashes with Three.js 0.187 (its multi-texture render target isn't compatible), so it stays off until N8AO is updated.
 - Floor reflections aren't blurred. Drei's reflection blur creates two GPU images it never frees, so softness comes from a lower reflection resolution instead.
 - At night each room has two real ceiling lights (plus the living-room floor lamp). The other lamps, the bedside lamps and the pendant only glow, because every extra light makes every material slower to draw.
