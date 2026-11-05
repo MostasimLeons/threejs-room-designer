@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { ROOM } from '../scene/roomConfig'
 import { ROOMS, WALL_SIDES, type RoomId } from '../scene/house'
 import { FURNITURE_INFO, getVariant, type FurnitureItem } from '../scene/furniture/catalog'
-import { getFloorOption, hasMixedWalls, wallColorName, type RoomFinishes } from '../scene/finishes'
+import { getFloorOption, hasMixedWalls, wallColorName, wallStyleLabel, type RoomFinishes } from '../scene/finishes'
 import { compassName, formatTime, type RoomLighting } from '../scene/sun'
 
 const cm = (metres: number) => Math.round(metres * 100)
@@ -64,7 +64,7 @@ export function Sidebar({
       name: 'Walls',
       detail: hasMixedWalls(finishes)
         ? 'Mixed (one or more walls differ)'
-        : `${finishes.walls === 'tiles' ? 'Tiles' : 'Paint'} · ${wallColorName(finishes.wallColor)}`,
+        : `${wallStyleLabel(finishes.walls)} · ${wallColorName(finishes.wallColor)}`,
       color: finishes.wallColor,
     },
   ]

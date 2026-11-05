@@ -1,11 +1,13 @@
 import { useContext } from 'react'
 import { materials } from '../materials'
+import { frameMaterial } from './frames'
 import { InteriorLightContext } from '../interiorLight'
 import { Cylinder } from '../parts'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 
 /** Floor lamp with a glowing fabric shade and a warm point light inside. */
-export function FloorLamp({ color, variant }: ModelProps) {
+export function FloorLamp({ color, variant, frame }: ModelProps) {
+  const stand = frameMaterial(frame, materials.brass)
   const shade = useTintedMaterial(materials.lampShade, color)
   // Brighter in the evening (0 = daylight, 1 = night). The shade is this lamp's own copy, so it's set here.
   const interior = useContext(InteriorLightContext)
@@ -16,7 +18,7 @@ export function FloorLamp({ color, variant }: ModelProps) {
   return (
     <group>
       <Cylinder radiusTop={0.15} radiusBottom={0.16} height={0.03} position={[0, 0.015, 0]} segments={32} material={materials.metalBlack} />
-      <Cylinder radiusTop={0.012} height={1.45} position={[0, 0.75, 0]} material={materials.brass} />
+      <Cylinder radiusTop={0.012} height={1.45} position={[0, 0.75, 0]} material={stand} />
 
       {/* Open-ended cylinder = lamp shade. It doesn't cast shadows so the light can escape. */}
       <mesh position={[0, shadeY, 0]} material={shade}>

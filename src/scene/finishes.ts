@@ -2,8 +2,11 @@
 
 export type FloorId = 'oak' | 'walnut' | 'ash' | 'concrete' | 'tiles' | 'marble' | 'terrazzo'
 
-/** Painted plaster, or glossy ceramic tiles (tinted with the wall colour). */
-export type WallStyle = 'paint' | 'tiles'
+/**
+ * Painted plaster, glossy ceramic tiles, patterned wallpaper or painted wooden
+ * panelling. Tiles, wallpaper and panelling are tinted with the wall colour.
+ */
+export type WallStyle = 'paint' | 'tiles' | 'wallpaper' | 'panelling'
 
 /** One wall's own paint or tiles, when it differs from the rest of the room. */
 export interface WallFinish {
@@ -36,7 +39,12 @@ export function hasMixedWalls(finishes: RoomFinishes): boolean {
 export const WALL_STYLES: { id: WallStyle; label: string }[] = [
   { id: 'paint', label: 'Paint' },
   { id: 'tiles', label: 'Tiles' },
+  { id: 'wallpaper', label: 'Wallpaper' },
+  { id: 'panelling', label: 'Panelling' },
 ]
+
+/** "Paint", "Tiles", "Wallpaper" or "Panelling". */
+export const wallStyleLabel = (style: WallStyle) => WALL_STYLES.find((s) => s.id === style)?.label ?? 'Paint'
 
 interface FloorOption {
   id: FloorId

@@ -1,5 +1,13 @@
 import * as THREE from 'three'
-import { createFabricNormalMap, createWallTileMaps, WALL_TILE_REPEAT } from './textures'
+import {
+  createFabricNormalMap,
+  createPanellingMaps,
+  createWallpaperMaps,
+  createWallTileMaps,
+  PANELLING_REPEAT,
+  WALL_TILE_REPEAT,
+  WALLPAPER_REPEAT,
+} from './textures'
 
 // Shared materials. Creating each one once and reusing it is faster than
 // making a new material for every mesh.
@@ -63,6 +71,9 @@ export const materials = {
   splashback: new THREE.MeshStandardMaterial({ color: '#f4f2ee', roughness: 0.1 }),
   // Tiled walls: the wall colour tints near-white tiles (textures are added below, in the browser).
   wallTiles: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.35 }),
+  // Wallpaper (matte paper) and painted wooden panelling (satin); textures added below.
+  wallpaper: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9 }),
+  panelling: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.55 }),
 
   // ---- Ceiling (see Ceiling.tsx) ----
   // Nothing lights a ceiling's underside directly (the lights are above it, and real
@@ -125,4 +136,13 @@ if (typeof document !== 'undefined') {
   for (const texture of Object.values(tiles)) texture.repeat.set(1 / WALL_TILE_REPEAT, 1 / WALL_TILE_REPEAT)
   Object.assign(materials.wallTiles, tiles)
   materials.wallTiles.normalScale.set(0.8, 0.8)
+
+  // Wallpaper and panelling line up across wall pieces the same way.
+  const paper = createWallpaperMaps()
+  for (const texture of Object.values(paper)) texture.repeat.set(1 / WALLPAPER_REPEAT, 1 / WALLPAPER_REPEAT)
+  Object.assign(materials.wallpaper, paper)
+  const boards = createPanellingMaps()
+  for (const texture of Object.values(boards)) texture.repeat.set(1 / PANELLING_REPEAT, 1 / PANELLING_REPEAT)
+  Object.assign(materials.panelling, boards)
+  materials.panelling.normalScale.set(0.9, 0.9)
 }

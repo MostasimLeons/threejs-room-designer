@@ -1,11 +1,14 @@
 import { useEffect, useMemo } from 'react'
 import type * as THREE from 'three'
+import type { FrameId } from './frames'
 
 /** Props shared by every colourable furniture model. */
 export interface ModelProps {
   color: string
   /** Style/size option id from the catalog, e.g. '2-seat'. */
   variant: string
+  /** Finish of the legs / frame / handles; missing = the model's standard finish (frames.ts). */
+  frame?: FrameId
 }
 
 /**

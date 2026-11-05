@@ -1,4 +1,5 @@
 import { materials } from '../materials'
+import { frameMaterial } from './frames'
 import { Block, Cylinder } from '../parts'
 import { getVariant } from './catalog'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
@@ -7,7 +8,8 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
  * Sofa built from its width, so the same code makes a 2-, 3- or 4-seater.
  * Faces +z in its local space.
  */
-export function Sofa({ color, variant }: ModelProps) {
+export function Sofa({ color, variant, frame }: ModelProps) {
+  const legMaterial = frameMaterial(frame, materials.woodDark)
   const fabric = useTintedMaterial(materials.fabricWhite, color)
   const [width] = getVariant('sofa', variant).footprint
   const inner = width - 0.36 // space between the two arms
@@ -27,7 +29,7 @@ export function Sofa({ color, variant }: ModelProps) {
   return (
     <group>
       {legs.map(([x, z], i) => (
-        <Cylinder key={i} radiusTop={0.025} radiusBottom={0.018} height={0.1} position={[x, 0.05, z]} material={materials.woodDark} />
+        <Cylinder key={i} radiusTop={0.025} radiusBottom={0.018} height={0.1} position={[x, 0.05, z]} material={legMaterial} />
       ))}
 
       {/* Base frame */}

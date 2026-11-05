@@ -208,6 +208,28 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
   },
 }
 
+/**
+ * Windows and doors as zones on their wall (10 cm deep), so art, mirrors and
+ * shelves hung on a wall don't cover them. Floor furniture ignores these zones:
+ * a sofa in front of a window is fine.
+ */
+export function openingZones(info: Pick<RoomInfo, 'width' | 'depth' | 'openings'>): FixedZone[] {
+  const zones: FixedZone[] = []
+  const t = 0.1
+  for (const [side, openings] of Object.entries(info.openings) as [WallSide, Opening[]][]) {
+    for (const o of openings) {
+      const label = o.label.toLowerCase()
+      if (side === 'back') zones.push({ label, position: [o.at, -info.depth / 2 + t / 2], size: [o.width, t], onWall: true })
+      if (side === 'front') zones.push({ label, position: [o.at, info.depth / 2 - t / 2], size: [o.width, t], onWall: true })
+      if (side === 'left') zones.push({ label, position: [-info.width / 2 + t / 2, o.at], size: [t, o.width], onWall: true })
+      if (side === 'right') zones.push({ label, position: [info.width / 2 - t / 2, o.at], size: [t, o.width], onWall: true })
+    }
+  }
+  return zones
+}
+
+for (const id of Object.keys(ROOMS) as RoomId[]) ROOMS[id].fixedZones.push(...openingZones(ROOMS[id]))
+
 export function isRoomId(value: unknown): value is RoomId {
   return typeof value === 'string' && (ROOM_IDS as string[]).includes(value)
 }

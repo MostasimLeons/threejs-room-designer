@@ -62,7 +62,9 @@ describe('parseDesign', () => {
 
   it('reads the wall style, and ignores unknown ones', () => {
     expect(parseDesign({ items: [], finishes: { walls: 'tiles' } })?.finishes.walls).toBe('tiles')
-    expect(parseDesign({ items: [], finishes: { walls: 'wallpaper' } })?.finishes.walls).toBe('paint')
+    expect(parseDesign({ items: [], finishes: { walls: 'wallpaper' } })?.finishes.walls).toBe('wallpaper')
+    expect(parseDesign({ items: [], finishes: { walls: 'panelling' } })?.finishes.walls).toBe('panelling')
+    expect(parseDesign({ items: [], finishes: { walls: 'velvet' } })?.finishes.walls).toBe('paint')
     // Saves from before tiled walls existed keep each room's default style.
     expect(parseDesign({ items: [], finishes: { wallColor: '#112233' } }, 'bathroom')?.finishes.walls).toBe('tiles')
   })

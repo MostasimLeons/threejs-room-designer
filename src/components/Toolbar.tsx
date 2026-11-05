@@ -1,4 +1,4 @@
-import { CameraIcon, ResetViewIcon, RedoIcon, ResetIcon, SaveIcon, ShowcaseIcon, UndoIcon } from './icons'
+import { CameraIcon, ListIcon, ResetViewIcon, RedoIcon, ResetIcon, SaveIcon, ShowcaseIcon, UndoIcon } from './icons'
 
 interface ToolbarProps {
   canUndo: boolean
@@ -11,6 +11,8 @@ interface ToolbarProps {
   onShowcase: () => void
   /** Download a high-resolution picture of the 3D view. */
   onSaveImage: () => void
+  /** Open the shopping list (quote). */
+  onShoppingList: () => void
   /** True while a picture is being made. */
   savingImage: boolean
 }
@@ -27,6 +29,7 @@ export function Toolbar({
   onShowcase,
   onSaveImage,
   savingImage,
+  onShoppingList,
 }: ToolbarProps) {
   return (
     <div className="toolbar">
@@ -60,6 +63,15 @@ export function Toolbar({
       >
         <CameraIcon />
         <span className="label">{savingImage ? 'Saving…' : 'Save image'}</span>
+      </button>
+      <button
+        className="ghost-button"
+        onClick={onShoppingList}
+        title="Shopping list with example prices (CSV or print)"
+        aria-label="Shopping list"
+      >
+        <ListIcon />
+        <span className="label">Shopping list</span>
       </button>
       <span className="divider" />
       <button className="primary-button" onClick={onOpenDesigns} title="Save, load, export or import designs" aria-label="Save / Load">

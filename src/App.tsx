@@ -35,6 +35,7 @@ import { loadQualitySetting, loadThumbnails, saveQualitySetting, saveThumbnail, 
 import { QualityControl } from './components/QualityControl'
 import type { QualityLevel, QualitySetting } from './scene/quality'
 import { DesignsDialog } from './components/DesignsDialog'
+import { ShoppingListDialog } from './components/ShoppingListDialog'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useHouseHistory } from './state/useDesignHistory'
@@ -79,6 +80,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const [designsOpen, setDesignsOpen] = useState(false)
+  const [shoppingOpen, setShoppingOpen] = useState(false)
   const [timeOpen, setTimeOpen] = useState(false)
   // Where a wall or the floor was clicked, so its quick picker appears right there.
   const [pick, setPick] = useState<{ id: string; point: [number, number, number] } | null>(null)
@@ -286,6 +288,7 @@ export default function App() {
     )
     item.variant = placed.variant
     item.position = placed.position
+    item.rotation = placed.rotation
     history.addItem(item)
     setSelectedId(item.id)
     const option = item.variant === info.variants[0].id ? '' : ` (${getVariant(type, item.variant).label.toLowerCase()}, to fit)`
@@ -394,6 +397,7 @@ export default function App() {
           onShowcase={enterShowcase}
           onSaveImage={handleSaveImage}
           savingImage={screenshotRequest !== null}
+          onShoppingList={() => setShoppingOpen(true)}
         />
       </header>
 
@@ -556,6 +560,7 @@ export default function App() {
 
       {introOpen && <IntroScreen onStart={() => closeIntro(false)} onTour={() => closeIntro(true)} />}
 
+      <ShoppingListDialog open={shoppingOpen} house={house} room={room} onClose={() => setShoppingOpen(false)} />
       <DesignsDialog open={designsOpen} design={house} onClose={() => setDesignsOpen(false)} onLoad={handleLoad} />
     </div>
   )

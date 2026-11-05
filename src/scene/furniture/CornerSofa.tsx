@@ -1,4 +1,5 @@
 import { materials } from '../materials'
+import { frameMaterial } from './frames'
 import { Block, Cylinder } from '../parts'
 import { getVariant } from './catalog'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
@@ -9,7 +10,8 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
  * Its footprint is the whole rectangle around the L, so the space in front of the
  * seats counts as taken for overlap warnings.
  */
-export function CornerSofa({ color, variant }: ModelProps) {
+export function CornerSofa({ color, variant, frame }: ModelProps) {
+  const legMaterial = frameMaterial(frame, materials.woodDark)
   const fabric = useTintedMaterial(materials.fabricWhite, color)
   const [w, d] = getVariant('cornerSofa', variant).footprint
   const side = variant === 'right' ? 1 : -1 // which end the chaise is on
@@ -36,7 +38,7 @@ export function CornerSofa({ color, variant }: ModelProps) {
   return (
     <group>
       {legs.map(([x, z], i) => (
-        <Cylinder key={i} radiusTop={0.022} radiusBottom={0.016} height={legH} position={[x, legH / 2, z]} material={materials.woodDark} />
+        <Cylinder key={i} radiusTop={0.022} radiusBottom={0.016} height={legH} position={[x, legH / 2, z]} material={legMaterial} />
       ))}
 
       {/* Base of the sofa part and of the chaise */}

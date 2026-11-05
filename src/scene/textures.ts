@@ -389,6 +389,9 @@ export function createFabricNormalMap(): THREE.CanvasTexture {
 
 /** How many metres of wall one copy of the wall-tile texture covers (2 × 2 tiles of 30 cm). */
 export const WALL_TILE_REPEAT = 0.6
+/** Metres covered by one copy of the wallpaper pattern, and of the panelling boards. */
+export const WALLPAPER_REPEAT = 0.53
+export const PANELLING_REPEAT = 0.6
 
 /**
  * Square ceramic wall tiles with grout lines, for tiled walls. Nearly white, so
@@ -421,5 +424,81 @@ export function createWallTileMaps(): SurfaceMaps {
     map: toTexture(canvas, true),
     normalMap: toTexture(normalMapFromHeight(height, size, 6), false),
     roughnessMap: toTexture(roughnessFromHeight(height, size, 0.7), false),
+  }
+}
+
+/**
+ * Wallpaper: a light paper with a quiet pattern (fine vertical stripes and a small
+ * diamond motif), near-white so the wall colour tints it. Barely any relief.
+ */
+export function createWallpaperMaps(): SurfaceMaps {
+  const size = 512
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = 'rgb(246, 244, 240)'
+  ctx.fillRect(0, 0, size, size)
+  // Fine stripes, in pairs
+  ctx.fillStyle = 'rgb(232, 229, 223)'
+  for (let x = 0; x < size; x += size / 8) {
+    ctx.fillRect(x, 0, 3, size)
+    ctx.fillRect(x + 9, 0, 1.5, size)
+  }
+  // A small diamond centred between each pair of stripes, offset every other row
+  ctx.fillStyle = 'rgb(222, 218, 210)'
+  const step = size / 8
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const cx = col * step + step / 2 + (row % 2 ? step / 2 : 0)
+      const cy = row * step + step / 2
+      ctx.beginPath()
+      ctx.moveTo(cx % size, cy - 9)
+      ctx.lineTo((cx + 7) % size, cy)
+      ctx.lineTo(cx % size, cy + 9)
+      ctx.lineTo((cx - 7 + size) % size, cy)
+      ctx.closePath()
+      ctx.fill()
+    }
+  }
+  const height = luminance(canvas)
+  return {
+    map: toTexture(canvas, true),
+    normalMap: toTexture(normalMapFromHeight(height, size, 1.2), false),
+    roughnessMap: toTexture(roughnessFromHeight(height, size, 0.15), false),
+  }
+}
+
+/**
+ * Painted tongue-and-groove panelling: vertical boards with a dark groove between
+ * them and a faint grain, near-white so the wall colour tints it.
+ */
+export function createPanellingMaps(): SurfaceMaps {
+  const size = 512
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const rand = createRandom(41)
+  const boards = 5 // 5 boards per repeat (PANELLING_REPEAT metres), about 12 cm each
+  const board = size / boards
+  for (let b = 0; b < boards; b++) {
+    const shade = 0.97 + rand() * 0.03
+    ctx.fillStyle = `rgb(${248 * shade}, ${246 * shade}, ${241 * shade})`
+    ctx.fillRect(b * board, 0, board, size)
+    // A faint brushed grain along the board
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.025)'
+    for (let i = 0; i < 14; i++) ctx.fillRect(b * board + rand() * board, 0, 1, size)
+    // The groove: dark, with a highlight on one edge
+    ctx.fillStyle = 'rgb(150, 146, 140)'
+    ctx.fillRect(b * board, 0, 3, size)
+    ctx.fillStyle = 'rgb(255, 255, 255)'
+    ctx.fillRect(b * board + 3, 0, 1.5, size)
+  }
+  const height = luminance(canvas)
+  return {
+    map: toTexture(canvas, true),
+    normalMap: toTexture(normalMapFromHeight(height, size, 5), false),
+    roughnessMap: toTexture(roughnessFromHeight(height, size, 0.2), false),
   }
 }

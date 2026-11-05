@@ -1742,3 +1742,152 @@ kbd {
     animation: none;
   }
 }
+
+/* ---------- Phase 11: product card, frame finish ---------- */
+.product-card {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.product-description {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.product-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.product-facts dt {
+  color: var(--muted);
+}
+
+.product-facts dd {
+  margin: 0;
+}
+
+.frame-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.frame-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.frame-chip.active {
+  border-color: var(--select);
+  background: var(--select-soft);
+}
+
+.frame-swatch {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 50%;
+}
+
+.frame-swatch.standard {
+  background: conic-gradient(#c49a6c 0 25%, #1f1f22 0 50%, #b8925a 0 75%, #f2f0eb 0);
+}
+
+/* Shopping list dialog */
+.shopping-dialog {
+  width: min(760px, calc(100vw - 24px));
+}
+
+.shopping-table-wrap {
+  max-height: 52vh;
+  overflow: auto;
+  margin-bottom: 10px;
+}
+
+.shopping-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.shopping-table th {
+  position: sticky;
+  top: 0;
+  padding: 6px 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.shopping-table td {
+  padding: 7px 8px;
+  border-top: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.shopping-table .item-detail {
+  display: block;
+}
+
+.shopping-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.shopping-table tfoot td {
+  border-top: 2px solid var(--text);
+  font-weight: 600;
+}
+
+/* Printing the shopping list: only the list, on white, without buttons. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .shopping-dialog,
+  .shopping-dialog * {
+    visibility: visible;
+  }
+
+  .shopping-dialog {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  .shopping-dialog::backdrop {
+    background: none;
+  }
+
+  .shopping-table-wrap {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .no-print,
+  .shopping-dialog .no-print {
+    display: none;
+  }
+}

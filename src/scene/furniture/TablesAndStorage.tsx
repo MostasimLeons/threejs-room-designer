@@ -1,4 +1,5 @@
 import { materials } from '../materials'
+import { frameMaterial } from './frames'
 import { Block, Cylinder } from '../parts'
 import { getVariant } from './catalog'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
@@ -10,7 +11,8 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
  */
 
 /** "round": round top on a black pedestal. "wood": open wooden cube. Colour = the wood. */
-export function SideTable({ color, variant }: ModelProps) {
+export function SideTable({ color, variant, frame }: ModelProps) {
+  const base = frameMaterial(frame, materials.metalBlack)
   const wood = useTintedMaterial(materials.woodLight, color)
   if (variant === 'wood') {
     const [w, d] = getVariant('sideTable', 'wood').footprint
@@ -32,8 +34,8 @@ export function SideTable({ color, variant }: ModelProps) {
   return (
     <group>
       <Cylinder radiusTop={0.225} height={0.025} segments={40} position={[0, 0.54, 0]} material={wood} />
-      <Cylinder radiusTop={0.018} height={0.5} position={[0, 0.27, 0]} material={materials.metalBlack} />
-      <Cylinder radiusTop={0.15} radiusBottom={0.16} height={0.02} segments={32} position={[0, 0.01, 0]} material={materials.metalBlack} />
+      <Cylinder radiusTop={0.018} height={0.5} position={[0, 0.27, 0]} material={base} />
+      <Cylinder radiusTop={0.15} radiusBottom={0.16} height={0.02} segments={32} position={[0, 0.01, 0]} material={base} />
       <Cylinder radiusTop={0.03} radiusBottom={0.05} height={0.16} position={[0.06, 0.635, -0.04]} material={materials.ceramic} />
     </group>
   )
@@ -42,7 +44,8 @@ export function SideTable({ color, variant }: ModelProps) {
 const DESK_H = 0.74
 
 /** Writing desk on slim black legs, with a drawer, a closed laptop and a cup. Colour = the wood. */
-export function Desk({ color, variant }: ModelProps) {
+export function Desk({ color, variant, frame }: ModelProps) {
+  const legs = frameMaterial(frame, materials.metalBlack)
   const wood = useTintedMaterial(materials.woodLight, color)
   const [w, d] = getVariant('desk', variant).footprint
   return (
@@ -58,7 +61,7 @@ export function Desk({ color, variant }: ModelProps) {
           key={i}
           size={[0.03, DESK_H - 0.03, 0.03]}
           position={[sx * (w / 2 - 0.04), (DESK_H - 0.03) / 2, sz * (d / 2 - 0.04)]}
-          material={materials.metalBlack}
+          material={legs}
         />
       ))}
       {/* Shallow drawer under the right side */}
@@ -154,7 +157,8 @@ export function Bookshelf({ color, variant }: ModelProps) {
 }
 
 /** "low": three-drawer chest on short legs. "tall": tall drawer cabinet (stand-in for its real model). Colour = the wood. */
-export function ChestOfDrawers({ color, variant }: ModelProps) {
+export function ChestOfDrawers({ color, variant, frame }: ModelProps) {
+  const handles = frameMaterial(frame, materials.brass)
   const wood = useTintedMaterial(materials.woodLight, color)
   const [w, d] = getVariant('chestOfDrawers', variant).footprint
   const tall = variant === 'tall'
@@ -186,7 +190,7 @@ export function ChestOfDrawers({ color, variant }: ModelProps) {
         return (
           <group key={i}>
             <Block size={[w - 0.05, drawerH, 0.012]} position={[0, y, d / 2 + 0.004]} material={wood} />
-            <Block size={[0.14, 0.012, 0.018]} position={[0, y + drawerH * 0.2, d / 2 + 0.014]} material={materials.brass} />
+            <Block size={[0.14, 0.012, 0.018]} position={[0, y + drawerH * 0.2, d / 2 + 0.014]} material={handles} />
           </group>
         )
       })}
@@ -200,12 +204,7 @@ export function ChestOfDrawers({ color, variant }: ModelProps) {
             position={[-w / 2 + 0.16, legH + bodyH + 0.05, 0]}
             material={materials.terracotta}
           />
-          <Block
-            size={[0.26, 0.015, 0.16]}
-            radius={0.005}
-            position={[w / 2 - 0.22, legH + bodyH + 0.008, 0.02]}
-            material={materials.brass}
-          />
+          <Block size={[0.26, 0.015, 0.16]} radius={0.005} position={[w / 2 - 0.22, legH + bodyH + 0.008, 0.02]} material={handles} />
         </>
       )}
     </group>
@@ -213,7 +212,8 @@ export function ChestOfDrawers({ color, variant }: ModelProps) {
 }
 
 /** "tall": tall cupboard with one door. "low": two-door low cupboard. Colour = the cabinet finish. */
-export function BathroomCabinet({ color, variant }: ModelProps) {
+export function BathroomCabinet({ color, variant, frame }: ModelProps) {
+  const metal = frameMaterial(frame, materials.chrome)
   const cabinet = useTintedMaterial(materials.creamLacquer, color)
   const [w, d] = getVariant('bathroomCabinet', variant).footprint
   const tall = variant === 'tall'
@@ -230,7 +230,7 @@ export function BathroomCabinet({ color, variant }: ModelProps) {
             radiusTop={0.012}
             height={legH}
             position={[sx * (w / 2 - 0.04), legH / 2, sz * (d / 2 - 0.04)]}
-            material={materials.chrome}
+            material={metal}
           />
         )),
       )}
@@ -247,7 +247,7 @@ export function BathroomCabinet({ color, variant }: ModelProps) {
                 legH + bodyH * (tall ? 0.5 : 0.75),
                 d / 2 + 0.016,
               ]}
-              material={materials.chrome}
+              material={metal}
             />
           </group>
         )

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { CATEGORIES, clampToRoom, findOverlaps, FURNITURE_INFO, isAllowedIn, type FurnitureItem, type FurnitureType } from './catalog'
+import {
+  CATEGORIES,
+  clampToRoom,
+  findOverlaps,
+  FURNITURE_INFO,
+  isAllowedIn,
+  placeInRoom,
+  type FurnitureItem,
+  type FurnitureType,
+} from './catalog'
 import { placeNew } from './placement'
 import { MODELS } from './models'
 import { ROOM_IDS, ROOMS } from '../house'
@@ -109,10 +118,12 @@ describe('new pieces keep saving and undo working', () => {
     const house = structuredClone(DEFAULT_HOUSE)
     for (const room of ROOM_IDS) {
       const extra = TYPES.filter((t) => isAllowedIn(t, room)).flatMap((type) =>
-        FURNITURE_INFO[type].variants.map((v, i) => ({
-          ...newItem(type, v.id, `new-${room}-${type}-${v.id}`),
-          position: [0, i * 0.01] as [number, number],
-        })),
+        FURNITURE_INFO[type].variants.map((v, i) => {
+          const item = { ...newItem(type, v.id, `new-${room}-${type}-${v.id}`), position: [0, i * 0.01] as [number, number] }
+          // Where the app would have put it (pieces on a wall hang on the nearest wall), with every frame finish set.
+          const frame = FURNITURE_INFO[type].frame?.options.at(-1)
+          return { ...item, ...placeInRoom(item, ROOMS[room]), ...(frame ? { frame } : {}) }
+        }),
       )
       house[room] = { ...house[room], items: [...house[room].items, ...extra] }
     }
