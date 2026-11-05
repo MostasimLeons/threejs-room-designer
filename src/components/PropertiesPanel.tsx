@@ -1,6 +1,8 @@
 import { FURNITURE_INFO, getVariant, isWallMounted, type FurnitureItem } from '../scene/furniture/catalog'
 import type { RoomFinishes } from '../scene/finishes'
-import { ROOMS, type RoomId } from '../scene/house'
+import { ROOMS, type RoomId, type RoomInfo, type RoomLayout } from '../scene/house'
+import type { OpeningRef } from '../scene/layout'
+import { LayoutCard, OpeningPanel } from './LayoutEditor'
 import type { FinishChanges, ItemChanges } from '../state/useDesignHistory'
 import { ColorPicker } from './ColorPicker'
 import { modelFor } from '../scene/furniture/models'
@@ -36,6 +38,20 @@ interface PropertiesPanelProps {
   /** Other rooms this piece may go in (see FURNITURE_INFO.rooms). */
   moveTargets: RoomId[]
   onMoveTo: (room: RoomId) => void
+  /** The room with its current layout. */
+  info: RoomInfo
+  /** The layout the editor changes (the standard one if the room has none of its own). */
+  layout: RoomLayout
+  /** True when the room has its standard layout. */
+  layoutStandard: boolean
+  /** The selected window or door, if one is selected. */
+  opening: OpeningRef | null
+  onUpdateLayout: (layout: RoomLayout, select?: OpeningRef) => void
+  onPreviewLayout: (layout: RoomLayout, select?: OpeningRef) => void
+  onResetLayout: () => void
+  onSelectOpening: (ref: OpeningRef) => void
+  onDeleteOpening: () => void
+  onMessage: (text: string) => void
 }
 
 /** Props that make a slider record ONE undo step when you let go. */
@@ -45,7 +61,7 @@ function commitHandlers(onCommit: () => void) {
 
 /** Right-hand panel: edits the selected furniture, or the room when nothing is selected. */
 export function PropertiesPanel(props: PropertiesPanelProps) {
-  const { room, item, overlapping, onUpdate, onPreview, onCommit, onDeselect } = props
+  const { item, overlapping, onUpdate, onPreview, onCommit, onDeselect } = props
   if (props.wall) {
     const { wall, finishes, onUpdateFinishes, onPreviewFinishes } = props
     return (
@@ -62,8 +78,36 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
       />
     )
   }
-  if (!item) return <RoomPanel {...props} />
-  const { width, depth } = ROOMS[room]
+  if (props.opening) {
+    return (
+      <OpeningPanel
+        layout={props.layout}
+        opening={props.opening}
+        onUpdate={(layout, ref) => props.onUpdateLayout(layout, ref)}
+        onPreview={(layout, ref) => props.onPreviewLayout(layout, ref)}
+        onCommit={onCommit}
+        onDeselect={onDeselect}
+        onDelete={props.onDeleteOpening}
+      />
+    )
+  }
+  if (!item) {
+    return (
+      <RoomPanel {...props}>
+        <LayoutCard
+          layout={props.layout}
+          standard={props.layoutStandard}
+          onUpdate={(layout) => props.onUpdateLayout(layout)}
+          onPreview={(layout) => props.onPreviewLayout(layout)}
+          onCommit={onCommit}
+          onReset={props.onResetLayout}
+          onSelectOpening={props.onSelectOpening}
+          onMessage={props.onMessage}
+        />
+      </RoomPanel>
+    )
+  }
+  const { width, depth } = props.info
 
   const info = FURNITURE_INFO[item.type]
   const variant = getVariant(item.type, item.variant)

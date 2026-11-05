@@ -4,7 +4,8 @@ import { useThree } from '@react-three/fiber'
 import { CameraControls, OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import type CameraControlsImpl from 'camera-controls'
 import type { ViewMode } from './roomConfig'
-import { ROOMS, type RoomId } from './house'
+import type { RoomId } from './house'
+import { useRoomInfo } from './roomContext'
 import { cameraView, fitToAspect, type CameraViewId } from './cameraViews'
 
 interface CameraRigProps {
@@ -26,7 +27,7 @@ interface CameraRigProps {
  */
 export function CameraRig({ view, resetKey, room, cameraViewId }: CameraRigProps) {
   const size = useThree((state) => state.size)
-  const { width, depth } = ROOMS[room]
+  const { width, depth } = useRoomInfo()
 
   if (view === 'plan') {
     // Fit the whole room (plus a margin) into the canvas.
@@ -63,11 +64,12 @@ export function CameraRig({ view, resetKey, room, cameraViewId }: CameraRigProps
 function PerspectiveRig({ room, cameraViewId, aspect }: { room: RoomId; cameraViewId: CameraViewId; aspect: number }) {
   const controls = useRef<CameraControlsImpl>(null)
   const first = useRef(true)
-  const start = fitToAspect(cameraView(room, cameraViewId), aspect)
+  const info = useRoomInfo()
+  const start = fitToAspect(cameraView(info, cameraViewId), aspect)
 
   // Glide to the chosen view. The very first placement (a new room, Reset view) is instant.
   useEffect(() => {
-    const target = fitToAspect(cameraView(room, cameraViewId), aspect)
+    const target = fitToAspect(cameraView(info, cameraViewId), aspect)
     void controls.current?.setLookAt(...target.position, ...target.target, !first.current)
     first.current = false
     // Only re-run when the chosen view changes; a resize mid-way shouldn't restart the glide.
@@ -80,9 +82,9 @@ function PerspectiveRig({ room, cameraViewId, aspect }: { room: RoomId; cameraVi
       <CameraControls
         ref={controls}
         makeDefault
-        // Close enough to stand inside the smallest room, far enough to see the biggest.
+        // Close enough to stand inside the smallest room, far enough to see the biggest (10 × 10 m).
         minDistance={0.6}
-        maxDistance={16}
+        maxDistance={30}
         // Stop the camera from going below the floor.
         maxPolarAngle={Math.PI / 2 - 0.06}
         smoothTime={0.55}

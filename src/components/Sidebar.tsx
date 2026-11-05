@@ -1,25 +1,30 @@
 import type { ReactNode } from 'react'
-import { ROOM } from '../scene/roomConfig'
-import { ROOMS, WALL_SIDES, type RoomId } from '../scene/house'
+import { WALL_SIDES, type RoomId, type RoomInfo } from '../scene/house'
+import { openingSelection, type OpeningRef } from '../scene/layout'
 import { FURNITURE_INFO, getVariant, type FurnitureItem } from '../scene/furniture/catalog'
 import { getFloorOption, hasMixedWalls, wallColorName, wallStyleLabel, type RoomFinishes } from '../scene/finishes'
 import { compassName, formatTime, type RoomLighting } from '../scene/sun'
 
 const cm = (metres: number) => Math.round(metres * 100)
+/** 7 → "7.0", 7.35 → "7.35": at least one decimal, at most two. */
+const metres = (value: number) => (Math.round(value * 100) % 10 === 0 ? value.toFixed(1) : value.toFixed(2))
 
 /**
- * Fixtures are built into the room, so they can't be selected or moved: its
- * windows and doors, plus decor such as the Bedroom's slat wall. All of it comes
- * from the room's entry in house.ts, so this list can't go out of date.
+ * What's built into the room: its windows and doors (which can be selected and
+ * changed in the layout editor) and decor such as the Bedroom's slat wall (fixed).
+ * It comes from the room as laid out, so this list can't go out of date.
  */
-function fixturesOf(room: RoomId) {
-  const info = ROOMS[room]
-  const openings = WALL_SIDES.flatMap((side) => info.openings[side] ?? []).map((o) => ({
-    name: o.label,
-    detail: `${cm(o.width)} × ${cm(o.top - o.bottom)} cm`,
-    color: o.kind === 'window' ? '#cfe4ef' : '#f4f1ea',
-  }))
-  return [...openings, ...info.features]
+function fixturesOf(info: RoomInfo) {
+  const openings = WALL_SIDES.flatMap((side) =>
+    (info.openings[side] ?? []).map((o, index) => ({
+      name: o.label,
+      detail: `${cm(o.width)} × ${cm(o.top - o.bottom)} cm`,
+      color: o.kind === 'window' ? '#cfe4ef' : '#f4f1ea',
+      // Windows and doors can be selected and changed (layout editor); other fixtures can't.
+      ref: { side, index } as OpeningRef | undefined,
+    })),
+  )
+  return [...openings, ...info.features.map((f) => ({ ...f, ref: undefined }))]
 }
 
 interface SidebarProps {
@@ -40,10 +45,13 @@ interface SidebarProps {
   onAddFurniture: () => void
   /** Extra cards at the bottom (the 3D quality setting). */
   footer?: ReactNode
+  /** The room with its current layout (size, height, windows and doors). */
+  info: RoomInfo
+  /** Select a window or door (to move or resize it). */
+  onSelectOpening: (ref: OpeningRef) => void
 }
 
 export function Sidebar({
-  room,
   items,
   finishes,
   selectedId,
@@ -54,9 +62,11 @@ export function Sidebar({
   onShowLighting,
   onAddFurniture,
   footer,
+  info,
+  onSelectOpening,
 }: SidebarProps) {
-  const { label, width, depth } = ROOMS[room]
-  const fixtures = fixturesOf(room)
+  const { label, width, depth } = info
+  const fixtures = fixturesOf(info)
   const floor = getFloorOption(finishes.floor)
   const finishRows = [
     { name: 'Floor', detail: floor.label, color: floor.swatch },
@@ -76,16 +86,16 @@ export function Sidebar({
         <div className="stats">
           <div>
             <span className="stat-value">
-              {width.toFixed(1)} × {depth.toFixed(1)} m
+              {metres(width)} × {metres(depth)} m
             </span>
             <span className="stat-label">Size</span>
           </div>
           <div>
-            <span className="stat-value">{width * depth} m²</span>
+            <span className="stat-value">{Math.round(width * depth * 10) / 10} m²</span>
             <span className="stat-label">Area</span>
           </div>
           <div>
-            <span className="stat-value">{ROOM.height.toFixed(1)} m</span>
+            <span className="stat-value">{metres(info.height)} m</span>
             <span className="stat-label">Ceiling</span>
           </div>
         </div>
@@ -145,10 +155,23 @@ export function Sidebar({
             </li>
           ))}
           {fixtures.map((f) => (
-            <li key={f.name}>
-              <span className="swatch" style={{ background: f.color }} />
-              <span className="item-name">{f.name}</span>
-              <span className="item-detail">{f.detail} · fixed</span>
+            <li key={f.name + f.detail}>
+              {f.ref ? (
+                <button
+                  className={`list-button ${selectedId === openingSelection(f.ref) ? 'selected' : ''}`}
+                  onClick={() => onSelectOpening(f.ref!)}
+                >
+                  <span className="swatch" style={{ background: f.color }} />
+                  <span className="item-name">{f.name}</span>
+                  <span className="item-detail">{f.detail}</span>
+                </button>
+              ) : (
+                <>
+                  <span className="swatch" style={{ background: f.color }} />
+                  <span className="item-name">{f.name}</span>
+                  <span className="item-detail">{f.detail} · fixed</span>
+                </>
+              )}
             </li>
           ))}
         </ul>

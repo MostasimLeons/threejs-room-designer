@@ -8,13 +8,21 @@ type GroupProps = ThreeElements['group']
 interface WindowProps extends GroupProps {
   width: number
   height: number
+  /**
+   * How far the "outdoors" backdrop may reach to the left and right of the window's
+   * centre, so near a corner it stops at the wall's end instead of showing past it.
+   */
+  skyReach?: [number, number]
 }
 
 /**
  * White window frame placed inside the wall opening. The group origin is at the
  * bottom-centre of the opening, in the middle of the wall's thickness.
  */
-export function Window({ width: w, height: h, ...props }: WindowProps) {
+export function Window({ width: w, height: h, skyReach = [Infinity, Infinity], ...props }: WindowProps) {
+  // The backdrop is 40 cm wider than the window on each side, but never past the wall's ends.
+  const skyLeft = Math.min(w / 2 + 0.4, skyReach[0])
+  const skyRight = Math.min(w / 2 + 0.4, skyReach[1])
   const f = 0.06 // frame thickness
   const d = ROOM.wallThickness + 0.03 // frame depth
   return (
@@ -34,8 +42,8 @@ export function Window({ width: w, height: h, ...props }: WindowProps) {
       </mesh>
 
       {/* Bright "outdoors" backdrop behind the glass, kept small so it never shows above the wall */}
-      <mesh position={[0, h / 2, -0.35]} material={materials.sky}>
-        <planeGeometry args={[w + 0.8, h + 0.4]} />
+      <mesh position={[(skyRight - skyLeft) / 2, h / 2, -0.35]} material={materials.sky}>
+        <planeGeometry args={[skyLeft + skyRight, h + 0.4]} />
       </mesh>
     </group>
   )

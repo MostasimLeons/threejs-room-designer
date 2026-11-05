@@ -4,7 +4,6 @@ import { ROOM } from './roomConfig'
 import { materials } from './materials'
 import { Cutaway, SHADOW_ONLY_LAYER } from './Cutaway'
 
-const H = ROOM.height
 const COVE_INSET = 0.3 // how far the glowing cove line sits in from the walls
 const COVE_WIDTH = 0.06 // thinner lines break up into dots at a distance
 
@@ -16,6 +15,8 @@ interface CeilingProps {
   overhang?: number
   /** Recessed downlights, as [x, z] positions relative to the room centre. */
   downlights?: [number, number][]
+  /** Ceiling height in metres. */
+  height?: number
 }
 
 /**
@@ -30,7 +31,7 @@ interface CeilingProps {
  * The glow is visual only (it feeds the Bloom effect); no real lights are added,
  * because every light makes every material more expensive to draw.
  */
-export function Ceiling({ width, depth, overhang = ROOM.wallThickness, downlights = [] }: CeilingProps) {
+export function Ceiling({ width, depth, overhang = ROOM.wallThickness, downlights = [], height: H = ROOM.height }: CeilingProps) {
   const coveW = width - 2 * COVE_INSET
   const coveD = depth - 2 * COVE_INSET
   // Four strips: back, front, left, right. [x, z, length along x, length along z]
@@ -43,7 +44,7 @@ export function Ceiling({ width, depth, overhang = ROOM.wallThickness, downlight
 
   return (
     <>
-      <RoofShadow width={width + 2 * overhang} depth={depth + 2 * overhang} />
+      <RoofShadow width={width + 2 * overhang} depth={depth + 2 * overhang} height={H} />
       {/*
         Hidden whenever the camera is above the ceiling. Backface culling would already
         hide it from the main view, but a reflective floor looks *up* and would mirror a
@@ -84,13 +85,13 @@ export function Ceiling({ width, depth, overhang = ROOM.wallThickness, downlight
  * midday sun can't shine straight through the ceiling. The visible ceiling casts no
  * shadow, so the overhead fill light still reaches into the cut-open room.
  */
-function RoofShadow({ width, depth }: { width: number; depth: number }) {
+function RoofShadow({ width, depth, height }: { width: number; depth: number; height: number }) {
   const ref = useRef<THREE.Mesh>(null)
   useLayoutEffect(() => {
     ref.current?.layers.set(SHADOW_ONLY_LAYER)
   }, [])
   return (
-    <mesh ref={ref} position={[0, H + 0.03, 0]} material={materials.ceiling} castShadow>
+    <mesh ref={ref} position={[0, height + 0.03, 0]} material={materials.ceiling} castShadow>
       <boxGeometry args={[width, 0.06, depth]} />
     </mesh>
   )

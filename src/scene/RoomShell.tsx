@@ -6,7 +6,7 @@ import { useQuality } from './quality'
 import { Select } from '@react-three/postprocessing'
 import type { ThreeEvent } from '@react-three/fiber'
 import { ROOM } from './roomConfig'
-import { ROOMS, WALL_SIDES, type RoomId, type WallSide } from './house'
+import { WALL_SIDES, type RoomId, type WallSide } from './house'
 import { isCameraBehindWall, localOpenings, skirtingRuns, wallFrame, wallPieces } from './walls'
 import { createFloorMaps, type SurfaceMaps } from './textures'
 import { materials } from './materials'
@@ -17,6 +17,8 @@ import { Block } from './parts'
 import { Window } from './furniture/Window'
 import { Door } from './furniture/Door'
 import { Ceiling } from './Ceiling'
+import { useRoomInfo } from './roomContext'
+import { openingSelection, type OpeningRef } from './layout'
 import { Cutaway } from './Cutaway'
 import { Curtains, ROOM_DECOR } from './rooms/decor'
 
@@ -187,14 +189,19 @@ interface WallProps {
   finish: WallFinish
   selected: boolean
   onPick: (point: Vec3) => void
+  /** What's selected, so a selected window or door gets the blue outline. */
+  selectedId: string | null
+  /** Clicked one of this wall's windows or doors (its place in the wall's list). */
+  onPickOpening: (index: number) => void
 }
 
 /**
  * One wall with its windows, doors and skirting, built in the wall's own frame
  * (see walls.ts) and turned into place. It hides itself when it would block the view.
  */
-function Wall({ room, side, finish, selected, onPick }: WallProps) {
-  const info = ROOMS[room]
+function Wall({ room, side, finish, selected, onPick, selectedId, onPickOpening }: WallProps) {
+  const info = useRoomInfo()
+  const openingPick = (index: number) => pickHandler(() => onPickOpening(index))
   // Each wall has its own material, so one wall can be painted or tiled differently.
   // All styles are kept ready so switching between them is instant.
   const paint = useTintedMaterial(materials.wall, finish.color)
@@ -206,7 +213,7 @@ function Wall({ room, side, finish, selected, onPick }: WallProps) {
   const skirting = !tiled // tiled walls have no wooden skirting
   const frame = wallFrame(side, info)
   const openings = localOpenings(side, info)
-  const pieces = wallPieces(frame.length, openings)
+  const pieces = wallPieces(frame.length, openings, info.height)
   const runs = skirting ? skirtingRuns(frame.innerLength, openings) : []
   const Decor = ROOM_DECOR[room].walls?.[side]
   const insideFace = ROOM.wallThickness / 2
@@ -225,12 +232,36 @@ function Wall({ room, side, finish, selected, onPick }: WallProps) {
 
         {openings.map((o) =>
           o.kind === 'window' ? (
-            <group key={o.label}>
-              <Window width={o.width} height={o.top - o.bottom} position={[o.center, o.bottom, 0]} />
-              {o.curtains && <Curtains left={o.center - o.width / 2} right={o.center + o.width / 2} wallHalf={frame.innerLength / 2} />}
+            <group key={o.index}>
+              <Select enabled={selectedId === openingSelection({ side, index: o.index })}>
+                <group onClick={openingPick(o.index)}>
+                  <Window
+                    width={o.width}
+                    height={o.top - o.bottom}
+                    position={[o.center, o.bottom, 0]}
+                    // Up to the outside corner of the room (inner length plus the wall's thickness).
+                    skyReach={[
+                      o.center + frame.innerLength / 2 + ROOM.wallThickness,
+                      frame.innerLength / 2 + ROOM.wallThickness - o.center,
+                    ]}
+                  />
+                </group>
+              </Select>
+              {o.curtains && (
+                <Curtains
+                  left={o.center - o.width / 2}
+                  right={o.center + o.width / 2}
+                  wallHalf={frame.innerLength / 2}
+                  ceiling={info.height}
+                />
+              )}
             </group>
           ) : (
-            <Door key={o.label} width={o.width} height={o.top} position={[o.center, 0, 0]} />
+            <Select key={o.index} enabled={selectedId === openingSelection({ side, index: o.index })}>
+              <group onClick={openingPick(o.index)}>
+                <Door width={o.width} height={o.top} position={[o.center, 0, 0]} />
+              </group>
+            </Select>
           ),
         )}
 
@@ -260,17 +291,19 @@ interface RoomShellProps {
   selectedId: string | null
   onPickWall: (side: WallSide, point: Vec3) => void
   onPickFloor: (point: Vec3) => void
+  /** Clicked a window or door. */
+  onPickOpening: (ref: OpeningRef) => void
 }
 
-export function RoomShell({ room, finishes, selectedId, onPickWall, onPickFloor }: RoomShellProps) {
-  const info = ROOMS[room]
+export function RoomShell({ room, finishes, selectedId, onPickWall, onPickFloor, onPickOpening }: RoomShellProps) {
+  const info = useRoomInfo()
   const FloorDecor = ROOM_DECOR[room].floor
 
   return (
     <group>
       <Floor floor={finishes.floor} width={info.width} depth={info.depth} selected={selectedId === FLOOR_SELECTION} onPick={onPickFloor} />
       {FloorDecor && <FloorDecor />}
-      <Ceiling width={info.width} depth={info.depth} downlights={info.downlights} />
+      <Ceiling width={info.width} depth={info.depth} downlights={info.downlights} height={info.height} />
       {WALL_SIDES.map((side) => (
         <Wall
           key={side}
@@ -279,6 +312,8 @@ export function RoomShell({ room, finishes, selectedId, onPickWall, onPickFloor 
           finish={wallFinishOf(finishes, side)}
           selected={selectedId === wallSelection(side)}
           onPick={(point) => onPickWall(side, point)}
+          selectedId={selectedId}
+          onPickOpening={(index) => onPickOpening({ side, index })}
         />
       ))}
     </group>

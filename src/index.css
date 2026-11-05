@@ -1891,3 +1891,12 @@ kbd {
     display: none;
   }
 }
+
+/* ---------- Phase 12: room layout editor ---------- */
+.layout-card .layout-subtitle {
+  margin-top: 16px;
+}
+
+.layout-card .list {
+  margin-bottom: 8px;
+}
