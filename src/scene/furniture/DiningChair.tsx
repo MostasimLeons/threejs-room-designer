@@ -1,4 +1,5 @@
 import { materials } from '../materials'
+import { frameMaterial } from './frames'
 import { Block, Cylinder } from '../parts'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 
@@ -8,11 +9,11 @@ const SEAT_Y = 0.47
  * Dining chair, facing +z (the seat front). "upholstered" has a padded back;
  * "spindle" has a wooden back made of thin rods. The colour is the seat fabric.
  */
-export function DiningChair({ color, variant }: ModelProps) {
+export function DiningChair({ color, variant, frame }: ModelProps) {
   const tinted = useTintedMaterial(materials.fabricWhite, color)
   // The leather option keeps its own brown leather (like its real model).
   const fabric = variant === 'leather' ? materials.leather : tinted
-  const wood = materials.woodLight
+  const wood = frameMaterial(frame, materials.woodLight)
   const legs: [number, number][] = [
     [-0.19, -0.19],
     [0.19, -0.19],

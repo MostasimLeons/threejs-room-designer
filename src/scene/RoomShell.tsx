@@ -196,11 +196,13 @@ interface WallProps {
 function Wall({ room, side, finish, selected, onPick }: WallProps) {
   const info = ROOMS[room]
   // Each wall has its own material, so one wall can be painted or tiled differently.
-  // Both are kept ready so switching between paint and tiles is instant.
+  // All styles are kept ready so switching between them is instant.
   const paint = useTintedMaterial(materials.wall, finish.color)
   const tiles = useTintedMaterial(materials.wallTiles, finish.color)
+  const paper = useTintedMaterial(materials.wallpaper, finish.color)
+  const boards = useTintedMaterial(materials.panelling, finish.color)
   const tiled = finish.style === 'tiles'
-  const material = tiled ? tiles : paint
+  const material = { paint, tiles, wallpaper: paper, panelling: boards }[finish.style]
   const skirting = !tiled // tiled walls have no wooden skirting
   const frame = wallFrame(side, info)
   const openings = localOpenings(side, info)

@@ -3,11 +3,16 @@ import * as THREE from 'three'
 import { useThree, type RootState, type ThreeEvent } from '@react-three/fiber'
 import { Html, Line } from '@react-three/drei'
 import { Select } from '@react-three/postprocessing'
-import { getVariant, type FurnitureItem } from './furniture/catalog'
+import { getVariant, isWallMounted, type FurnitureItem } from './furniture/catalog'
+import { Cutaway } from './Cutaway'
+import { isCameraBehindWall } from './walls'
+import type { WallSide } from './house'
 import { FurnitureModel } from './furniture/FurnitureModel'
 import { halfExtents, snapToWalls, toCm, wallGaps } from './furniture/placement'
 
 const SELECT_COLOR = '#2f6fed'
+/** Which wall a wall-mounted piece is on, from its rotation (see mountOnWall in catalog.ts). */
+const WALL_OF_ROTATION: Record<number, WallSide> = { 0: 'back', 90: 'left', 180: 'front', 270: 'right' }
 const WARNING_COLOR = '#d92d20' // outline colour when a piece overlaps another
 const SNAP = 0.05 // metres: positions snap to 5 cm steps while dragging
 const ROTATE_SNAP = 15 // degrees per step when turning with the ring (hold Shift for 1°)
@@ -199,7 +204,8 @@ export function FurnitureLayer({
         // rectangle is for hover (faint blue) and overlaps (red).
         const showOutline = isHovered || isOverlapping
         const { footprint, round } = getVariant(item.type, item.variant)
-        return (
+        const onWall = isWallMounted(item.type)
+        const piece = (
           <group key={item.id}>
             <group
               position={[item.position[0], 0, item.position[1]]}
@@ -218,7 +224,7 @@ export function FurnitureLayer({
               onClick={interactive ? (e) => e.stopPropagation() : undefined}
             >
               <Select enabled={isSelected}>
-                <FurnitureModel type={item.type} variant={item.variant} color={item.color} />
+                <FurnitureModel type={item.type} variant={item.variant} color={item.color} frame={item.frame} />
               </Select>
               {showOutline && (
                 <SelectionOutline
@@ -230,7 +236,8 @@ export function FurnitureLayer({
               )}
             </group>
             {isSelected && <DimensionGuides item={item} room={room} />}
-            {isSelected && (
+            {/* Pieces on a wall face the way their wall decides, so they have no rotate ring. */}
+            {isSelected && !onWall && (
               <RotateRing
                 position={[item.position[0], 0, item.position[1]]}
                 rotation={item.rotation}
@@ -239,6 +246,14 @@ export function FurnitureLayer({
               />
             )}
           </group>
+        )
+        if (!onWall) return piece
+        // Hung on a wall: hidden together with that wall when it's cut away for the view.
+        const side = WALL_OF_ROTATION[item.rotation] ?? 'back'
+        return (
+          <Cutaway key={item.id} isBehind={(camera) => isCameraBehindWall(side, room, camera.position)}>
+            {piece}
+          </Cutaway>
         )
       })}
     </group>

@@ -1,9 +1,11 @@
-import { FURNITURE_INFO, getVariant, type FurnitureItem } from '../scene/furniture/catalog'
+import { FURNITURE_INFO, getVariant, isWallMounted, type FurnitureItem } from '../scene/furniture/catalog'
 import type { RoomFinishes } from '../scene/finishes'
 import { ROOMS, type RoomId } from '../scene/house'
 import type { FinishChanges, ItemChanges } from '../state/useDesignHistory'
 import { ColorPicker } from './ColorPicker'
 import { modelFor } from '../scene/furniture/models'
+import { formatPrice, PRODUCTS, productPrice, productSize } from '../scene/furniture/products'
+import { FRAME_FINISHES } from '../scene/furniture/frames'
 import { RoomPanel } from './RoomPanel'
 import { WallPanel } from './WallPanel'
 import { setAllWalls, setWallFinish, wallFinishOf } from '../scene/finishes'
@@ -86,6 +88,20 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             ✕
           </button>
         </div>
+        {/* Product card: size, what it's made of, and an example price (products.ts) */}
+        <div className="product-card">
+          <p className="product-description">{PRODUCTS[item.type].description}</p>
+          <dl className="product-facts">
+            <dt>Size</dt>
+            <dd>{productSize(item)}</dd>
+            <dt>Made of</dt>
+            <dd>{PRODUCTS[item.type].materials}</dd>
+            <dt>Price</dt>
+            <dd>
+              <strong>{formatPrice(productPrice(item.type, item.variant))}</strong> <span className="muted small">example</span>
+            </dd>
+          </dl>
+        </div>
         {overlapping.length > 0 && (
           <p className="warning" role="status">
             Overlaps {overlapping.join(' and ')}. Move or rotate it to make space.
@@ -133,28 +149,69 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         </section>
       )}
 
-      <section className="card">
-        <h2>Rotation</h2>
-        <div className="rotate-row">
-          <button className="ghost-button" onClick={() => onUpdate({ rotation: item.rotation - 45 })} aria-label="Rotate left 45 degrees">
-            ⟲ 45°
-          </button>
-          <output className="rotation-value">{item.rotation}°</output>
-          <button className="ghost-button" onClick={() => onUpdate({ rotation: item.rotation + 45 })} aria-label="Rotate right 45 degrees">
-            45° ⟳
-          </button>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={359}
-          step={1}
-          value={item.rotation}
-          onChange={(e) => onPreview({ rotation: Number(e.target.value) })}
-          aria-label="Rotation in degrees"
-          {...commitHandlers(onCommit)}
-        />
-      </section>
+      {info.frame && !model && (
+        <section className="card">
+          <h2>{info.frame.label}</h2>
+          <div className="frame-options" role="group" aria-label={info.frame.label}>
+            {[undefined, ...info.frame.options].map((id) => {
+              const active = item.frame === id
+              const name = id ? FRAME_FINISHES[id].name : 'Standard'
+              return (
+                <button
+                  key={id ?? 'standard'}
+                  className={`frame-chip ${active ? 'active' : ''}`}
+                  aria-pressed={active}
+                  // "Standard" removes the choice, so the piece looks as it always did.
+                  onClick={() => onUpdate({ frame: id })}
+                >
+                  <span
+                    className={`frame-swatch ${id ? '' : 'standard'}`}
+                    style={id ? { background: FRAME_FINISHES[id].swatch } : undefined}
+                    aria-hidden="true"
+                  />
+                  {name}
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {isWallMounted(item.type) ? (
+        <section className="card">
+          <h2>On the wall</h2>
+          <p className="muted small">
+            Hangs on the nearest wall, facing into the room. Drag it along a wall, or towards another wall to move it there.
+          </p>
+        </section>
+      ) : (
+        <section className="card">
+          <h2>Rotation</h2>
+          <div className="rotate-row">
+            <button className="ghost-button" onClick={() => onUpdate({ rotation: item.rotation - 45 })} aria-label="Rotate left 45 degrees">
+              ⟲ 45°
+            </button>
+            <output className="rotation-value">{item.rotation}°</output>
+            <button
+              className="ghost-button"
+              onClick={() => onUpdate({ rotation: item.rotation + 45 })}
+              aria-label="Rotate right 45 degrees"
+            >
+              45° ⟳
+            </button>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={359}
+            step={1}
+            value={item.rotation}
+            onChange={(e) => onPreview({ rotation: Number(e.target.value) })}
+            aria-label="Rotation in degrees"
+            {...commitHandlers(onCommit)}
+          />
+        </section>
+      )}
 
       <section className="card">
         <h2>Position</h2>

@@ -104,6 +104,16 @@ export const MoonIcon = () => (
 )
 
 /** Showcase mode: a play/presentation symbol. */
+/** Shopping list: a list with bullet points. */
+export const ListIcon = () => (
+  <Icon>
+    <path d="M9 6h11M9 12h11M9 18h11" />
+    <circle cx="4.5" cy="6" r="1" />
+    <circle cx="4.5" cy="12" r="1" />
+    <circle cx="4.5" cy="18" r="1" />
+  </Icon>
+)
+
 /** Reset view: a frame with a centre point (back to the starting view). */
 export const ResetViewIcon = () => (
   <Icon>

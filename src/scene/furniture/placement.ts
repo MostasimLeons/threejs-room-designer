@@ -1,5 +1,5 @@
 import { clamp } from '../../utils/math'
-import { clampToRoom, findOverlaps, footprintHalfExtents, type FixedZone, type FurnitureItem } from './catalog'
+import { findOverlaps, footprintHalfExtents, isWallMounted, placeInRoom, type FixedZone, type FurnitureItem } from './catalog'
 
 /**
  * Where to put furniture: finding a free spot for a new or duplicated piece,
@@ -57,20 +57,39 @@ export function findFreeSpot(
 ): [number, number] {
   const step = 0.25
   const maxRing = Math.ceil(Math.max(room.width, room.depth) / step)
-  const fits = (position: [number, number]) => {
-    const probe = { ...item, id: '__probe__', color: '#000000', position } as FurnitureItem
+  const fits = (position: [number, number], rotation: number) => {
+    const probe = { ...item, id: '__probe__', color: '#000000', position, rotation } as FurnitureItem
     return !findOverlaps([probe, ...others], zones).has(probe.id)
+  }
+  // A new wall piece (no preferred spot; a duplicate asks for one next to the original):
+  if (isWallMounted(item.type) && near[0] === 0 && near[1] === 0) {
+    // Along the walls: the back wall first (the one you face in the usual views), then
+    // the sides, then the front, each from its middle outwards.
+    const walls: [number, number][] = [
+      [0, -room.depth / 2],
+      [-room.width / 2, 0],
+      [room.width / 2, 0],
+      [0, room.depth / 2],
+    ]
+    for (const [wx, wz] of walls) {
+      const length = wz === 0 ? room.depth : room.width
+      for (let k = 0; k <= Math.ceil(length / step); k++) {
+        const offset = (k % 2 ? 1 : -1) * Math.ceil(k / 2) * step
+        const spot = placeInRoom({ ...item, position: wz === 0 ? [wx, offset] : [offset, wz] }, room)
+        if (fits(spot.position, spot.rotation)) return [round(spot.position[0]), round(spot.position[1])]
+      }
+    }
   }
   for (let ring = 0; ring <= maxRing; ring++) {
     for (let i = -ring; i <= ring; i++) {
       for (let j = -ring; j <= ring; j++) {
         if (Math.max(Math.abs(i), Math.abs(j)) !== ring) continue // only the ring's edge
-        const candidate = clampToRoom({ ...item, position: [near[0] + i * step, near[1] + j * step] }, room)
-        if (fits(candidate)) return [round(candidate[0]), round(candidate[1])]
+        const spot = placeInRoom({ ...item, position: [near[0] + i * step, near[1] + j * step] }, room)
+        if (fits(spot.position, spot.rotation)) return [round(spot.position[0]), round(spot.position[1])]
       }
     }
   }
-  return clampToRoom({ ...item, position: near }, room)
+  return placeInRoom({ ...item, position: near }, room).position
 }
 
 const round = (v: number) => Math.round(v * 100) / 100
@@ -87,13 +106,14 @@ export function placeNew(
   others: FurnitureItem[],
   room: Room,
   zones: FixedZone[],
-): { variant: string; position: [number, number] } {
+): { variant: string; position: [number, number]; rotation: number } {
   for (const variant of variants) {
     const candidate = { ...item, variant }
-    const position = findFreeSpot(candidate, others, room, zones)
-    if (!findOverlaps([...others, { ...candidate, position }], zones).has(item.id)) return { variant, position }
+    const spot = placeInRoom({ ...candidate, position: findFreeSpot(candidate, others, room, zones) }, room)
+    if (!findOverlaps([...others, { ...candidate, ...spot }], zones).has(item.id)) return { variant, ...spot }
   }
-  return { variant: variants[0], position: findFreeSpot({ ...item, variant: variants[0] }, others, room, zones) }
+  const fallback = { ...item, variant: variants[0] }
+  return { variant: variants[0], ...placeInRoom({ ...fallback, position: findFreeSpot(fallback, others, room, zones) }, room) }
 }
 
 /** Keeps a number tidy for display and saving (centimetre precision). */

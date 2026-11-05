@@ -1,9 +1,11 @@
 import { materials } from '../materials'
+import { frameMaterial } from './frames'
 import { Block, Cylinder } from '../parts'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 
 /** Single armchair with wooden legs, with or without arms. Faces +z in its local space. */
-export function Armchair({ color, variant }: ModelProps) {
+export function Armchair({ color, variant, frame }: ModelProps) {
+  const legMaterial = frameMaterial(frame, materials.woodLight)
   const fabric = useTintedMaterial(materials.fabricWhite, color)
   const armless = variant === 'armless'
   const width = armless ? 0.7 : 0.92
@@ -17,7 +19,7 @@ export function Armchair({ color, variant }: ModelProps) {
   return (
     <group>
       {legs.map(([x, z], i) => (
-        <Cylinder key={i} radiusTop={0.025} radiusBottom={0.018} height={0.14} position={[x, 0.07, z]} material={materials.woodLight} />
+        <Cylinder key={i} radiusTop={0.025} radiusBottom={0.018} height={0.14} position={[x, 0.07, z]} material={legMaterial} />
       ))}
       <Block size={[width, 0.2, 0.82]} radius={0.04} position={[0, 0.24, 0]} material={fabric} />
       {!armless && (

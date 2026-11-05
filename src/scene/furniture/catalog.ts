@@ -1,6 +1,7 @@
 import { clamp, degToRad } from '../../utils/math'
 // Type-only: house.ts imports this file's layouts, so a value import here would be circular.
 import type { RoomId } from '../house'
+import type { FrameId } from './frames'
 
 export type FurnitureType =
   // Living Room
@@ -38,6 +39,10 @@ export type FurnitureType =
   | 'bookshelf'
   | 'chestOfDrawers'
   | 'bathroomCabinet'
+  // Phase 11: hung on a wall
+  | 'wallArt'
+  | 'wallMirror'
+  | 'wallShelf'
 
 /** Groups for the catalog ("Add furniture"), in the order they're shown. */
 export type FurnitureCategory = 'seating' | 'tables' | 'beds' | 'storage' | 'lighting' | 'decor' | 'kitchen' | 'bathroom'
@@ -65,6 +70,8 @@ export interface FurnitureItem {
   rotation: number
   /** Main colour, e.g. the sofa fabric or the table wood. */
   color: string
+  /** Finish of the legs / frame / handles (see frames.ts). Missing = the piece's standard finish. */
+  frame?: FrameId
 }
 
 /** A style or size option for a piece of furniture. */
@@ -94,6 +101,17 @@ interface FurnitureInfo {
   /** Which part the colour applies to. */
   colorLabel: string
   swatches: Swatch[]
+  /**
+   * A second finish for the legs, frame, base or handles, where the piece has them.
+   * "Standard" (no choice) keeps the look it always had.
+   */
+  frame?: { label: string; options: FrameId[] }
+  /**
+   * 'wall': hangs on a wall (art, mirrors, shelves). It always sits flush against the
+   * nearest wall, facing into the room, and never clashes with floor furniture.
+   * Its footprint is [width along the wall, depth out from the wall].
+   */
+  mount?: 'wall'
 }
 
 /** A preset colour with a readable name (shown as a tooltip and read by screen readers). */
@@ -153,6 +171,25 @@ const APPLIANCE_SWATCHES: Swatch[] = [
   { color: '#9fae9a', name: 'Sage' },
   { color: '#9a3b34', name: 'Retro red' },
 ]
+// Artwork colours: the main tone of the print.
+const ART_SWATCHES: Swatch[] = [
+  { color: '#c7764f', name: 'Terracotta' },
+  { color: '#8e9c80', name: 'Sage' },
+  { color: '#41556b', name: 'Navy' },
+  { color: '#d4a64a', name: 'Ochre' },
+  { color: '#d9a7a0', name: 'Blush' },
+  { color: '#3a3a3c', name: 'Charcoal' },
+]
+// Mirror frames.
+const MIRROR_SWATCHES: Swatch[] = [
+  { color: '#b8925a', name: 'Brass' },
+  { color: '#2a2a2c', name: 'Black' },
+  { color: '#c49a6c', name: 'Natural oak' },
+  { color: '#f2f0eb', name: 'White' },
+  { color: '#d9dcdf', name: 'Silver' },
+  { color: '#8a5a3b', name: 'Teak' },
+]
+
 const BATH_SWATCHES: Swatch[] = [
   { color: '#f6f5f2', name: 'Gloss white' },
   { color: '#2a2a2c', name: 'Matte black' },
@@ -175,6 +212,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Fabric',
     swatches: FABRIC_SWATCHES,
+    frame: { label: 'Legs', options: ['walnut', 'oak', 'black', 'brass'] },
   },
   armchair: {
     label: 'Armchair',
@@ -187,6 +225,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Fabric',
     swatches: FABRIC_SWATCHES,
+    frame: { label: 'Legs', options: ['oak', 'walnut', 'black'] },
   },
   coffeeTable: {
     label: 'Coffee table',
@@ -257,6 +296,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
       { color: '#c7d2de', name: 'Sky' },
       { color: '#ffffff', name: 'White' },
     ],
+    frame: { label: 'Stand', options: ['brass', 'black', 'chrome', 'white'] },
   },
   bed: {
     label: 'Bed',
@@ -272,6 +312,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Upholstery',
     swatches: CREAM_SWATCHES,
+    frame: { label: 'Plinth', options: ['oak', 'walnut', 'white', 'black'] },
   },
   bedsideTable: {
     label: 'Bedside table',
@@ -284,6 +325,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Wood',
     swatches: OAK_SWATCHES,
+    frame: { label: 'Legs & handles', options: ['brass', 'black', 'chrome'] },
   },
   wardrobe: {
     label: 'Sliding wardrobe',
@@ -322,6 +364,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Fabric',
     swatches: CREAM_SWATCHES,
+    frame: { label: 'Legs', options: ['oak', 'walnut', 'black', 'brass'] },
   },
   diningTable: {
     label: 'Dining table',
@@ -348,6 +391,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Seat',
     swatches: FABRIC_SWATCHES,
+    frame: { label: 'Frame', options: ['oak', 'walnut', 'black', 'white'] },
   },
   sideboard: {
     label: 'Sideboard',
@@ -384,6 +428,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Seat',
     swatches: FABRIC_SWATCHES,
+    frame: { label: 'Frame', options: ['black', 'brass', 'chrome', 'white'] },
   },
   fridge: {
     label: 'Fridge',
@@ -445,6 +490,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Fabric',
     swatches: FABRIC_SWATCHES,
+    frame: { label: 'Legs', options: ['walnut', 'oak', 'black', 'brass'] },
   },
   ottoman: {
     label: 'Ottoman',
@@ -469,6 +515,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Top',
     swatches: WOOD_SWATCHES,
+    frame: { label: 'Base', options: ['black', 'brass', 'chrome', 'white'] },
   },
   desk: {
     label: 'Desk',
@@ -481,6 +528,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Wood',
     swatches: OAK_SWATCHES,
+    frame: { label: 'Legs', options: ['black', 'white', 'brass', 'oak'] },
   },
   deskChair: {
     label: 'Desk chair',
@@ -493,6 +541,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Seat',
     swatches: FABRIC_SWATCHES,
+    frame: { label: 'Frame', options: ['black', 'chrome', 'white', 'oak'] },
   },
   bench: {
     label: 'Bench',
@@ -505,6 +554,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Seat',
     swatches: CREAM_SWATCHES,
+    frame: { label: 'Frame', options: ['oak', 'walnut', 'black', 'white'] },
   },
   bookshelf: {
     label: 'Bookshelf',
@@ -529,6 +579,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Wood',
     swatches: OAK_SWATCHES,
+    frame: { label: 'Handles', options: ['brass', 'black', 'chrome'] },
   },
   bathroomCabinet: {
     label: 'Bathroom cabinet',
@@ -541,7 +592,94 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Cabinet',
     swatches: BATH_SWATCHES,
+    frame: { label: 'Handles & legs', options: ['chrome', 'brass', 'black'] },
   },
+
+  // ---------- Phase 11: on the wall ----------
+  wallArt: {
+    label: 'Wall art',
+    category: 'decor',
+    rooms: ['living', 'bedroom', 'dining', 'kitchen', 'bathroom'],
+    mount: 'wall',
+    variantLabel: 'Print',
+    variants: [
+      { id: 'abstract', label: 'Abstract', detail: '60 × 80 cm, portrait', footprint: [0.6, 0.04] },
+      { id: 'landscape', label: 'Landscape', detail: '120 × 80 cm', footprint: [1.2, 0.04] },
+      { id: 'gallery', label: 'Set of three', detail: '3 × 40 × 50 cm', footprint: [1.5, 0.04] },
+    ],
+    colorLabel: 'Artwork',
+    swatches: ART_SWATCHES,
+    frame: { label: 'Frame', options: ['black', 'white', 'oak', 'brass'] },
+  },
+  wallMirror: {
+    label: 'Mirror',
+    category: 'decor',
+    rooms: ['living', 'bedroom', 'dining', 'bathroom'],
+    mount: 'wall',
+    variantLabel: 'Shape',
+    variants: [
+      { id: 'round', label: 'Round', detail: 'Ø 80 cm', footprint: [0.8, 0.04] },
+      { id: 'tall', label: 'Tall', detail: '60 × 160 cm', footprint: [0.6, 0.04] },
+    ],
+    colorLabel: 'Frame',
+    swatches: MIRROR_SWATCHES,
+  },
+  wallShelf: {
+    label: 'Wall shelf',
+    category: 'storage',
+    rooms: ['living', 'bedroom', 'dining', 'kitchen', 'bathroom'],
+    mount: 'wall',
+    variantLabel: 'Style',
+    variants: [
+      { id: 'single', label: 'Floating shelf', detail: '100 × 22 cm', footprint: [1.0, 0.22] },
+      { id: 'double', label: 'Two shelves', detail: '80 × 22 cm, on brackets', footprint: [0.8, 0.22] },
+    ],
+    colorLabel: 'Wood',
+    swatches: WOOD_SWATCHES,
+    frame: { label: 'Brackets', options: ['black', 'brass', 'white'] },
+  },
+}
+
+/** Does this piece hang on a wall (art, mirrors, shelves)? */
+export const isWallMounted = (type: FurnitureType) => FURNITURE_INFO[type].mount === 'wall'
+
+/**
+ * Where a wall-mounted piece hangs: flush against the wall nearest to its
+ * position, centred on that point along the wall, facing into the room.
+ * Rotation: back wall 0°, left wall 90°, front wall 180°, right wall 270° (pieces
+ * face +z at 0°, like everything else).
+ */
+export function mountOnWall(
+  item: Pick<FurnitureItem, 'type' | 'variant' | 'position'>,
+  room: { width: number; depth: number },
+): { position: [number, number]; rotation: number } {
+  const [w, d] = getVariant(item.type, item.variant).footprint
+  const halfW = room.width / 2
+  const halfD = room.depth / 2
+  // A point dragged past a wall counts as at that wall (otherwise its distance would be negative).
+  const x = clamp(item.position[0], -halfW, halfW)
+  const z = clamp(item.position[1], -halfD, halfD)
+  const along = (half: number) => Math.max(half - w / 2, 0)
+  const walls = [
+    { gap: z + halfD, rotation: 0, position: [clamp(x, -along(halfW), along(halfW)), -halfD + d / 2] },
+    { gap: halfD - z, rotation: 180, position: [clamp(x, -along(halfW), along(halfW)), halfD - d / 2] },
+    { gap: x + halfW, rotation: 90, position: [-halfW + d / 2, clamp(z, -along(halfD), along(halfD))] },
+    { gap: halfW - x, rotation: 270, position: [halfW - d / 2, clamp(z, -along(halfD), along(halfD))] },
+  ] as const
+  const nearest = walls.reduce((best, wall) => (wall.gap < best.gap ? wall : best))
+  return { position: [nearest.position[0], nearest.position[1]], rotation: nearest.rotation }
+}
+
+/**
+ * Where a piece ends up in a room: kept inside the walls, and for wall-mounted
+ * pieces, hung on the nearest wall (which also sets their rotation).
+ */
+export function placeInRoom(
+  item: Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation'>,
+  room: { width: number; depth: number },
+): { position: [number, number]; rotation: number } {
+  if (isWallMounted(item.type)) return mountOnWall(item, room)
+  return { position: clampToRoom(item, room), rotation: item.rotation }
 }
 
 /** Can this kind of furniture go in this room? */
@@ -674,6 +812,8 @@ export interface FixedZone {
   /** Centre on the floor, [x, z], and size [width, depth], in metres. */
   position: [number, number]
   size: [number, number]
+  /** A window or door: only pieces hung on a wall can clash with it (see openingZones in house.ts). */
+  onWall?: boolean
 }
 
 /** Overlap results use this prefix for built-in zones, so they can't be mistaken for furniture ids. */
@@ -769,13 +909,17 @@ export function findOverlaps(items: FurnitureItem[], zones: FixedZone[] = []): M
   const shapes = items.map(footprintShape)
   const zoneShapes = zones.map((zone): Shape => ({ kind: 'rect', corners: rectCorners(zone.position, zone.size, 0) }))
   for (let i = 0; i < items.length; i++) {
+    const onWall = isWallMounted(items[i].type)
     for (let j = i + 1; j < items.length; j++) {
+      // Art above a sofa is fine: pieces on the wall only clash with each other.
+      if (onWall !== isWallMounted(items[j].type)) continue
       if (!shapesOverlap(shapes[i], shapes[j])) continue
       add(items[i].id, items[j].id)
       add(items[j].id, items[i].id)
     }
     zones.forEach((zone, z) => {
-      if (shapesOverlap(shapes[i], zoneShapes[z])) add(items[i].id, ZONE_PREFIX + zone.label)
+      // Floor pieces clash with built-in units; wall pieces with windows and doors.
+      if (onWall === Boolean(zone.onWall) && shapesOverlap(shapes[i], zoneShapes[z])) add(items[i].id, ZONE_PREFIX + zone.label)
     })
   }
   return overlaps

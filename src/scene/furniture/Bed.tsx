@@ -1,4 +1,5 @@
 import { materials } from '../materials'
+import { frameMaterial } from './frames'
 import { Block } from '../parts'
 import { getVariant } from './catalog'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
@@ -8,7 +9,8 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
  * King = 180 × 200 cm mattress, Queen = 160, Double = 140, Single = 90 (one pillow).
  * Headboard at the back, faces +z.
  */
-export function Bed({ color, variant }: ModelProps) {
+export function Bed({ color, variant, frame }: ModelProps) {
+  const legMaterial = frameMaterial(frame, materials.woodLight)
   const upholstery = useTintedMaterial(materials.creamUpholstery, color)
   const [width, depth] = getVariant('bed', variant).footprint
   const mattressW = width - 0.1 // 1.8 m for a king
@@ -26,7 +28,7 @@ export function Bed({ color, variant }: ModelProps) {
   return (
     <group>
       {/* Recessed oak plinth: makes the bed look like it floats */}
-      <Block size={[width - 0.16, 0.06, frameD - 0.16]} position={[0, 0.03, frameZ]} material={materials.woodLight} />
+      <Block size={[width - 0.16, 0.06, frameD - 0.16]} position={[0, 0.03, frameZ]} material={legMaterial} />
       {/* Upholstered base */}
       <Block size={[width, 0.28, frameD]} radius={0.03} position={[0, 0.2, frameZ]} material={upholstery} />
       {/* Mattress */}

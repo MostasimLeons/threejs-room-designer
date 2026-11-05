@@ -1,12 +1,12 @@
 import { useMemo, useReducer } from 'react'
-import { clampToRoom, type FurnitureItem } from '../scene/furniture/catalog'
+import { placeInRoom, type FurnitureItem } from '../scene/furniture/catalog'
 import type { RoomFinishes } from '../scene/finishes'
 import { normalizeDegrees } from '../utils/math'
 import { normalizeLighting, type RoomLighting } from '../scene/sun'
 import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'
 import { DEFAULT_HOUSE, type HouseDesign, type RoomDesign } from './design'
 
-export type ItemChanges = Partial<Pick<FurnitureItem, 'position' | 'rotation' | 'color' | 'variant'>>
+export type ItemChanges = Partial<Pick<FurnitureItem, 'position' | 'rotation' | 'color' | 'variant' | 'frame'>>
 export type FinishChanges = Partial<RoomFinishes>
 export type LightingChanges = Partial<RoomLighting>
 
@@ -48,9 +48,12 @@ function applyItemChanges(design: RoomDesign, id: string, changes: ItemChanges, 
     items: design.items.map((item) => {
       if (item.id !== id) return item
       const next = { ...item, ...changes }
+      // Back to the standard finish: drop the field, so the piece is stored as it was before.
+      if ('frame' in changes && changes.frame === undefined) delete next.frame
       next.rotation = normalizeDegrees(next.rotation)
-      // Re-check the walls: rotating or picking a bigger size can push it outside.
-      next.position = clampToRoom(next, bounds)
+      // Re-check the walls: rotating or picking a bigger size can push it outside;
+      // a piece hung on a wall stays on the nearest wall.
+      Object.assign(next, placeInRoom(next, bounds))
       return next
     }),
   }
@@ -86,7 +89,7 @@ export function historyReducer(state: HistoryState, action: HistoryAction): Hist
       // Ids are unique within a room; a clash would make two pieces move together.
       if (state.present.items.some((item) => item.id === action.item.id)) return state
       const item = { ...action.item, rotation: normalizeDegrees(action.item.rotation) }
-      item.position = clampToRoom(item, action.bounds)
+      Object.assign(item, placeInRoom(item, action.bounds))
       return change(state, { ...state.present, items: [...state.present.items, item] }, false)
     }
     case 'removeItem': {

@@ -1,4 +1,5 @@
 import { materials } from '../materials'
+import { frameMaterial } from './frames'
 import { Block, Cylinder } from '../parts'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 
@@ -6,7 +7,8 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
  * Bedroom accent chair on tapered oak legs.
  * "tub" = rounded barrel back; "wingback" = tall back with side wings. Faces +z.
  */
-export function AccentChair({ color, variant }: ModelProps) {
+export function AccentChair({ color, variant, frame }: ModelProps) {
+  const legMaterial = frameMaterial(frame, materials.woodLight)
   const fabric = useTintedMaterial(materials.creamUpholstery, color)
   const legs: [number, number][] = [
     [-0.26, -0.26],
@@ -18,7 +20,7 @@ export function AccentChair({ color, variant }: ModelProps) {
   return (
     <group>
       {legs.map(([x, z], i) => (
-        <Cylinder key={i} radiusTop={0.022} radiusBottom={0.012} height={0.18} position={[x, 0.09, z]} material={materials.woodLight} />
+        <Cylinder key={i} radiusTop={0.022} radiusBottom={0.012} height={0.18} position={[x, 0.09, z]} material={legMaterial} />
       ))}
 
       {variant === 'wingback' ? (

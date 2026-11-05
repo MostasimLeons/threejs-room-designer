@@ -16,12 +16,13 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms,
   Pick a room in the **room bar** at the bottom of the 3D view, or press `1`–`5`. The view fades briefly and shows that room. Only the selected room is drawn, which keeps the app fast. Each room keeps its own furniture, finishes, lighting and undo history. Pieces only go in rooms where they belong: a bed only in the Bedroom, a sofa only in the Living Room, while a plant or a chair can move around (see **Move to another room** below).
 
 - **Add furniture:** **+ Add** in the Objects list opens a catalog of every piece that belongs in the room, grouped by category (Seating, Tables & desks, Beds, Storage, Lighting, Plants & decor, Kitchen, Bathroom) with chips to show one category. Each piece has a small 3D picture (drawn in your browser the first time the catalog opens). Click one and it's placed at a free spot and selected, ready to drag into place. If the default option has no room, the first option that fits is used instead (for example a round dining table in a busy kitchen), and the message says so.
-- **29 kinds of furniture** (Phase 10 added nine and several new options):
+- **32 kinds of furniture** (Phase 10 added nine and several new options; Phase 11 added three that hang on a wall):
   - Seating: sofa, **corner sofa** (chaise left or right), armchair, accent chair, **ottoman** (round pouf or leather footstool), dining chair (now also **leather**), bar stool, **desk chair** (swivel or upholstered), **bench** (upholstered or wooden)
   - Tables & desks: coffee table (now also **square, carved top**), **side table** (round or wooden cube), **desk** (120 or 100 cm), dining table (now also **long, 220 cm for eight**), bedside table, dressing table
   - Beds: king, queen, **double** and **single**
   - Storage: TV unit, wardrobe, sideboard, **bookshelf** (open shelves or 200 cm wall shelving), **chest of drawers** (low, or tall steel frame)
   - Bathroom: bath or shower, vanity, towel rail, **bathroom cabinet** (tall or low)
+  - On the wall: **wall art** (portrait, landscape or a set of three prints), **mirror** (round or tall), **wall shelf** (floating, or two shelves on brackets)
 
   Pieces that suit several rooms can go in each of them (a bench in the Bedroom, Dining Room, Kitchen or Living Room); a bed or bath still only goes in its own room.
 
@@ -45,8 +46,13 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms,
 - **Customise** each piece:
   - furniture options, such as sofa size, table shape, chair style, TV size, plant size and lamp shade
   - named colour swatches or a custom colour
+  - a **second finish for the legs, frame, base or handles** on 15 pieces (oak, walnut, white, black metal, brass, chrome, depending on the piece). **Standard** keeps the look the piece always had. Options that use a real 3D model keep their own finish.
+- **Product card:** the selected piece shows a short description, what it's made of, its size (width × depth × height, or Ø for round pieces) and an **example price**.
+- **Shopping list:** the list button in the top bar shows every piece in this room or the whole house, identical pieces combined with a quantity, and the total. **Download CSV** (opens in Excel, Numbers or Google Sheets) or **Print or save as PDF**. The prices are made-up examples in US dollars for trying out the quote (they're in `src/scene/furniture/products.ts`, one per option, ready to be replaced by a real price list).
+- **Pieces on the wall:** art, mirrors and shelves always hang flush on the nearest wall, facing into the room, at a fixed height. Drag them along a wall, or towards another wall to move them there. They don't clash with floor furniture (a print above the sofa is fine) or built-in units, only with each other and with windows and doors. They hide with their wall when it's cut away for the view.
+- **Lamps at night:** floor lamps and now bedside lamps light their surroundings from dusk (bedside lamps only glow on Low quality).
 - **Room finishes:**
-  - walls in **paint** or glossy ceramic **tiles**, in six colour presets or a custom colour
+  - walls in **paint**, glossy ceramic **tiles**, patterned **wallpaper** or painted wooden **panelling**, in six colour presets or a custom colour
   - seven floor materials: oak, walnut, whitewashed ash, polished concrete, stone tiles, white marble and terrazzo
 - **Undo / Redo / Reset** covers furniture and finishes of the selected room. Reset itself can be undone.
 - **Perspective and Plan** (top-down) views.
@@ -220,6 +226,8 @@ Exact versions are in `package.json`. `package-lock.json` pins them so every ins
 | Place freely       | Hold `Alt` while dragging (otherwise pieces snap flush to a wall within 12 cm)                                                  |
 | Save image         | Camera button in the top bar: downloads a PNG                                                                                   |
 | Share              | **Save / Load** → **Copy share link**                                                                                           |
+| Shopping list      | List button in the top bar: this room or the whole house; Download CSV or Print                                                 |
+| Legs / frame       | The finish card under Colour in the right panel (Standard keeps the original look)                                              |
 | Paint a wall       | Click the wall: pick paint/tiles and a colour in the picker that opens there                                                    |
 | Change the floor   | Click the floor (if something is selected, the first click just deselects it)                                                   |
 | Rotate by dragging | Drag the round handle on the blue ring (15° steps, `Shift` for 1°)                                                              |
@@ -268,6 +276,7 @@ src/
     ColorPicker.tsx        Swatch grid + custom colour (used by both panels)
     DesignsDialog.tsx      Save / load / export / import / share-link window
     QualityControl.tsx     The 3D quality setting (left panel)
+    ShoppingListDialog.tsx Shopping list / quote window (CSV, print)
     CatalogDrawer.tsx      "Add furniture" catalog for the current room
     ViewToggle.tsx         Perspective / Plan switch
     ErrorBoundary.tsx      Friendly message if the 3D view fails (e.g. no WebGL)
@@ -279,6 +288,7 @@ src/
     useDesignHistory.ts    Current design + undo/redo history
     storage.ts             localStorage saves, autosave, JSON export/import
     share.ts               Share links: the house compressed into the link's #design= part
+    shoppingList.ts        Shopping list lines, totals and the CSV file
     viewerPrefs.ts         Per-browser extras (not part of a design): intro seen, room thumbnails
   utils/                   Small general-purpose helpers
     math.ts                clamp, angle helpers
@@ -319,6 +329,9 @@ src/
       catalog.ts           Furniture types, options, swatches, default layout,
                            "stay inside the room" and overlap checks
       placement.ts         Free spot for new pieces, snapping to walls, gaps to the walls
+      frames.ts            Second finishes (legs, frames, handles) and their materials
+      products.ts          Descriptions, heights and example prices for the product card and shopping list
+      WallDecor.tsx        Wall art, mirrors and wall shelves
       FurnitureModel.tsx   Picks the 3D model for a furniture type (real model if there is one)
       models.ts            Which options use a real model, and how it's sized to the footprint
       GltfModel.tsx        Loads a model, recolours it, falls back to the code-built one
@@ -355,6 +368,9 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 - The corner sofa's footprint is the whole rectangle around its L, so a piece in the empty corner in front of the seats counts as overlapping it.
 - Choosing a bigger option for a piece after placing it can make it overlap its neighbours (it's then flagged, as before); adding from the catalog avoids this by picking an option that fits.
 - The window and door are fixed parts of the walls.
+- Pieces on a wall can't be placed at a chosen height; each type hangs at a fixed height (art and mirrors at eye level).
+- The "Print or save as PDF" button uses the browser's print window; its print layout was not checked in an automated test.
+- Prices in the shopping list are examples, not real shop prices.
 - Moving a piece to another room is two undo steps, one in each room (each room has its own history).
 - Catalog pictures are drawn again on each visit (they aren't stored), which takes a second or two the first time the catalog opens.
 - Share links hold the design, not the room pictures or camera position. Very heavily edited houses make longer links (still well within browser limits).
