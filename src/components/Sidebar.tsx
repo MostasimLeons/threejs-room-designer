@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { formatArea, formatLength, useUnit } from '../utils/units'
 import { WALL_SIDES, type RoomId, type RoomInfo } from '../scene/house'
 import { openingSelection, type OpeningRef } from '../scene/layout'
 import { FURNITURE_INFO, getVariant, type FurnitureItem } from '../scene/furniture/catalog'
@@ -66,6 +67,7 @@ export function Sidebar({
   onSelectOpening,
 }: SidebarProps) {
   const { label, width, depth } = info
+  const unit = useUnit()
   const fixtures = fixturesOf(info)
   const floor = getFloorOption(finishes.floor)
   const finishRows = [
@@ -86,16 +88,16 @@ export function Sidebar({
         <div className="stats">
           <div>
             <span className="stat-value">
-              {metres(width)} × {metres(depth)} m
+              {unit === 'm' ? `${metres(width)} × ${metres(depth)} m` : `${formatLength(width, unit)} × ${formatLength(depth, unit)}`}
             </span>
             <span className="stat-label">Size</span>
           </div>
           <div>
-            <span className="stat-value">{Math.round(width * depth * 10) / 10} m²</span>
+            <span className="stat-value">{formatArea(width * depth, unit)}</span>
             <span className="stat-label">Area</span>
           </div>
           <div>
-            <span className="stat-value">{metres(info.height)} m</span>
+            <span className="stat-value">{unit === 'm' ? `${metres(info.height)} m` : formatLength(info.height, unit)}</span>
             <span className="stat-label">Ceiling</span>
           </div>
         </div>

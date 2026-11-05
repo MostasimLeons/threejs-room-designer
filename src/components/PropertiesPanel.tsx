@@ -3,6 +3,7 @@ import type { RoomFinishes } from '../scene/finishes'
 import { ROOMS, type RoomId, type RoomInfo, type RoomLayout } from '../scene/house'
 import type { OpeningRef } from '../scene/layout'
 import { LayoutCard, OpeningPanel } from './LayoutEditor'
+import { useUnit } from '../utils/units'
 import type { FinishChanges, ItemChanges } from '../state/useDesignHistory'
 import { ColorPicker } from './ColorPicker'
 import { modelFor } from '../scene/furniture/models'
@@ -64,6 +65,7 @@ function commitHandlers(onCommit: () => void) {
 /** Right-hand panel: edits the selected furniture, or the room when nothing is selected. */
 export function PropertiesPanel(props: PropertiesPanelProps) {
   const { item, overlapping, onUpdate, onPreview, onCommit, onDeselect } = props
+  const unit = useUnit()
   if (props.wall) {
     const { wall, finishes, onUpdateFinishes, onPreviewFinishes } = props
     return (
@@ -139,7 +141,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           <p className="product-description">{PRODUCTS[item.type].description}</p>
           <dl className="product-facts">
             <dt>Size</dt>
-            <dd>{productSize(item)}</dd>
+            <dd>{productSize(item, unit)}</dd>
             <dt>Made of</dt>
             <dd>{PRODUCTS[item.type].materials}</dd>
             <dt>Price</dt>

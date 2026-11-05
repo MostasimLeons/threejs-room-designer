@@ -104,6 +104,14 @@ export const MoonIcon = () => (
 )
 
 /** Showcase mode: a play/presentation symbol. */
+/** Room measurements: a ruler. */
+export const RulerIcon = () => (
+  <Icon>
+    <path d="m4 15 11-11 5 5L9 20Z" />
+    <path d="m8 11 1.5 1.5M11 8l1.5 1.5M14 5l1.5 1.5M6.5 13.5 8 15M9.5 10.5 11 12" />
+  </Icon>
+)
+
 /** Ambient sound: a speaker, with sound waves when on or a cross when muted. */
 export const SoundIcon = ({ muted }: { muted: boolean }) => (
   <Icon>

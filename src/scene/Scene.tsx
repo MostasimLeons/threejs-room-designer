@@ -17,6 +17,9 @@ import { resolveRoom, type RoomId, type WallSide } from './house'
 import { RoomInfoContext } from './roomContext'
 import type { OpeningRef } from './layout'
 import { TourCamera } from './TourCamera'
+import { RoomDimensions } from './RoomDimensions'
+import { selectedOpening } from './layout'
+import { UnitContext, type LengthUnit } from '../utils/units'
 import { ArSource, ROOM_OBJECT_NAME, type ArTarget } from './ArSource'
 import type * as THREE from 'three'
 import type { TourShot } from './tour'
@@ -45,6 +48,10 @@ interface SceneProps {
   /** Asks for a copy of a piece or the room for AR (a new id = a new copy). */
   arRequest?: { id: number; target: ArTarget } | null
   onArModel?: (model: THREE.Group | null) => void
+  /** Units for every length shown in the 3D view. */
+  unit: LengthUnit
+  /** Show the room's measurements (width, depth, height, windows and doors). */
+  showDimensions: boolean
   /** While a video records: draw at this pixel ratio, and keep the quality level fixed. */
   recordingDpr?: number | null
   /** The guided tour's current shot, while the tour plays (it drives the camera). */
@@ -92,6 +99,8 @@ export function Scene({
   onPickOpening,
   tour,
   recordingDpr,
+  unit,
+  showDimensions,
   arRequest,
   onArModel,
   popover,
@@ -130,59 +139,62 @@ export function Scene({
     >
       <QualityContext.Provider value={quality}>
         <RoomInfoContext.Provider value={info}>
-          {qualitySetting === 'auto' && !recordingDpr && <AutoQuality level={autoLevel} onStepDown={setAutoLevel} />}
-          {/* Selection: anything inside a <Select enabled> gets the blue outline (PostEffects). */}
-          <Selection>
-            <CameraRig view={view} resetKey={resetKey} room={room} cameraViewId={cameraViewId} />
-            {tour && view === 'perspective' && tour.shot.room === room && (
-              <TourCamera shot={tour.shot} shotId={tour.shotId} paused={tour.paused} onEnd={tour.onEnd} />
-            )}
-            <RoomThumbnails request={thumbnailRequest} onCapture={onThumbnail} />
-            <SceneScreenshot request={screenshotRequest} onCapture={onScreenshot} />
-            <ArSource request={arRequest ?? null} onModel={(model) => onArModel?.(model)} />
-            <SceneScreenshot request={compareCapture?.id ?? null} onCapture={(image) => compareCapture?.onCapture(image)} longSide={0} />
-            {/* Also sets the background colour, which follows the time of day. */}
-            <Lighting lighting={design.lighting} />
-            {PERF_ENABLED && <DevStats />}
+          <UnitContext.Provider value={unit}>
+            {qualitySetting === 'auto' && !recordingDpr && <AutoQuality level={autoLevel} onStepDown={setAutoLevel} />}
+            {/* Selection: anything inside a <Select enabled> gets the blue outline (PostEffects). */}
+            <Selection>
+              <CameraRig view={view} resetKey={resetKey} room={room} cameraViewId={cameraViewId} />
+              {tour && view === 'perspective' && tour.shot.room === room && (
+                <TourCamera shot={tour.shot} shotId={tour.shotId} paused={tour.paused} onEnd={tour.onEnd} />
+              )}
+              <RoomThumbnails request={thumbnailRequest} onCapture={onThumbnail} />
+              <SceneScreenshot request={screenshotRequest} onCapture={onScreenshot} />
+              <ArSource request={arRequest ?? null} onModel={(model) => onArModel?.(model)} />
+              <SceneScreenshot request={compareCapture?.id ?? null} onCapture={(image) => compareCapture?.onCapture(image)} longSide={0} />
+              {/* Also sets the background colour, which follows the time of day. */}
+              <Lighting lighting={design.lighting} />
+              {PERF_ENABLED && <DevStats />}
 
-            {/*
+              {/*
         key={room}: switching rooms swaps the whole room out, so nothing from one room can
         linger in another. Materials and reflection buffers are freed when a room is removed;
         floor textures are cached, so coming back to a room is quick.
       */}
-            <group key={room} name={ROOM_OBJECT_NAME}>
-              <RoomShell
-                room={room}
-                finishes={design.finishes}
-                selectedId={editable ? selectedId : null}
-                onPickWall={editable ? onPickWall : noPick}
-                onPickFloor={editable ? onPickFloor : noPick}
-                onPickOpening={editable ? onPickOpening : noPick}
-              />
-              <FurnitureLayer
-                items={design.items}
-                origin={ROOM_ORIGIN}
-                room={info}
-                interactive={editable}
-                selectedId={editable ? selectedId : null}
-                overlaps={overlaps}
-                onSelect={onSelect}
-                onMove={onMove}
-                onRotate={onRotate}
-                onDragBoundary={onDragBoundary}
-              />
-            </group>
+              {showDimensions && editable && !tour && <RoomDimensions selected={selectedOpening(selectedId)} />}
+              <group key={room} name={ROOM_OBJECT_NAME}>
+                <RoomShell
+                  room={room}
+                  finishes={design.finishes}
+                  selectedId={editable ? selectedId : null}
+                  onPickWall={editable ? onPickWall : noPick}
+                  onPickFloor={editable ? onPickFloor : noPick}
+                  onPickOpening={editable ? onPickOpening : noPick}
+                />
+                <FurnitureLayer
+                  items={design.items}
+                  origin={ROOM_ORIGIN}
+                  room={info}
+                  interactive={editable}
+                  selectedId={editable ? selectedId : null}
+                  overlaps={overlaps}
+                  onSelect={onSelect}
+                  onMove={onMove}
+                  onRotate={onRotate}
+                  onDragBoundary={onDragBoundary}
+                />
+              </group>
 
-            {popover && (
-              // Pinned to the clicked point; follows it as the camera moves. `zIndexRange` keeps
-              // it under the app's own overlays (room bar, dialogs).
-              <Html key={popover.point.join(',')} position={popover.point} zIndexRange={[3, 0]} className="surface-popover-anchor">
-                {popover.content}
-              </Html>
-            )}
+              {popover && (
+                // Pinned to the clicked point; follows it as the camera moves. `zIndexRange` keeps
+                // it under the app's own overlays (room bar, dialogs).
+                <Html key={popover.point.join(',')} position={popover.point} zIndexRange={[3, 0]} className="surface-popover-anchor">
+                  {popover.content}
+                </Html>
+              )}
 
-            <PostEffects view={view} />
-          </Selection>
+              <PostEffects view={view} />
+            </Selection>
+          </UnitContext.Provider>
         </RoomInfoContext.Provider>
       </QualityContext.Provider>
     </Canvas>

@@ -1,4 +1,5 @@
 import type { RoomId } from '../scene/house'
+import type { LengthUnit } from '../utils/units'
 import type { QualitySetting } from '../scene/quality'
 
 /**
@@ -90,5 +91,43 @@ export function saveSoundVolume(volume: number) {
     localStorage.setItem(VOLUME_KEY, String(volume))
   } catch {
     // Not remembered: half volume next time. Harmless.
+  }
+}
+
+const UNIT_KEY = 'room-designer:unit'
+const DIMENSIONS_KEY = 'room-designer:show-dimensions'
+
+/** The unit lengths are shown and typed in, chosen in this browser (metres by default). */
+export function loadUnit(): LengthUnit {
+  try {
+    const value = localStorage.getItem(UNIT_KEY)
+    return value === 'cm' || value === 'ft' ? value : 'm'
+  } catch {
+    return 'm'
+  }
+}
+
+export function saveUnit(unit: LengthUnit) {
+  try {
+    localStorage.setItem(UNIT_KEY, unit)
+  } catch {
+    // Not remembered: metres next time. Harmless.
+  }
+}
+
+/** Whether the room's measurements are shown in the 3D view and plan (on by default). */
+export function loadShowDimensions(): boolean {
+  try {
+    return localStorage.getItem(DIMENSIONS_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
+export function saveShowDimensions(show: boolean) {
+  try {
+    localStorage.setItem(DIMENSIONS_KEY, show ? '1' : '0')
+  } catch {
+    // Not remembered. Harmless.
   }
 }
