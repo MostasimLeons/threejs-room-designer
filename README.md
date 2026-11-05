@@ -51,11 +51,16 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms,
 - **Shopping list:** the list button in the top bar shows every piece in this room or the whole house, identical pieces combined with a quantity, and the total. **Download CSV** (opens in Excel, Numbers or Google Sheets) or **Print or save as PDF**. The prices are made-up examples in US dollars for trying out the quote (they're in `src/scene/furniture/products.ts`, one per option, ready to be replaced by a real price list).
 - **Pieces on the wall:** art, mirrors and shelves always hang flush on the nearest wall, facing into the room, at a fixed height. Drag them along a wall, or towards another wall to move them there. They don't clash with floor furniture (a print above the sofa is fine) or built-in units, only with each other and with windows and doors. They hide with their wall when it's cut away for the view.
 - **Lamps at night:** floor lamps and now bedside lamps light their surroundings from dusk (bedside lamps only glow on Low quality).
-- **Room layout editor:** with nothing selected, the **Room size** card in the right panel changes the room's width and depth (2.5–10 m) and ceiling height (2.4–3.5 m), and lists its windows and doors.
-  - Click a window or door (in 3D, in the Objects list or in the card) to move it along its wall, move it to another wall, change its width and sill or top height, or remove it. **+ Window** / **+ Door** add one on the wall with the most free space.
+- **Room layout editor:** with nothing selected, the **Room size** card in the right panel changes the room's inside width and depth (1.5–20 m), ceiling height (2.1–4.5 m) and wall thickness (8–30 cm), and lists its windows and doors.
+  - Sizes are measured wall to wall inside the room; thicker walls grow outward, so the floor area doesn't change.
+  - Click a window or door (in 3D, in the Objects list or in the card) to set its distance from the wall's left corner (facing the wall from inside), move it to another wall, change its width and sill or top height, or remove it. **+ Window** / **+ Door** add one on the wall with the most free space.
   - Windows and doors stay inside their wall and 15 cm apart (neighbours are pushed aside); doors start at the floor; windows stay under the ceiling. If a wall gets too short for all of them, the last ones are dropped.
   - Everything follows the room: furniture is moved back inside a smaller room (and flagged if it now overlaps), pieces on the wall stay on a wall, the kitchen units run along the whole back wall with the sink under the window, the toilet keeps its place by its corner, rugs, the slat wall, curtains, downlights, lights, shadows and camera views adapt.
-  - Every change is one undo step (a slider drag included), and the layout is saved with the room: autosave, named saves, exported files (now version 4; older files still load) and share links. **Back to the standard size and openings** restores the room's own layout.
+  - Every change is one undo step (a slider drag included), and the layout is saved with the room: autosave, named saves, exported files (now version 5; older files still load, with 12 cm walls) and share links. **Back to the standard size and openings** restores the room's own layout.
+- **Real-life measurements:**
+  - **Units** (bottom of the left panel): metres, centimetres, or feet and inches (shown as 12′ 6″, to the nearest half inch). Kept in this browser. Every length in the app follows it: room stats, the Room size card, window and door sizes, furniture sizes (W × D × H) and the measurements shown while dragging.
+  - **Exact values:** every length in the Room size card and the window / door panel can be typed as well as dragged. Any unit is understood whatever the setting: `3.5`, `350 cm`, `2500 mm`, `1,5 m`, `12'6"`, `12 ft 6 in`. A bare number is in the chosen unit. Enter applies, `Esc` cancels; anything that isn't a length is outlined in red and ignored. Values outside the limits are brought within them.
+  - **Dimensions in the room:** the ruler button next to the clock shows or hides the room's measurements in the 3D view and the plan: inside width and depth outside the walls, ceiling height in a back corner, and each window's and door's width. A selected window or door also shows, in blue, its distance to both corners of its wall. Hidden during a tour and in showcase; not included in AR models. On by default.
 - **Room finishes:**
   - walls in **paint**, glossy ceramic **tiles**, patterned **wallpaper** or painted wooden **panelling**, in six colour presets or a custom colour
   - seven floor materials: oak, walnut, whitewashed ash, polished concrete, stone tiles, white marble and terrazzo
@@ -238,7 +243,9 @@ Exact versions are in `package.json`. `package-lock.json` pins them so every ins
 | Share              | **Save / Load** → **Copy share link**                                                                                           |
 | Shopping list      | List button in the top bar: this room or the whole house; Download CSV or Print                                                 |
 | Legs / frame       | The finish card under Colour in the right panel (Standard keeps the original look)                                              |
-| Room size          | Deselect everything: **Room size** card in the right panel (width, depth, ceiling height)                                       |
+| Room size          | Deselect everything: **Room size** card in the right panel (width, depth, ceiling height, wall thickness); drag or type          |
+| Units              | **Units** at the bottom of the left panel: m, cm or ft & in                                                                     |
+| Measurements       | Ruler button next to the clock shows / hides the room's dimensions                                                              |
 | Windows and doors  | Click one in 3D or in the Objects list; **+ Window** / **+ Door** in the Room size card                                         |
 | Guided tour        | **Showcase** → **Tour all rooms** / **Tour this room**; `Esc` ends it                                                           |
 | Video              | Video button in the top bar: turntable or tour                                                                                  |
@@ -293,6 +300,7 @@ src/
     ColorPicker.tsx        Swatch grid + custom colour (used by both panels)
     DesignsDialog.tsx      Save / load / export / import / share-link window
     QualityControl.tsx     The 3D quality setting (left panel)
+    UnitControl.tsx        The length unit setting (left panel)
     ShoppingListDialog.tsx Shopping list / quote window (CSV, print)
     LayoutEditor.tsx       Room size card and the window / door panel
     TourPlayer.tsx         Guided tour caption and controls
@@ -312,9 +320,10 @@ src/
     storage.ts             localStorage saves, autosave, JSON export/import
     share.ts               Share links: the house compressed into the link's #design= part
     shoppingList.ts        Shopping list lines, totals and the CSV file
-    viewerPrefs.ts         Per-browser extras (not part of a design): intro seen, room thumbnails
+    viewerPrefs.ts         Per-browser extras (not part of a design): intro seen, room thumbnails, unit, dimensions on/off
   utils/                   Small general-purpose helpers
     math.ts                clamp, angle helpers
+    units.ts               Length units: showing and reading m / cm / ft & in
     id.ts                  Unique ids (works on http:// too)
     download.ts            File download helpers (JSON, pictures)
   scene/                   Everything inside the 3D canvas
@@ -333,6 +342,7 @@ src/
     interiorLight.ts       Shares how "on" the room lights are (0 day … 1 night) with lamps
     Ceiling.tsx            Ceiling with cove light line and downlights
     FurnitureLayer.tsx     Draws furniture; click-to-select, drag-to-move (snaps to walls), outlines, measurements
+    RoomDimensions.tsx     Dimension lines and labels for the room, its windows and doors
     RoomShell.tsx          Builds any room from its house.ts entry: floor, ceiling, 4 walls with windows/doors/skirting
     Cutaway.tsx            Hides walls (and the ceiling) that are between the camera and the room;
                            hidden walls still block the sun (shadow-only layer)
@@ -383,7 +393,7 @@ src/
       bathroom cabinet)                                 Phase 10 models
 ```
 
-Tests sit next to the code they check, as `*.test.ts` files. They cover undo/redo, reading saves and imported files, browser storage, the furniture maths (staying inside the walls, overlaps, default layouts, free spots, wall snapping) and share links.
+Tests sit next to the code they check, as `*.test.ts` files. They cover undo/redo, reading saves and imported files, browser storage, the furniture maths (staying inside the walls, overlaps, default layouts, free spots, wall snapping), share links, and measurements (units, typed lengths, size limits, wall thickness, corner distances).
 
 Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `vitest.config.ts` (tests).
 
