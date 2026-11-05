@@ -5,7 +5,6 @@ import { MeshReflectorMaterial } from '@react-three/drei'
 import { useQuality } from './quality'
 import { Select } from '@react-three/postprocessing'
 import type { ThreeEvent } from '@react-three/fiber'
-import { ROOM } from './roomConfig'
 import { WALL_SIDES, type RoomId, type WallSide } from './house'
 import { isCameraBehindWall, localOpenings, skirtingRuns, wallFrame, wallPieces } from './walls'
 import { createFloorMaps, type SurfaceMaps } from './textures'
@@ -213,10 +212,10 @@ function Wall({ room, side, finish, selected, onPick, selectedId, onPickOpening 
   const skirting = !tiled // tiled walls have no wooden skirting
   const frame = wallFrame(side, info)
   const openings = localOpenings(side, info)
-  const pieces = wallPieces(frame.length, openings, info.height)
+  const pieces = wallPieces(frame.length, openings, info.height, info.wallThickness)
   const runs = skirting ? skirtingRuns(frame.innerLength, openings) : []
   const Decor = ROOM_DECOR[room].walls?.[side]
-  const insideFace = ROOM.wallThickness / 2
+  const insideFace = info.wallThickness / 2
 
   return (
     <Cutaway isBehind={(camera) => isCameraBehindWall(side, info, camera.position)}>
@@ -239,10 +238,11 @@ function Wall({ room, side, finish, selected, onPick, selectedId, onPickOpening 
                     width={o.width}
                     height={o.top - o.bottom}
                     position={[o.center, o.bottom, 0]}
+                    wallThickness={info.wallThickness}
                     // Up to the outside corner of the room (inner length plus the wall's thickness).
                     skyReach={[
-                      o.center + frame.innerLength / 2 + ROOM.wallThickness,
-                      frame.innerLength / 2 + ROOM.wallThickness - o.center,
+                      o.center + frame.innerLength / 2 + info.wallThickness,
+                      frame.innerLength / 2 + info.wallThickness - o.center,
                     ]}
                   />
                 </group>
@@ -252,6 +252,7 @@ function Wall({ room, side, finish, selected, onPick, selectedId, onPickOpening 
                   left={o.center - o.width / 2}
                   right={o.center + o.width / 2}
                   wallHalf={frame.innerLength / 2}
+                  wallThickness={info.wallThickness}
                   ceiling={info.height}
                 />
               )}
@@ -259,7 +260,7 @@ function Wall({ room, side, finish, selected, onPick, selectedId, onPickOpening 
           ) : (
             <Select key={o.index} enabled={selectedId === openingSelection({ side, index: o.index })}>
               <group onClick={openingPick(o.index)}>
-                <Door width={o.width} height={o.top} position={[o.center, 0, 0]} />
+                <Door width={o.width} height={o.top} position={[o.center, 0, 0]} wallThickness={info.wallThickness} />
               </group>
             </Select>
           ),
@@ -303,7 +304,7 @@ export function RoomShell({ room, finishes, selectedId, onPickWall, onPickFloor,
     <group>
       <Floor floor={finishes.floor} width={info.width} depth={info.depth} selected={selectedId === FLOOR_SELECTION} onPick={onPickFloor} />
       {FloorDecor && <FloorDecor />}
-      <Ceiling width={info.width} depth={info.depth} downlights={info.downlights} height={info.height} />
+      <Ceiling width={info.width} depth={info.depth} downlights={info.downlights} height={info.height} overhang={info.wallThickness} />
       {WALL_SIDES.map((side) => (
         <Wall
           key={side}

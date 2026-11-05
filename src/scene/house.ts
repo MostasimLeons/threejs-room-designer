@@ -62,6 +62,8 @@ export interface RoomInfo {
   depth: number // along z
   /** Ceiling height in metres (2.8 unless the layout changes it). */
   height: number
+  /** Wall thickness in metres (12 cm unless the layout changes it). Walls grow outward: width and depth are inside sizes. */
+  wallThickness: number
   openings: Partial<Record<WallSide, Opening[]>>
   /** Recessed ceiling lights, as [x, z]. */
   downlights: [number, number][]
@@ -112,6 +114,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
     width: 7,
     depth: 6,
     height: ROOM.height,
+    wallThickness: ROOM.wallThickness,
     openings: {
       back: [{ kind: 'window', label: 'Window', at: -1.9, width: 1.4, bottom: 0.9, top: 2.3 }],
       left: [{ kind: 'door', label: 'Door', at: 2, width: 0.9, bottom: 0, top: DOOR_HEIGHT }],
@@ -138,6 +141,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
     width: 5,
     depth: 4,
     height: ROOM.height,
+    wallThickness: ROOM.wallThickness,
     openings: {
       back: [{ kind: 'window', label: 'Window + curtains', at: 2.0, width: 0.9, bottom: 0.9, top: 2.3, curtains: true }],
       left: [{ kind: 'door', label: 'Door to living room', at: 1.25, width: 0.9, bottom: 0, top: DOOR_HEIGHT }],
@@ -165,6 +169,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
     width: 4.5,
     depth: 4,
     height: ROOM.height,
+    wallThickness: ROOM.wallThickness,
     openings: {
       back: [{ kind: 'window', label: 'Window', at: 0, width: 1.6, bottom: 0.9, top: 2.3 }],
       left: [{ kind: 'door', label: 'Door', at: 1.2, width: 0.9, bottom: 0, top: DOOR_HEIGHT }],
@@ -191,6 +196,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
     width: 4,
     depth: 3.5,
     height: ROOM.height,
+    wallThickness: ROOM.wallThickness,
     openings: {
       // Higher sill: it sits above the worktop.
       back: [{ kind: 'window', label: 'Window', at: 0.6, width: 1.2, bottom: 1.05, top: 2.2 }],
@@ -218,6 +224,7 @@ export const ROOMS: Record<RoomId, RoomInfo> = {
     width: 3,
     depth: 2.5,
     height: ROOM.height,
+    wallThickness: ROOM.wallThickness,
     openings: {
       // Small, high window for privacy.
       back: [{ kind: 'window', label: 'Window', at: 0.7, width: 0.6, bottom: 1.4, top: 2.0 }],
@@ -271,6 +278,8 @@ export interface RoomLayout {
   width: number
   depth: number
   height: number
+  /** Saved layouts from before Phase 14 don't have it: they get the standard 12 cm. */
+  wallThickness: number
   openings: Partial<Record<WallSide, Opening[]>>
 }
 
@@ -298,6 +307,7 @@ export function resolveRoom(room: RoomId, layout?: RoomLayout | null): RoomInfo 
     width: layout.width,
     depth: layout.depth,
     height: layout.height,
+    wallThickness: layout.wallThickness,
     openings: layout.openings,
     downlights: base.downlights.map(([x, z]) => [x * sx, z * sz]),
     // The overview stays in the same corner, as far out as the room has grown (and up with a taller ceiling).

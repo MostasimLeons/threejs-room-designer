@@ -24,7 +24,7 @@ import { TimeOfDayPanel } from './components/TimeOfDayPanel'
 import { FloorPopover, WallPopover } from './components/SurfacePopover'
 import { FLOOR_SELECTION, selectedWall, wallLabel, wallSelection } from './scene/selection'
 import { setAllWalls, setWallFinish, wallFinishOf } from './scene/finishes'
-import { MoonIcon, SunIcon } from './components/icons'
+import { MoonIcon, RulerIcon, SunIcon } from './components/icons'
 import { daylightAt, formatTime, sunPosition } from './scene/sun'
 import { PropertiesPanel } from './components/PropertiesPanel'
 import { preloadModels } from './scene/furniture/GltfModel'
@@ -41,8 +41,21 @@ import { CompareView, type CompareSource, type CompareState } from './components
 import { startRecording, videoExtension, type Recording } from './utils/video'
 import { IntroScreen } from './components/IntroScreen'
 import type { CameraViewId } from './scene/cameraViews'
-import { loadQualitySetting, loadThumbnails, saveQualitySetting, saveThumbnail, introSeen, markIntroSeen } from './state/viewerPrefs'
+import {
+  loadShowDimensions,
+  loadUnit,
+  saveShowDimensions,
+  saveUnit,
+  loadQualitySetting,
+  loadThumbnails,
+  saveQualitySetting,
+  saveThumbnail,
+  introSeen,
+  markIntroSeen,
+} from './state/viewerPrefs'
 import { QualityControl } from './components/QualityControl'
+import { UnitControl } from './components/UnitControl'
+import { UnitContext, type LengthUnit } from './utils/units'
 import type { QualityLevel, QualitySetting } from './scene/quality'
 import { DesignsDialog } from './components/DesignsDialog'
 import { ShoppingListDialog } from './components/ShoppingListDialog'
@@ -114,6 +127,9 @@ export default function App() {
   /** 3D quality: the setting (kept in this browser) and the level in use. */
   const [qualitySetting, setQualitySetting] = useState<QualitySetting>(loadQualitySetting)
   const [qualityLevel, setQualityLevel] = useState<QualityLevel>('high')
+  /** Units for lengths, and whether the room's measurements show in 3D (kept in this browser). */
+  const [unit, setUnit] = useState<LengthUnit>(loadUnit)
+  const [showDimensions, setShowDimensions] = useState(loadShowDimensions)
   /** A design from a share link, waiting for you to open it (or not). */
   const [shared, setShared] = useState<HouseDesign | null>(null)
   // Read once when the app starts (the address bar is cleared right after).
@@ -599,287 +615,322 @@ export default function App() {
   const overlapping = selectedItem ? (overlaps.get(selectedItem.id) ?? []).map((id) => overlapName(id, design.items)) : []
 
   return (
-    <div className={`app ${showcase ? 'showcase' : ''}`}>
-      <header className="topbar">
-        <div className="brand">
-          <span className="logo" aria-hidden="true" />
-          <span className="brand-name">Room Designer</span>
-          <span className="divider" />
-          <span className="project-name">My House</span>
-        </div>
-        <Toolbar
-          canUndo={history.canUndo}
-          canRedo={history.canRedo}
-          onUndo={history.undo}
-          onRedo={history.redo}
-          onReset={handleReset}
-          onResetView={() => {
-            setCameraViewId('overview')
-            setResetKey((k) => k + 1)
-          }}
-          onOpenDesigns={() => setDesignsOpen(true)}
-          onShowcase={enterShowcase}
-          onSaveImage={handleSaveImage}
-          savingImage={screenshotRequest !== null}
-          onShoppingList={() => setShoppingOpen(true)}
-          onRecordVideo={() => setRecordOpen(true)}
-          onCompare={() => setCompare({ phase: 'choose' })}
-        />
-      </header>
-
-      <div className="workspace">
-        <Sidebar
-          room={room}
-          items={design.items}
-          finishes={design.finishes}
-          selectedId={selectedId}
-          overlaps={overlaps}
-          onSelect={setSelectedId}
-          onShowRoom={() => setSelectedId(null)}
-          lighting={design.lighting}
-          onShowLighting={() => setTimeOpen(true)}
-          info={info}
-          onSelectOpening={(ref) => setSelectedId(openingSelection(ref))}
-          onAddFurniture={() => {
-            setCatalogOpen(true)
-            // On phones the panels are below the 3D view: bring the view (and the catalog in it) on screen.
-            document.querySelector('.viewport')?.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
-          }}
-          footer={
-            <QualityControl
-              setting={qualitySetting}
-              level={qualityLevel}
-              onChange={(setting) => {
-                setQualitySetting(setting)
-                saveQualitySetting(setting)
-              }}
-            />
-          }
-        />
-
-        {/* Background follows the time of day, so the room-switch fade dips to the same tone as the 3D backdrop. */}
-        <main className="viewport" style={{ background: daylightAt(house[shownRoom].lighting).background }}>
-          <div className={`scene-layer ${fading ? 'fading' : ''}`}>
-            <ErrorBoundary>
-              <Scene
-                view={view}
-                resetKey={resetKey}
-                room={shownRoom}
-                design={compareDesign && shownRoom === room ? compareDesign : house[shownRoom]}
-                selectedId={shownRoom === room ? selectedId : null}
-                overlaps={shownOverlaps}
-                onSelect={setSelectedId}
-                onMove={(id, position) => history.previewItem(id, { position })}
-                onRotate={(id, rotation) => history.previewItem(id, { rotation })}
-                onDragBoundary={history.commit}
-                onPickWall={handlePickWall}
-                onPickFloor={handlePickFloor}
-                onPickOpening={(ref) => {
-                  history.commit()
-                  setPick(null)
-                  setSelectedId(openingSelection(ref))
-                }}
-                popover={!showcase && popoverContent && pick && shownRoom === room ? { point: pick.point, content: popoverContent } : null}
-                cameraViewId={cameraViewId}
-                editable={!showcase}
-                thumbnailRequest={thumbnailRequest}
-                onThumbnail={handleThumbnail}
-                screenshotRequest={screenshotRequest}
-                onScreenshot={handleScreenshot}
-                compareCapture={compareCapture}
-                arRequest={arRequest}
-                onArModel={(model) => setAr((current) => (current ? { ...current, model } : current))}
-                qualitySetting={qualitySetting}
-                onQualityLevel={setQualityLevel}
-                recordingDpr={recordingDpr}
-                tour={
-                  tour
-                    ? {
-                        shot: tour.shots[tour.index],
-                        shotId: tour.shotId,
-                        paused: tour.paused,
-                        onEnd: () => goToShot(tour.index + 1),
-                      }
-                    : null
-                }
-              />
-            </ErrorBoundary>
+    <UnitContext.Provider value={unit}>
+      <div className={`app ${showcase ? 'showcase' : ''}`}>
+        <header className="topbar">
+          <div className="brand">
+            <span className="logo" aria-hidden="true" />
+            <span className="brand-name">Room Designer</span>
+            <span className="divider" />
+            <span className="project-name">My House</span>
           </div>
+          <Toolbar
+            canUndo={history.canUndo}
+            canRedo={history.canRedo}
+            onUndo={history.undo}
+            onRedo={history.redo}
+            onReset={handleReset}
+            onResetView={() => {
+              setCameraViewId('overview')
+              setResetKey((k) => k + 1)
+            }}
+            onOpenDesigns={() => setDesignsOpen(true)}
+            onShowcase={enterShowcase}
+            onSaveImage={handleSaveImage}
+            savingImage={screenshotRequest !== null}
+            onShoppingList={() => setShoppingOpen(true)}
+            onRecordVideo={() => setRecordOpen(true)}
+            onCompare={() => setCompare({ phase: 'choose' })}
+          />
+        </header>
 
-          <div className="overlay-top">
-            {!showcase && <ViewToggle view={view} onChange={setView} />}
-            {view === 'perspective' && !tour && <CameraViewPicker room={room} value={cameraViewId} onChange={setCameraViewId} />}
-            <button
-              className={`time-toggle ${timeOpen ? 'active' : ''}`}
-              aria-pressed={timeOpen}
-              aria-label={`Time of day: ${formatTime(design.lighting.time)}`}
-              onClick={() => setTimeOpen((open) => !open)}
-            >
-              {sunPosition(design.lighting.time).elevation < 0 ? <MoonIcon /> : <SunIcon />}
-              {formatTime(design.lighting.time)}
-            </button>
-            <SoundControl time={house[shownRoom].lighting.time} />
-            {showcase && !tour && (
+        <div className="workspace">
+          <Sidebar
+            room={room}
+            items={design.items}
+            finishes={design.finishes}
+            selectedId={selectedId}
+            overlaps={overlaps}
+            onSelect={setSelectedId}
+            onShowRoom={() => setSelectedId(null)}
+            lighting={design.lighting}
+            onShowLighting={() => setTimeOpen(true)}
+            info={info}
+            onSelectOpening={(ref) => setSelectedId(openingSelection(ref))}
+            onAddFurniture={() => {
+              setCatalogOpen(true)
+              // On phones the panels are below the 3D view: bring the view (and the catalog in it) on screen.
+              document.querySelector('.viewport')?.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+            }}
+            footer={
               <>
-                <button className="showcase-exit" onClick={() => setCompare({ phase: 'choose' })}>
-                  Compare
-                </button>
-                <button className="showcase-exit" onClick={() => startTour('house')}>
-                  Tour all rooms
-                </button>
-                <button className="showcase-exit" onClick={() => startTour('room')}>
-                  Tour this room
-                </button>
+                <UnitControl
+                  unit={unit}
+                  onChange={(next) => {
+                    setUnit(next)
+                    saveUnit(next)
+                  }}
+                />
+                <QualityControl
+                  setting={qualitySetting}
+                  level={qualityLevel}
+                  onChange={(setting) => {
+                    setQualitySetting(setting)
+                    saveQualitySetting(setting)
+                  }}
+                />
               </>
-            )}
-            {showcase && (
-              <button className="showcase-exit" onClick={exitShowcase}>
-                Exit showcase <kbd>Esc</kbd>
-              </button>
-            )}
-          </div>
+            }
+          />
 
-          {timeOpen && (
-            <TimeOfDayPanel
-              roomLabel={ROOMS[room].label}
-              lighting={design.lighting}
-              onUpdate={history.updateLighting}
-              onPreview={history.previewLighting}
-              onCommit={history.commit}
-              onClose={() => setTimeOpen(false)}
-            />
-          )}
+          {/* Background follows the time of day, so the room-switch fade dips to the same tone as the 3D backdrop. */}
+          <main className="viewport" style={{ background: daylightAt(house[shownRoom].lighting).background }}>
+            <div className={`scene-layer ${fading ? 'fading' : ''}`}>
+              <ErrorBoundary>
+                <Scene
+                  view={view}
+                  resetKey={resetKey}
+                  room={shownRoom}
+                  design={compareDesign && shownRoom === room ? compareDesign : house[shownRoom]}
+                  selectedId={shownRoom === room ? selectedId : null}
+                  overlaps={shownOverlaps}
+                  onSelect={setSelectedId}
+                  onMove={(id, position) => history.previewItem(id, { position })}
+                  onRotate={(id, rotation) => history.previewItem(id, { rotation })}
+                  onDragBoundary={history.commit}
+                  onPickWall={handlePickWall}
+                  onPickFloor={handlePickFloor}
+                  onPickOpening={(ref) => {
+                    history.commit()
+                    setPick(null)
+                    setSelectedId(openingSelection(ref))
+                  }}
+                  popover={
+                    !showcase && popoverContent && pick && shownRoom === room ? { point: pick.point, content: popoverContent } : null
+                  }
+                  cameraViewId={cameraViewId}
+                  editable={!showcase}
+                  thumbnailRequest={thumbnailRequest}
+                  onThumbnail={handleThumbnail}
+                  screenshotRequest={screenshotRequest}
+                  onScreenshot={handleScreenshot}
+                  compareCapture={compareCapture}
+                  arRequest={arRequest}
+                  onArModel={(model) => setAr((current) => (current ? { ...current, model } : current))}
+                  qualitySetting={qualitySetting}
+                  onQualityLevel={setQualityLevel}
+                  recordingDpr={recordingDpr}
+                  unit={unit}
+                  showDimensions={showDimensions}
+                  tour={
+                    tour
+                      ? {
+                          shot: tour.shots[tour.index],
+                          shotId: tour.shotId,
+                          paused: tour.paused,
+                          onEnd: () => goToShot(tour.index + 1),
+                        }
+                      : null
+                  }
+                />
+              </ErrorBoundary>
+            </div>
 
-          <p className="hint" hidden={timeOpen || showcase}>
-            {HINTS[touch ? 'touch' : 'mouse'][view]}
-          </p>
-
-          {catalogOpen && !showcase && (
-            <CatalogDrawer
-              room={room}
-              thumbnails={catalogThumbs}
-              onAdd={(type) => {
-                handleAdd(type)
-                setCatalogOpen(false)
-              }}
-              onClose={() => setCatalogOpen(false)}
-            />
-          )}
-
-          {shared && (
-            <div className="share-banner" role="dialog" aria-label="Shared design">
-              <span>Someone shared a design with you.</span>
+            <div className="overlay-top">
+              {!showcase && <ViewToggle view={view} onChange={setView} />}
+              {view === 'perspective' && !tour && <CameraViewPicker room={room} value={cameraViewId} onChange={setCameraViewId} />}
               <button
-                className="primary-button"
-                onClick={() => {
-                  handleLoad(shared, 'shared design')
-                  setShared(null)
-                }}
+                className={`time-toggle ${timeOpen ? 'active' : ''}`}
+                aria-pressed={timeOpen}
+                aria-label={`Time of day: ${formatTime(design.lighting.time)}`}
+                onClick={() => setTimeOpen((open) => !open)}
               >
-                Open it
+                {sunPosition(design.lighting.time).elevation < 0 ? <MoonIcon /> : <SunIcon />}
+                {formatTime(design.lighting.time)}
               </button>
-              <button className="ghost-button" onClick={() => setShared(null)}>
-                Keep mine
-              </button>
+              <SoundControl time={house[shownRoom].lighting.time} />
+              {!showcase && (
+                <button
+                  className={`time-toggle ${showDimensions ? 'active' : ''}`}
+                  aria-pressed={showDimensions}
+                  title={showDimensions ? 'Hide the room measurements' : 'Show the room measurements'}
+                  aria-label="Room measurements"
+                  onClick={() => {
+                    setShowDimensions(!showDimensions)
+                    saveShowDimensions(!showDimensions)
+                  }}
+                >
+                  <RulerIcon />
+                </button>
+              )}
+              {showcase && !tour && (
+                <>
+                  <button className="showcase-exit" onClick={() => setCompare({ phase: 'choose' })}>
+                    Compare
+                  </button>
+                  <button className="showcase-exit" onClick={() => startTour('house')}>
+                    Tour all rooms
+                  </button>
+                  <button className="showcase-exit" onClick={() => startTour('room')}>
+                    Tour this room
+                  </button>
+                </>
+              )}
+              {showcase && (
+                <button className="showcase-exit" onClick={exitShowcase}>
+                  Exit showcase <kbd>Esc</kbd>
+                </button>
+              )}
             </div>
-          )}
 
-          {compare && (
-            <CompareView
-              state={compare}
-              roomLabel={ROOMS[room].label}
-              saves={compare.phase === 'choose' ? listSaves().map(({ id, name }) => ({ id, name })) : []}
-              hasSnapshot={Boolean(beforeSnapshots[room])}
-              onChoose={(source) => void runCompare(source)}
-              onTakeSnapshot={() => void takeBeforeSnapshot()}
-              onClose={() => {
-                if (compare.phase !== 'preparing') setCompare(null)
-              }}
-            />
-          )}
+            {timeOpen && (
+              <TimeOfDayPanel
+                roomLabel={ROOMS[room].label}
+                lighting={design.lighting}
+                onUpdate={history.updateLighting}
+                onPreview={history.previewLighting}
+                onCommit={history.commit}
+                onClose={() => setTimeOpen(false)}
+              />
+            )}
 
-          {tour && (
-            <TourPlayer
-              shot={tour.shots[tour.index]}
-              index={tour.index}
-              count={tour.shots.length}
-              info={resolveRoom(tour.shots[tour.index].room, house[tour.shots[tour.index].room].layout)}
-              pieces={house[tour.shots[tour.index].room].items.length}
-              paused={tour.paused}
-              onTogglePause={() => setTour((t) => (t ? { ...t, paused: !t.paused } : t))}
-              onPrevious={() => goToShot(tour.index - 1)}
-              onNext={() => goToShot(tour.index + 1)}
-              onStop={() => {
-                setTour(null)
-                cancelVideo()
-              }}
-              recording={recordingDpr !== null}
-            />
-          )}
+            <p className="hint" hidden={timeOpen || showcase}>
+              {HINTS[touch ? 'touch' : 'mouse'][view]}
+            </p>
 
-          {toast && (
-            <div className="toast" role="status">
-              {toast}
-            </div>
-          )}
+            {catalogOpen && !showcase && (
+              <CatalogDrawer
+                room={room}
+                thumbnails={catalogThumbs}
+                onAdd={(type) => {
+                  handleAdd(type)
+                  setCatalogOpen(false)
+                }}
+                onClose={() => setCatalogOpen(false)}
+              />
+            )}
 
-          <RoomBar room={room} onChange={handleRoomChange} thumbnails={thumbnails} />
-        </main>
+            {shared && (
+              <div className="share-banner" role="dialog" aria-label="Shared design">
+                <span>Someone shared a design with you.</span>
+                <button
+                  className="primary-button"
+                  onClick={() => {
+                    handleLoad(shared, 'shared design')
+                    setShared(null)
+                  }}
+                >
+                  Open it
+                </button>
+                <button className="ghost-button" onClick={() => setShared(null)}>
+                  Keep mine
+                </button>
+              </div>
+            )}
 
-        <PropertiesPanel
+            {compare && (
+              <CompareView
+                state={compare}
+                roomLabel={ROOMS[room].label}
+                saves={compare.phase === 'choose' ? listSaves().map(({ id, name }) => ({ id, name })) : []}
+                hasSnapshot={Boolean(beforeSnapshots[room])}
+                onChoose={(source) => void runCompare(source)}
+                onTakeSnapshot={() => void takeBeforeSnapshot()}
+                onClose={() => {
+                  if (compare.phase !== 'preparing') setCompare(null)
+                }}
+              />
+            )}
+
+            {tour && (
+              <TourPlayer
+                shot={tour.shots[tour.index]}
+                index={tour.index}
+                count={tour.shots.length}
+                info={resolveRoom(tour.shots[tour.index].room, house[tour.shots[tour.index].room].layout)}
+                pieces={house[tour.shots[tour.index].room].items.length}
+                paused={tour.paused}
+                onTogglePause={() => setTour((t) => (t ? { ...t, paused: !t.paused } : t))}
+                onPrevious={() => goToShot(tour.index - 1)}
+                onNext={() => goToShot(tour.index + 1)}
+                onStop={() => {
+                  setTour(null)
+                  cancelVideo()
+                }}
+                recording={recordingDpr !== null}
+              />
+            )}
+
+            {toast && (
+              <div className="toast" role="status">
+                {toast}
+              </div>
+            )}
+
+            <RoomBar room={room} onChange={handleRoomChange} thumbnails={thumbnails} />
+          </main>
+
+          <PropertiesPanel
+            room={room}
+            item={selectedItem}
+            wall={wall}
+            finishes={design.finishes}
+            overlapping={overlapping}
+            onUpdate={(changes) => selectedItem && history.updateItem(selectedItem.id, changes)}
+            onPreview={(changes) => selectedItem && history.previewItem(selectedItem.id, changes)}
+            onUpdateFinishes={history.updateFinishes}
+            onPreviewFinishes={history.previewFinishes}
+            onCommit={history.commit}
+            onDeselect={() => setSelectedId(null)}
+            onDuplicate={handleDuplicate}
+            onDelete={handleDelete}
+            moveTargets={selectedItem ? ROOM_IDS.filter((id) => id !== room && isAllowedIn(selectedItem.type, id)) : []}
+            onMoveTo={handleMoveTo}
+            info={info}
+            layout={layout}
+            layoutStandard={!design.layout}
+            opening={opening}
+            onUpdateLayout={(next, select) => handleLayout(next, false, select)}
+            onPreviewLayout={(next, select) => handleLayout(next, true, select)}
+            onResetLayout={() => {
+              history.updateLayout(undefined)
+              setToast(`${ROOMS[room].label} is back to its standard size, windows and doors. Undo to go back.`)
+            }}
+            onSelectOpening={(ref) => setSelectedId(openingSelection(ref))}
+            onDeleteOpening={handleDeleteOpening}
+            onMessage={setToast}
+            onViewInAr={openAr}
+          />
+        </div>
+
+        {catalogOpen && (
+          <CatalogThumbnailRenderer
+            types={catalogFor(room).filter((type) => !catalogThumbs[type])}
+            onThumbnail={(type, url) => setCatalogThumbs((current) => ({ ...current, [type]: url }))}
+          />
+        )}
+
+        {introOpen && <IntroScreen onStart={() => closeIntro(false)} onTour={() => closeIntro(true)} />}
+
+        {ar && (
+          <ArDialog
+            model={ar.model}
+            title={ar.title}
+            fileName={ar.fileName}
+            onClose={() => setAr(null)}
+            onCopyShareLink={() => void copyShareLink()}
+          />
+        )}
+        <RecordDialog
+          open={recordOpen}
           room={room}
-          item={selectedItem}
-          wall={wall}
-          finishes={design.finishes}
-          overlapping={overlapping}
-          onUpdate={(changes) => selectedItem && history.updateItem(selectedItem.id, changes)}
-          onPreview={(changes) => selectedItem && history.previewItem(selectedItem.id, changes)}
-          onUpdateFinishes={history.updateFinishes}
-          onPreviewFinishes={history.previewFinishes}
-          onCommit={history.commit}
-          onDeselect={() => setSelectedId(null)}
-          onDuplicate={handleDuplicate}
-          onDelete={handleDelete}
-          moveTargets={selectedItem ? ROOM_IDS.filter((id) => id !== room && isAllowedIn(selectedItem.type, id)) : []}
-          onMoveTo={handleMoveTo}
-          info={info}
-          layout={layout}
-          layoutStandard={!design.layout}
-          opening={opening}
-          onUpdateLayout={(next, select) => handleLayout(next, false, select)}
-          onPreviewLayout={(next, select) => handleLayout(next, true, select)}
-          onResetLayout={() => {
-            history.updateLayout(undefined)
-            setToast(`${ROOMS[room].label} is back to its standard size, windows and doors. Undo to go back.`)
-          }}
-          onSelectOpening={(ref) => setSelectedId(openingSelection(ref))}
-          onDeleteOpening={handleDeleteOpening}
-          onMessage={setToast}
-          onViewInAr={openAr}
+          roomCount={ROOM_IDS.length}
+          onRecord={startVideo}
+          onClose={() => setRecordOpen(false)}
         />
+        <ShoppingListDialog open={shoppingOpen} house={house} room={room} onClose={() => setShoppingOpen(false)} />
+        <DesignsDialog open={designsOpen} design={house} onClose={() => setDesignsOpen(false)} onLoad={handleLoad} />
       </div>
-
-      {catalogOpen && (
-        <CatalogThumbnailRenderer
-          types={catalogFor(room).filter((type) => !catalogThumbs[type])}
-          onThumbnail={(type, url) => setCatalogThumbs((current) => ({ ...current, [type]: url }))}
-        />
-      )}
-
-      {introOpen && <IntroScreen onStart={() => closeIntro(false)} onTour={() => closeIntro(true)} />}
-
-      {ar && (
-        <ArDialog
-          model={ar.model}
-          title={ar.title}
-          fileName={ar.fileName}
-          onClose={() => setAr(null)}
-          onCopyShareLink={() => void copyShareLink()}
-        />
-      )}
-      <RecordDialog open={recordOpen} room={room} roomCount={ROOM_IDS.length} onRecord={startVideo} onClose={() => setRecordOpen(false)} />
-      <ShoppingListDialog open={shoppingOpen} house={house} room={room} onClose={() => setShoppingOpen(false)} />
-      <DesignsDialog open={designsOpen} design={house} onClose={() => setDesignsOpen(false)} onLoad={handleLoad} />
-    </div>
+    </UnitContext.Provider>
   )
 }

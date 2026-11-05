@@ -24,10 +24,9 @@ export interface WallFrame {
   toLocal: (at: number) => number
 }
 
-const T = ROOM.wallThickness
-
-export function wallFrame(side: WallSide, room: Pick<RoomInfo, 'width' | 'depth'>): WallFrame {
+export function wallFrame(side: WallSide, room: Pick<RoomInfo, 'width' | 'depth'> & { wallThickness?: number }): WallFrame {
   const { width: W, depth: D } = room
+  const T = room.wallThickness ?? ROOM.wallThickness
   switch (side) {
     case 'back': // local x → +x
       return { position: [0, 0, -D / 2 - T / 2], rotationY: 0, length: W + 2 * T, innerLength: W, toLocal: (at) => at }
@@ -79,7 +78,7 @@ export interface WallPiece {
  * the holes: full-height columns between openings, plus a strip below each
  * window and above each window or door.
  */
-export function wallPieces(length: number, openings: LocalOpening[], height = ROOM.height, thickness = T): WallPiece[] {
+export function wallPieces(length: number, openings: LocalOpening[], height = ROOM.height, thickness = ROOM.wallThickness): WallPiece[] {
   const pieces: WallPiece[] = []
   let x = -length / 2
   for (const o of openings) {

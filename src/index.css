@@ -2165,3 +2165,47 @@ kbd {
 .ar-overlay[hidden] {
   display: none;
 }
+
+/* ---------- Phase 14: measurements ---------- */
+.length-field .field {
+  align-items: center;
+}
+
+.length-input {
+  width: 96px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.length-input:hover,
+.length-input:focus {
+  border-color: var(--border);
+  background: var(--panel);
+  outline: none;
+}
+
+.length-input:focus-visible {
+  border-color: var(--select);
+}
+
+.length-input.invalid {
+  border-color: #d92d20;
+}
+
+.time-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.dimension-label.room {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(40, 32, 20, 0.2);
+}

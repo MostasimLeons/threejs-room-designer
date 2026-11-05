@@ -9,7 +9,8 @@ import { itemObjectName } from './ArSource'
 import { isCameraBehindWall } from './walls'
 import type { WallSide } from './house'
 import { FurnitureModel } from './furniture/FurnitureModel'
-import { halfExtents, snapToWalls, toCm, wallGaps } from './furniture/placement'
+import { halfExtents, snapToWalls, wallGaps } from './furniture/placement'
+import { formatLength, useUnit } from '../utils/units'
 
 const SELECT_COLOR = '#2f6fed'
 /** Which wall a wall-mounted piece is on, from its rotation (see mountOnWall in catalog.ts). */
@@ -270,22 +271,23 @@ function DimensionGuides({ item, room }: { item: FurnitureItem; room: { width: n
   const [x, z] = item.position
   const [hx, hz] = halfExtents(item)
   const gaps = wallGaps(item, room)
+  const unit = useUnit()
   const [w, d] = getVariant(item.type, item.variant).footprint
   const y = 0.03
-  const guides: { from: [number, number, number]; to: [number, number, number]; cm: number }[] = []
+  const guides: { from: [number, number, number]; to: [number, number, number]; length: number }[] = []
   // Along x: to whichever side wall is nearer (none when it's flush).
   if (Math.min(gaps.left, gaps.right) > 0.015) {
     const toLeft = gaps.left <= gaps.right
     const edge = toLeft ? x - hx : x + hx
     const wall = toLeft ? -room.width / 2 : room.width / 2
-    guides.push({ from: [edge, y, z], to: [wall, y, z], cm: toCm(toLeft ? gaps.left : gaps.right) })
+    guides.push({ from: [edge, y, z], to: [wall, y, z], length: toLeft ? gaps.left : gaps.right })
   }
   // Along z: to the back or front wall.
   if (Math.min(gaps.back, gaps.front) > 0.015) {
     const toBack = gaps.back <= gaps.front
     const edge = toBack ? z - hz : z + hz
     const wall = toBack ? -room.depth / 2 : room.depth / 2
-    guides.push({ from: [x, y, edge], to: [x, y, wall], cm: toCm(toBack ? gaps.back : gaps.front) })
+    guides.push({ from: [x, y, edge], to: [x, y, wall], length: toBack ? gaps.back : gaps.front })
   }
   return (
     <group userData={{ noExport: true }}>
@@ -298,13 +300,13 @@ function DimensionGuides({ item, room }: { item: FurnitureItem; room: { width: n
             zIndexRange={[2, 0]}
             className="dimension-anchor"
           >
-            <span className="dimension-label">{guide.cm} cm</span>
+            <span className="dimension-label">{formatLength(guide.length, unit)}</span>
           </Html>
         </group>
       ))}
       <Html position={[x, y, z + hz + 0.18]} center zIndexRange={[2, 0]} className="dimension-anchor">
         <span className="dimension-label size">
-          {toCm(w)} × {toCm(d)} cm
+          {formatLength(w, unit)} × {formatLength(d, unit)}
         </span>
       </Html>
     </group>

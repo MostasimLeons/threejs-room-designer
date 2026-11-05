@@ -1,6 +1,7 @@
 import { clamp } from '../utils/math'
 import { ROOMS, WALL_SIDES, type Opening, type RoomId, type RoomLayout, type WallSide } from './house'
 import { CASING } from './walls'
+import { ROOM } from './roomConfig'
 
 /**
  * Rules for the room layout editor (Phase 12): how big a room can be, and where
@@ -8,10 +9,12 @@ import { CASING } from './walls'
  * rules are unit-tested and the app can't build a broken wall.
  */
 
+/** Inside sizes (wall to wall), ceiling height and wall thickness, in metres. */
 export const LAYOUT_LIMITS = {
-  width: [2.5, 10],
-  depth: [2.5, 10],
-  height: [2.4, 3.5],
+  width: [1.5, 20],
+  depth: [1.5, 20],
+  height: [2.1, 4.5],
+  wallThickness: [0.08, 0.3],
 } as const
 
 /** Space kept clear between two openings (plus door casings). */
@@ -40,8 +43,8 @@ export function selectedOpening(id: string | null): OpeningRef | null {
 
 /** The standard layout of a room (from house.ts). */
 export function defaultLayout(room: RoomId): RoomLayout {
-  const { width, depth, height, openings } = ROOMS[room]
-  return { width, depth, height, openings: structuredClone(openings) }
+  const { width, depth, height, wallThickness, openings } = ROOMS[room]
+  return { width, depth, height, wallThickness, openings: structuredClone(openings) }
 }
 
 /** Inner length of a wall: the room's width for the back and front walls, its depth for the sides. */
@@ -93,17 +96,38 @@ function fitWall(openings: Opening[], length: number): Opening[] {
   return kept.map((o, i) => ({ ...o, at: cm(at[i]) }))
 }
 
+/**
+ * Along-the-wall direction as you face the wall from inside the room: +1 when the
+ * wall's left-to-right runs along +x / +z in room coordinates (see wallFrame in walls.ts).
+ */
+const alongSign = (side: WallSide) => (side === 'back' || side === 'right' ? 1 : -1)
+
+/**
+ * How far an opening's left edge is from the left corner of its wall, standing in
+ * the room facing that wall: what you'd measure with a tape.
+ */
+export function distanceFromLeft(side: WallSide, size: { width: number; depth: number }, o: Pick<Opening, 'at' | 'width'>): number {
+  return alongSign(side) * o.at - o.width / 2 + wallLength(side, size) / 2
+}
+
+/** The `at` (centre, room coordinates) for an opening whose left edge is `fromLeft` from the left corner. */
+export function atFromLeft(side: WallSide, size: { width: number; depth: number }, width: number, fromLeft: number): number {
+  return alongSign(side) * (fromLeft + width / 2 - wallLength(side, size) / 2)
+}
+
 /** A valid layout: sizes within the limits, every opening inside its wall and clear of the others. */
 export function normalizeLayout(layout: RoomLayout): RoomLayout {
   const width = cm(clamp(layout.width, ...LAYOUT_LIMITS.width))
   const depth = cm(clamp(layout.depth, ...LAYOUT_LIMITS.depth))
   const height = cm(clamp(layout.height, ...LAYOUT_LIMITS.height))
+  // Millimetre precision: walls are often 10.5 or 11.5 cm.
+  const wallThickness = Math.round(clamp(layout.wallThickness ?? ROOM.wallThickness, ...LAYOUT_LIMITS.wallThickness) * 1000) / 1000
   const openings: Partial<Record<WallSide, Opening[]>> = {}
   for (const side of WALL_SIDES) {
     const list = (layout.openings[side] ?? []).map((o) => fixOpening(o, height))
     if (list.length) openings[side] = fitWall(list, wallLength(side, { width, depth }))
   }
-  return { width, depth, height, openings }
+  return { width, depth, height, wallThickness, openings }
 }
 
 /** Is this the room's standard layout? (Then the design doesn't need to store it.) */
@@ -186,7 +210,7 @@ const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFin
 /** Reads a saved layout; null if it's missing or not a layout (the room then keeps its standard one). */
 export function parseLayout(raw: unknown): RoomLayout | null {
   if (typeof raw !== 'object' || raw === null) return null
-  const { width, depth, height, openings } = raw as Record<string, unknown>
+  const { width, depth, height, wallThickness, openings } = raw as Record<string, unknown>
   if (!isNum(width) || !isNum(depth) || !isNum(height) || typeof openings !== 'object' || openings === null) return null
   const parsed: Partial<Record<WallSide, Opening[]>> = {}
   for (const side of WALL_SIDES) {
@@ -215,5 +239,12 @@ export function parseLayout(raw: unknown): RoomLayout | null {
         ...(curtains === true ? { curtains } : {}),
       }))
   }
-  return normalizeLayout({ width, depth, height, openings: parsed })
+  // Layouts saved before Phase 14 have no wall thickness: the standard 12 cm.
+  return normalizeLayout({
+    width,
+    depth,
+    height,
+    wallThickness: isNum(wallThickness) ? wallThickness : ROOM.wallThickness,
+    openings: parsed,
+  })
 }
