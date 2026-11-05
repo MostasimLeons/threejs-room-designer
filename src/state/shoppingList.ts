@@ -34,7 +34,7 @@ export function shoppingList(house: HouseDesign, rooms: RoomId[]): ShoppingLine[
   for (const room of rooms) {
     const byKey = new Map<string, ShoppingLine>()
     for (const item of house[room].items) {
-      const key = [item.type, getVariant(item.type, item.variant).id, item.color.toLowerCase(), item.frame ?? ''].join('|')
+      const key = [item.type, getVariant(item.type, item.variant).id, item.color.toLowerCase(), item.frame ?? '', item.size?.join('x') ?? ''].join('|')
       const existing = byKey.get(key)
       if (existing) {
         existing.quantity += 1
@@ -45,7 +45,7 @@ export function shoppingList(house: HouseDesign, rooms: RoomId[]): ShoppingLine[
       const line: ShoppingLine = {
         room: ROOMS[room].label,
         item: FURNITURE_INFO[item.type].label,
-        option: getVariant(item.type, item.variant).label,
+        option: getVariant(item.type, item.variant).label + (item.size ? ', custom size' : ''),
         colour: colourName(item),
         finish: item.frame ? FRAME_FINISHES[item.frame].name : 'Standard',
         size: productSize(item),

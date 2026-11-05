@@ -1,4 +1,4 @@
-import { getVariant, type FurnitureItem, type FurnitureType } from './catalog'
+import { getVariant, itemFootprint, type FurnitureItem, type FurnitureType } from './catalog'
 import { formatLength, type LengthUnit } from '../../utils/units'
 
 /**
@@ -213,12 +213,29 @@ export const PRODUCTS: Record<FurnitureType, ProductInfo> = {
     height: { single: 4, double: 50 },
     price: { single: 89, double: 149 },
   },
+  drawerUnit: {
+    description: 'Drawer unit for papers and stationery. The one on castors rolls under a desk.',
+    materials: 'Wood veneer, metal handles',
+    height: { castors: 58, 'desk-height': 72 },
+    price: { castors: 189, 'desk-height': 249 },
+  },
+  pcTower: {
+    description: 'Desktop computer case, on the floor or under the desk.',
+    materials: 'Steel case, tempered-glass side panel',
+    height: { mid: 46, mini: 34 },
+    price: { mid: 1199, mini: 899 },
+  },
 }
 
 /** Height of one option in cm. */
 export function productHeight(type: FurnitureType, variant: string): number {
   const { height } = PRODUCTS[type]
   return typeof height === 'number' ? height : (height[getVariant(type, variant).id] ?? Object.values(height)[0])
+}
+
+/** Height in metres: the piece's custom height if it has one, otherwise its option's. */
+export function itemHeight(item: Pick<FurnitureItem, 'type' | 'variant' | 'size'>): number {
+  return item.size ? item.size[2] : productHeight(item.type, item.variant) / 100
 }
 
 /** Example price of one option, in dollars. */
@@ -232,10 +249,12 @@ const cm = (metres: number) => Math.round(metres * 100)
 /**
  * Width × depth × height, e.g. "220 × 90 × 85 cm", "2.20 × 0.90 × 0.85 m" or, in
  * feet, each length in feet and inches. Round pieces show the diameter (Ø).
+ * A custom size (Phase 15) is shown as it is.
  */
-export function productSize(item: Pick<FurnitureItem, 'type' | 'variant'>, unit: LengthUnit = 'cm'): string {
-  const { footprint, round } = getVariant(item.type, item.variant)
-  const h = productHeight(item.type, item.variant) / 100
+export function productSize(item: Pick<FurnitureItem, 'type' | 'variant' | 'size'>, unit: LengthUnit = 'cm'): string {
+  const { round } = getVariant(item.type, item.variant)
+  const footprint = itemFootprint(item)
+  const h = itemHeight(item)
   const parts = round ? [footprint[0], h] : [footprint[0], footprint[1], h]
   const prefix = round ? 'Ø ' : ''
   if (unit === 'cm') return `${prefix}${parts.map(cm).join(' × ')} cm`

@@ -8,7 +8,7 @@ import { findOverlaps, footprintHalfExtents, isWallMounted, placeInRoom, type Fi
  */
 
 type Room = { width: number; depth: number }
-type Placeable = Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation'>
+type Placeable = Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation' | 'size'>
 
 /** Half the size of a piece along x and z, after its rotation (round pieces don't change). */
 export const halfExtents = (item: Placeable): [number, number] => footprintHalfExtents(item)

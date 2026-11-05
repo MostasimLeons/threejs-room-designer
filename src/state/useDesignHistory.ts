@@ -1,12 +1,13 @@
 import { useMemo, useReducer } from 'react'
 import { placeInRoom, type FurnitureItem } from '../scene/furniture/catalog'
+import { normalizeSize } from '../scene/furniture/sizes'
 import type { RoomFinishes } from '../scene/finishes'
 import { normalizeDegrees } from '../utils/math'
 import { normalizeLighting, type RoomLighting } from '../scene/sun'
 import { ROOM_IDS, ROOMS, type RoomId, type RoomLayout } from '../scene/house'
 import { DEFAULT_HOUSE, type HouseDesign, type RoomDesign } from './design'
 
-export type ItemChanges = Partial<Pick<FurnitureItem, 'position' | 'rotation' | 'color' | 'variant' | 'frame'>>
+export type ItemChanges = Partial<Pick<FurnitureItem, 'position' | 'rotation' | 'color' | 'variant' | 'frame' | 'size'>>
 export type FinishChanges = Partial<RoomFinishes>
 export type LightingChanges = Partial<RoomLighting>
 
@@ -52,6 +53,12 @@ function applyItemChanges(design: RoomDesign, id: string, changes: ItemChanges, 
       const next = { ...item, ...changes }
       // Back to the standard finish: drop the field, so the piece is stored as it was before.
       if ('frame' in changes && changes.frame === undefined) delete next.frame
+      // Picking another option starts from that option's own size (unless a size is set too).
+      if (changes.variant !== undefined && changes.variant !== item.variant && !('size' in changes)) delete next.size
+      // A size is kept within its limits; the standard size (or none) is stored as no size.
+      const size = normalizeSize(next.type, next.variant, next.size)
+      if (size) next.size = size
+      else delete next.size
       next.rotation = normalizeDegrees(next.rotation)
       // Re-check the walls: rotating or picking a bigger size can push it outside;
       // a piece hung on a wall stays on the nearest wall.
