@@ -28,6 +28,30 @@ export type FurnitureType =
   | 'bathtub'
   | 'vanity'
   | 'towelRail'
+  // Phase 10: more seating, tables and storage (several rooms each)
+  | 'cornerSofa'
+  | 'ottoman'
+  | 'sideTable'
+  | 'desk'
+  | 'deskChair'
+  | 'bench'
+  | 'bookshelf'
+  | 'chestOfDrawers'
+  | 'bathroomCabinet'
+
+/** Groups for the catalog ("Add furniture"), in the order they're shown. */
+export type FurnitureCategory = 'seating' | 'tables' | 'beds' | 'storage' | 'lighting' | 'decor' | 'kitchen' | 'bathroom'
+
+export const CATEGORIES: { id: FurnitureCategory; label: string }[] = [
+  { id: 'seating', label: 'Seating' },
+  { id: 'tables', label: 'Tables & desks' },
+  { id: 'beds', label: 'Beds' },
+  { id: 'storage', label: 'Storage' },
+  { id: 'lighting', label: 'Lighting' },
+  { id: 'decor', label: 'Plants & decor' },
+  { id: 'kitchen', label: 'Kitchen' },
+  { id: 'bathroom', label: 'Bathroom' },
+]
 
 /** One piece of furniture in the room. This plain data is what undo/redo and saving store. */
 export interface FurnitureItem {
@@ -56,6 +80,8 @@ export interface VariantInfo {
 
 interface FurnitureInfo {
   label: string
+  /** Where it's listed in the catalog. */
+  category: FurnitureCategory
   /**
    * The rooms this piece belongs in. Saved or imported furniture in any other room
    * is skipped, so rooms never mix (a bed can't end up in the kitchen).
@@ -139,6 +165,7 @@ const BATH_SWATCHES: Swatch[] = [
 export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   sofa: {
     label: 'Sofa',
+    category: 'seating',
     rooms: ['living'],
     variantLabel: 'Size',
     variants: [
@@ -151,6 +178,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   armchair: {
     label: 'Armchair',
+    category: 'seating',
     rooms: ['living'],
     variantLabel: 'Style',
     variants: [
@@ -162,17 +190,20 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   coffeeTable: {
     label: 'Coffee table',
+    category: 'tables',
     rooms: ['living'],
     variantLabel: 'Shape',
     variants: [
       { id: 'rectangle', label: 'Rectangle', detail: '120 × 60 cm', footprint: [1.2, 0.6] },
       { id: 'round', label: 'Round', detail: 'Ø 90 cm', footprint: [0.9, 0.9], round: true },
+      { id: 'square', label: 'Square, carved top', detail: '100 × 100 cm, wood on black', footprint: [1.0, 1.0] },
     ],
     colorLabel: 'Wood',
     swatches: WOOD_SWATCHES,
   },
   tvUnit: {
     label: 'TV & media unit',
+    category: 'storage',
     rooms: ['living'],
     variantLabel: 'Screen',
     variants: [
@@ -191,6 +222,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   plant: {
     label: 'Indoor plant',
+    category: 'decor',
     rooms: ['living', 'bedroom', 'dining', 'kitchen', 'bathroom'],
     variantLabel: 'Size',
     variants: [
@@ -209,6 +241,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   floorLamp: {
     label: 'Floor lamp',
+    category: 'lighting',
     rooms: ['living', 'bedroom', 'dining'],
     variantLabel: 'Shade',
     variants: [
@@ -227,18 +260,22 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   bed: {
     label: 'Bed',
+    category: 'beds',
     rooms: ['bedroom'],
     variantLabel: 'Size',
     variants: [
       // Footprint = frame + headboard around a 180 × 200 (or 160 × 200) mattress
       { id: 'king', label: 'King', detail: '180 × 200 cm', footprint: [1.9, 2.17] },
       { id: 'queen', label: 'Queen', detail: '160 × 200 cm', footprint: [1.7, 2.17] },
+      { id: 'double', label: 'Double', detail: '140 × 200 cm', footprint: [1.5, 2.17] },
+      { id: 'single', label: 'Single', detail: '90 × 200 cm', footprint: [1.0, 2.17] },
     ],
     colorLabel: 'Upholstery',
     swatches: CREAM_SWATCHES,
   },
   bedsideTable: {
     label: 'Bedside table',
+    category: 'tables',
     rooms: ['bedroom'],
     variantLabel: 'Style',
     variants: [
@@ -250,6 +287,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   wardrobe: {
     label: 'Sliding wardrobe',
+    category: 'storage',
     rooms: ['bedroom'],
     variantLabel: 'Size',
     variants: [
@@ -261,6 +299,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   dressingTable: {
     label: 'Dressing table',
+    category: 'tables',
     rooms: ['bedroom'],
     variantLabel: 'Mirror',
     variants: [
@@ -273,6 +312,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   accentChair: {
     label: 'Accent chair',
+    category: 'seating',
     rooms: ['bedroom', 'living'],
     variantLabel: 'Style',
     variants: [
@@ -285,28 +325,33 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   diningTable: {
     label: 'Dining table',
+    category: 'tables',
     rooms: ['dining', 'kitchen'],
     variantLabel: 'Shape',
     variants: [
       { id: 'rectangle', label: 'Rectangle', detail: '180 × 90 cm, seats 6', footprint: [1.8, 0.9] },
       { id: 'round', label: 'Round', detail: 'Ø 120 cm, seats 4', footprint: [1.2, 1.2], round: true },
+      { id: 'long', label: 'Long', detail: '220 × 95 cm, seats 8', footprint: [2.2, 0.95] },
     ],
     colorLabel: 'Wood',
     swatches: WOOD_SWATCHES,
   },
   diningChair: {
     label: 'Dining chair',
+    category: 'seating',
     rooms: ['dining', 'kitchen'],
     variantLabel: 'Style',
     variants: [
       { id: 'upholstered', label: 'Upholstered', detail: '46 cm', footprint: [0.46, 0.52] },
       { id: 'spindle', label: 'Spindle back', detail: '46 cm', footprint: [0.46, 0.5] },
+      { id: 'leather', label: 'Leather', detail: '45 cm, brown leather', footprint: [0.45, 0.58] },
     ],
     colorLabel: 'Seat',
     swatches: FABRIC_SWATCHES,
   },
   sideboard: {
     label: 'Sideboard',
+    category: 'storage',
     rooms: ['dining', 'living'],
     variantLabel: 'Size',
     variants: [
@@ -318,6 +363,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   kitchenIsland: {
     label: 'Kitchen island',
+    category: 'kitchen',
     rooms: ['kitchen'],
     variantLabel: 'Size',
     variants: [
@@ -329,6 +375,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   barStool: {
     label: 'Bar stool',
+    category: 'seating',
     rooms: ['kitchen'],
     variantLabel: 'Style',
     variants: [
@@ -340,6 +387,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   fridge: {
     label: 'Fridge',
+    category: 'kitchen',
     rooms: ['kitchen'],
     variantLabel: 'Size',
     variants: [
@@ -351,6 +399,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   bathtub: {
     label: 'Bath or shower',
+    category: 'bathroom',
     rooms: ['bathroom'],
     variantLabel: 'Type',
     variants: [
@@ -362,6 +411,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   vanity: {
     label: 'Vanity unit',
+    category: 'bathroom',
     rooms: ['bathroom'],
     variantLabel: 'Basins',
     variants: [
@@ -373,6 +423,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
   },
   towelRail: {
     label: 'Towel rail',
+    category: 'bathroom',
     rooms: ['bathroom'],
     variantLabel: 'Style',
     variants: [
@@ -381,6 +432,115 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     ],
     colorLabel: 'Towel',
     swatches: FABRIC_SWATCHES,
+  },
+  // ---------- Phase 10 ----------
+  cornerSofa: {
+    label: 'Corner sofa',
+    category: 'seating',
+    rooms: ['living'],
+    variantLabel: 'Chaise side',
+    variants: [
+      { id: 'left', label: 'Chaise on the left', detail: '260 × 170 cm', footprint: [2.6, 1.7] },
+      { id: 'right', label: 'Chaise on the right', detail: '260 × 170 cm', footprint: [2.6, 1.7] },
+    ],
+    colorLabel: 'Fabric',
+    swatches: FABRIC_SWATCHES,
+  },
+  ottoman: {
+    label: 'Ottoman',
+    category: 'seating',
+    rooms: ['living', 'bedroom'],
+    variantLabel: 'Style',
+    variants: [
+      { id: 'pouf', label: 'Round pouf', detail: 'Ø 55 cm', footprint: [0.55, 0.55], round: true },
+      { id: 'leather', label: 'Leather footstool', detail: '88 × 62 cm', footprint: [0.88, 0.62] },
+    ],
+    colorLabel: 'Fabric',
+    swatches: FABRIC_SWATCHES,
+  },
+  sideTable: {
+    label: 'Side table',
+    category: 'tables',
+    rooms: ['living', 'bedroom'],
+    variantLabel: 'Style',
+    variants: [
+      { id: 'round', label: 'Round', detail: 'Ø 45 cm', footprint: [0.45, 0.45], round: true },
+      { id: 'wood', label: 'Wooden cube', detail: '55 × 45 cm', footprint: [0.55, 0.45] },
+    ],
+    colorLabel: 'Top',
+    swatches: WOOD_SWATCHES,
+  },
+  desk: {
+    label: 'Desk',
+    category: 'tables',
+    rooms: ['bedroom', 'living'],
+    variantLabel: 'Size',
+    variants: [
+      { id: '120', label: 'Writing desk', detail: '120 × 60 cm', footprint: [1.2, 0.6] },
+      { id: '100', label: 'Compact', detail: '100 × 50 cm', footprint: [1.0, 0.5] },
+    ],
+    colorLabel: 'Wood',
+    swatches: OAK_SWATCHES,
+  },
+  deskChair: {
+    label: 'Desk chair',
+    category: 'seating',
+    rooms: ['bedroom', 'living'],
+    variantLabel: 'Style',
+    variants: [
+      { id: 'task', label: 'Swivel', detail: '62 cm, on castors', footprint: [0.62, 0.62], round: true },
+      { id: 'side', label: 'Upholstered', detail: '50 cm', footprint: [0.5, 0.54] },
+    ],
+    colorLabel: 'Seat',
+    swatches: FABRIC_SWATCHES,
+  },
+  bench: {
+    label: 'Bench',
+    category: 'seating',
+    rooms: ['bedroom', 'dining', 'kitchen', 'living'],
+    variantLabel: 'Style',
+    variants: [
+      { id: 'upholstered', label: 'Upholstered', detail: '120 × 40 cm', footprint: [1.2, 0.4] },
+      { id: 'wood', label: 'Wooden', detail: '140 × 35 cm', footprint: [1.4, 0.35] },
+    ],
+    colorLabel: 'Seat',
+    swatches: CREAM_SWATCHES,
+  },
+  bookshelf: {
+    label: 'Bookshelf',
+    category: 'storage',
+    rooms: ['living', 'bedroom', 'dining', 'kitchen'],
+    variantLabel: 'Size',
+    variants: [
+      { id: 'open', label: 'Open shelves', detail: '90 × 35 cm, 180 tall', footprint: [0.9, 0.35] },
+      { id: 'wide', label: 'Wall shelving', detail: '200 × 45 cm, steel and wood', footprint: [2.0, 0.45] },
+    ],
+    colorLabel: 'Wood',
+    swatches: WOOD_SWATCHES,
+  },
+  chestOfDrawers: {
+    label: 'Chest of drawers',
+    category: 'storage',
+    rooms: ['bedroom', 'living'],
+    variantLabel: 'Style',
+    variants: [
+      { id: 'low', label: 'Low, 3 drawers', detail: '90 × 45 cm', footprint: [0.9, 0.45] },
+      { id: 'tall', label: 'Tall, steel frame', detail: '114 × 49 cm, drawers and shelves', footprint: [1.14, 0.49] },
+    ],
+    colorLabel: 'Wood',
+    swatches: OAK_SWATCHES,
+  },
+  bathroomCabinet: {
+    label: 'Bathroom cabinet',
+    category: 'bathroom',
+    rooms: ['bathroom'],
+    variantLabel: 'Size',
+    variants: [
+      { id: 'tall', label: 'Tall', detail: '40 × 32 cm, 170 tall', footprint: [0.4, 0.32] },
+      { id: 'low', label: 'Low', detail: '60 × 32 cm, 85 tall', footprint: [0.6, 0.32] },
+    ],
+    colorLabel: 'Cabinet',
+    swatches: BATH_SWATCHES,
   },
 }
 

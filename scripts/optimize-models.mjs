@@ -40,6 +40,13 @@ const MODELS = [
   { id: 'modern_wooden_cabinet', out: 'sideboard', ratio: 0.5, tint: ['modern_wooden_cabinet'] },
   { id: 'modern_arm_chair_01', out: 'armchair-lounge', ratio: 0.6, tint: ['modern_arm_chair_01_pillow'] },
   { id: 'mid_century_lounge_chair', out: 'accent-chair-lounge', ratio: 0.7, tint: [] },
+  // Phase 10
+  { id: 'dining_chair_02', out: 'dining-chair-leather', ratio: 0.35, tint: [] },
+  { id: 'side_table_01', out: 'side-table', ratio: 1, tint: [] },
+  { id: 'modern_coffee_table_02', out: 'coffee-table-square', ratio: 0.6, tint: [] },
+  { id: 'drawer_cabinet', out: 'chest-tall', ratio: 0.4, tint: [] },
+  { id: 'steel_frame_shelves_03', out: 'shelving-wide', ratio: 0.7, tint: [] },
+  { id: 'Ottoman_01', out: 'ottoman', ratio: 0.8, tint: [] },
 ]
 
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({

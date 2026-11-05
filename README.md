@@ -2,7 +2,7 @@
 
 An interactive 3D **room configurator** that runs in the browser. Arrange furniture, pick sizes and styles, recolour pieces, change wall paint and floor material, then save and restore your designs.
 
-Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms, textures and most furniture are generated in code. Seven pieces use real 3D models (CC0, from [Poly Haven](https://polyhaven.com)), optimised to 1.5 MB in total; see **3D models** below.
+Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms, textures and most furniture are generated in code. Thirteen furniture options use real 3D models (CC0, from [Poly Haven](https://polyhaven.com)), optimised to 2.5 MB in total; see **3D models** below.
 
 ## Features
 
@@ -15,7 +15,16 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms,
 
   Pick a room in the **room bar** at the bottom of the 3D view, or press `1`–`5`. The view fades briefly and shows that room. Only the selected room is drawn, which keeps the app fast. Each room keeps its own furniture, finishes, lighting and undo history. Pieces only go in rooms where they belong: a bed only in the Bedroom, a sofa only in the Living Room, while a plant or a chair can move around (see **Move to another room** below).
 
-- **Add furniture:** **+ Add** in the Objects list opens a catalog of every piece that belongs in the room, each with a small 3D picture (drawn in your browser the first time the catalog opens). Click one and it's placed at a free spot and selected, ready to drag into place.
+- **Add furniture:** **+ Add** in the Objects list opens a catalog of every piece that belongs in the room, grouped by category (Seating, Tables & desks, Beds, Storage, Lighting, Plants & decor, Kitchen, Bathroom) with chips to show one category. Each piece has a small 3D picture (drawn in your browser the first time the catalog opens). Click one and it's placed at a free spot and selected, ready to drag into place. If the default option has no room, the first option that fits is used instead (for example a round dining table in a busy kitchen), and the message says so.
+- **29 kinds of furniture** (Phase 10 added nine and several new options):
+  - Seating: sofa, **corner sofa** (chaise left or right), armchair, accent chair, **ottoman** (round pouf or leather footstool), dining chair (now also **leather**), bar stool, **desk chair** (swivel or upholstered), **bench** (upholstered or wooden)
+  - Tables & desks: coffee table (now also **square, carved top**), **side table** (round or wooden cube), **desk** (120 or 100 cm), dining table (now also **long, 220 cm for eight**), bedside table, dressing table
+  - Beds: king, queen, **double** and **single**
+  - Storage: TV unit, wardrobe, sideboard, **bookshelf** (open shelves or 200 cm wall shelving), **chest of drawers** (low, or tall steel frame)
+  - Bathroom: bath or shower, vanity, towel rail, **bathroom cabinet** (tall or low)
+
+  Pieces that suit several rooms can go in each of them (a bench in the Bedroom, Dining Room, Kitchen or Living Room); a bed or bath still only goes in its own room.
+
 - **Delete, duplicate and move between rooms:** the **Actions** card in the right panel (or `Delete` / `Backspace` and `Ctrl+D`). A copy is put at a free spot next to the original. **Move to another room** lists the other rooms where the piece belongs; it's removed here and added there (one undo step in each room).
 - **Snap to walls:** dragging a piece close to a wall (within 12 cm) puts it flush against it, or into the corner. Hold `Alt` while dragging to place it freely.
 - **Measurements:** the selected piece shows its size (W × D) and dashed lines with the distance in cm to the nearest side wall and the nearest back or front wall.
@@ -150,23 +159,31 @@ Bigger windows and sharper screens cost more (the work grows with the number of 
 
 ## 3D models
 
-Seven furniture options use real models. Everything else is still built in code, and the code-built version shows while a model downloads (or if one ever fails to load).
+Thirteen furniture options use real models (six were added in Phase 10). Everything else is still built in code, and the code-built version shows while a model downloads (or if one ever fails to load).
 
-| In the app                                    | Model (CC0, Poly Haven)                    | File                                | Colour swatch |
-| --------------------------------------------- | ------------------------------------------ | ----------------------------------- | ------------- |
-| Indoor plant, large                           | Potted Plant 01 (Rico Cilliers)            | `plant-large.glb`, 468 KB           | pot           |
-| Indoor plant, small                           | Potted Plant 02 (Rico Cilliers)            | `plant-small.glb`, 332 KB           | pot           |
-| Coffee table, rectangle                       | Modern Coffee Table 01 (Amin)              | `coffee-table-rectangle.glb`, 92 KB | own finish    |
-| Coffee table, round                           | Coffee Table Round 01 (Ulan Cabanilla)     | `coffee-table-round.glb`, 102 KB    | own finish    |
-| Sideboard, 160 / 200 cm                       | Modern Wooden Cabinet (Patrik Pangerl)     | `sideboard.glb`, 303 KB             | wood          |
-| Armchair, lounge                              | Modern Arm Chair 01 (Vibrant Nordic)       | `armchair-lounge.glb`, 150 KB       | cushions      |
-| Accent chair, mid-century lounge (new option) | Mid Century Lounge Chair (Kuutti Siitonen) | `accent-chair-lounge.glb`, 128 KB   | own finish    |
+| In the app                                                                     | Model (CC0, Poly Haven)                    | File                                | Colour swatch |
+| ------------------------------------------------------------------------------ | ------------------------------------------ | ----------------------------------- | ------------- |
+| Indoor plant, large                                                            | Potted Plant 01 (Rico Cilliers)            | `plant-large.glb`, 468 KB           | pot           |
+| Indoor plant, small                                                            | Potted Plant 02 (Rico Cilliers)            | `plant-small.glb`, 332 KB           | pot           |
+| Coffee table, rectangle                                                        | Modern Coffee Table 01 (Amin)              | `coffee-table-rectangle.glb`, 92 KB | own finish    |
+| Coffee table, round                                                            | Coffee Table Round 01 (Ulan Cabanilla)     | `coffee-table-round.glb`, 102 KB    | own finish    |
+| Sideboard, 160 / 200 cm                                                        | Modern Wooden Cabinet (Patrik Pangerl)     | `sideboard.glb`, 303 KB             | wood          |
+| Armchair, lounge                                                               | Modern Arm Chair 01 (Vibrant Nordic)       | `armchair-lounge.glb`, 150 KB       | cushions      |
+| Accent chair, mid-century lounge (new option)                                  | Mid Century Lounge Chair (Kuutti Siitonen) | `accent-chair-lounge.glb`, 128 KB   | own finish    |
+| Dining chair, leather (Phase 10)                                               | Dining Chair 02 (James Ray Cock)           | `dining-chair-leather.glb`, 133 KB  | own finish    |
+| Side table, wooden cube (Phase 10)                                             | Side Table 01 (James Ray Cock)             | `side-table.glb`, 95 KB             | own finish    |
+| Coffee table, square carved top (Phase 10)                                     | Modern Coffee Table 02 (Amin)              | `coffee-table-square.glb`, 341 KB   | own finish    |
+| Chest of drawers, tall steel frame (Phase 10)                                  | Drawer Cabinet (Ulan Cabanilla)            | `chest-tall.glb`, 174 KB            | own finish    |
+| Bookshelf, wall shelving (Phase 10; real size 235 × 72 cm, fitted to 200 × 45) | Steel Frame Shelves 03 (Ulan Cabanilla)    | `shelving-wide.glb`, 183 KB         | own finish    |
+| Ottoman, leather footstool (Phase 10)                                          | Ottoman 01 (Caspian Fortune)               | `ottoman.glb`, 108 KB               | own finish    |
 
 CC0 means free for any use with no credit required; the authors are listed anyway.
 
 **How the files are made:** the originals (1K-texture glTF, 19.5 MB) live in `assets-src/models/`, which isn't committed. `npm run models` (`scripts/optimize-models.mjs`) removes duplicate data, simplifies heavy meshes (the plants went from 176k and 70k triangles to 21k and 17k), resizes textures to 512 px WebP, compresses the geometry with meshopt, and writes `public/models/*.glb`. For colourable materials it also makes the texture a light greyscale, so the swatch colour shows through with the grain intact. Models whose single texture covers several materials (for example a stone top and a wooden frame) keep their own finish, and the panel says so instead of showing swatches.
 
 **Adding a model:** put the original in `assets-src/models/<id>/`, add it to `MODELS` in `scripts/optimize-models.mjs`, run `npm run models`, then map it to a furniture option in `src/scene/furniture/models.ts`. The app sizes it to the option's footprint automatically.
+
+The Phase 10 models each have one texture for every part (the leather and the wooden or metal frame), so they keep their own finish; recolouring them would paint the legs too.
 
 **Why the rest is still code-built:** Poly Haven has no modern sofa, bed, wardrobe, TV unit, kitchen or bathroom pieces; its versions are antique or ornate and would clash with the rooms. The 100 MB Cinema 4D scene in `../Model_Furn` wasn't used: it bundles a chair and sofa with rocks and a tree, and its Megascans-style assets may not be licensed for publishing on a website.
 
@@ -312,6 +329,9 @@ src/
       DiningTable.tsx, DiningChair.tsx, Sideboard.tsx   Dining Room models
       KitchenIsland.tsx, BarStool.tsx, Fridge.tsx       Kitchen models
       Bathtub.tsx, Vanity.tsx, TowelRail.tsx            Bathroom models
+      CornerSofa.tsx, Seating.tsx (ottoman, desk chair, bench),
+      TablesAndStorage.tsx (side table, desk, bookshelf, chest of drawers,
+      bathroom cabinet)                                 Phase 10 models
 ```
 
 Tests sit next to the code they check, as `*.test.ts` files. They cover undo/redo, reading saves and imported files, browser storage, the furniture maths (staying inside the walls, overlaps, default layouts, free spots, wall snapping) and share links.
@@ -332,6 +352,8 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 ## Known limitations
 
 - Overlapping furniture is flagged but not blocked. You decide where things go.
+- The corner sofa's footprint is the whole rectangle around its L, so a piece in the empty corner in front of the seats counts as overlapping it.
+- Choosing a bigger option for a piece after placing it can make it overlap its neighbours (it's then flagged, as before); adding from the catalog avoids this by picking an option that fits.
 - The window and door are fixed parts of the walls.
 - Moving a piece to another room is two undo steps, one in each room (each room has its own history).
 - Catalog pictures are drawn again on each visit (they aren't stored), which takes a second or two the first time the catalog opens.
@@ -347,7 +369,7 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 - The sun model is a simple textbook one for a mid-latitude summer day (sunrise about 4:35, sunset about 19:25). It isn't tied to a real date or place.
 - Post-processing adds about 160 KB (gzipped) to the download. It's in its own `effects` file, so the browser caches it separately.
 - The smooth camera (camera-controls) adds about 13 KB (gzipped). Since Phase 6 the build puts React in the same file as React Three Fiber.
-- The model loader adds about 21 KB (gzipped) to that file. The models themselves (1.5 MB) download in the background about a second after the app starts.
+- The model loader adds about 21 KB (gzipped) to that file. The models themselves (2.5 MB) download in the background about a second after the app starts.
 - In the Dining Room's eye-level view the pendant light hangs right in your line of sight; the Corner view is clearer.
 - The first frames after switching rooms can cost more (the readout may briefly show a higher number); steady frames are in the table above.
 
