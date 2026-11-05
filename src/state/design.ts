@@ -1,5 +1,6 @@
 import { placeInRoom, FURNITURE_INFO, getVariant, isAllowedIn, type FurnitureItem, type FurnitureType } from '../scene/furniture/catalog'
 import { normalizeSize } from '../scene/furniture/sizes'
+import { settleOnSurfaces } from '../scene/furniture/surfaces'
 import { normalizeDegrees } from '../utils/math'
 import { DEFAULT_LIGHTING, normalizeLighting, type RoomLighting } from '../scene/sun'
 import {
@@ -66,7 +67,7 @@ function parseWallFinishes(raw: unknown): Partial<Record<WallName, WallFinish>> 
 
 function parseItem(raw: unknown, room: RoomId, bounds: { width: number; depth: number }): FurnitureItem | null {
   if (!isRecord(raw)) return null
-  const { id, type, variant, position, rotation, color, frame, size } = raw
+  const { id, type, variant, position, rotation, color, frame, size, on } = raw
   if (typeof id !== 'string' || typeof type !== 'string' || !(type in FURNITURE_INFO)) return null
   if (!Array.isArray(position) || position.length !== 2 || !position.every((n) => typeof n === 'number' && Number.isFinite(n))) return null
   if (typeof rotation !== 'number' || !Number.isFinite(rotation)) return null
@@ -90,6 +91,8 @@ function parseItem(raw: unknown, room: RoomId, bounds: { width: number; depth: n
   // A custom size (Phase 15) is kept within its limits; a broken one is dropped (standard size).
   const custom = Array.isArray(size) ? normalizeSize(furnitureType, item.variant, size) : undefined
   if (custom) item.size = custom
+  // What it stands on is checked once all pieces are read (settleOnSurfaces in parseDesign).
+  if (typeof on === 'string' && on !== id) item.on = on
   Object.assign(item, placeInRoom(item, bounds))
   return item
 }
@@ -112,6 +115,8 @@ export function parseDesign(raw: unknown, room: RoomId = 'living'): RoomDesign |
     // Skip broken entries and duplicate ids instead of failing the whole file.
     if (item && !items.some((existing) => existing.id === item.id)) items.push(item)
   }
+  // A piece on a desk that isn't in the file (or isn't a desk) is back on the floor.
+  const settled = settleOnSurfaces(items)
 
   const finishes: RoomFinishes = { ...ROOMS[room].defaultFinishes }
   if (isRecord(raw.finishes)) {
@@ -131,7 +136,7 @@ export function parseDesign(raw: unknown, room: RoomId = 'living'): RoomDesign |
     if (typeof orientation === 'number' && Number.isFinite(orientation)) lighting.orientation = orientation
   }
 
-  return { finishes, items, lighting: normalizeLighting(lighting), ...(layout ? { layout } : {}) }
+  return { finishes, items: settled, lighting: normalizeLighting(lighting), ...(layout ? { layout } : {}) }
 }
 
 /**

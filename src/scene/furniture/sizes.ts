@@ -46,6 +46,11 @@ const TYPE_LIMITS: Partial<Record<FurnitureType, Partial<SizeLimits>>> = {
   // Up to 125 cm high, so a sit-stand desk can be shown standing.
   officeDesk: { width: [0.8, 2.4], depth: [0.5, 1.0], height: [0.6, 1.25] },
   officeChair: { width: [0.5, 0.8], depth: [0.5, 0.8], height: [0.85, 1.35] },
+  monitor: { width: [0.4, 1.4], depth: [0.15, 0.35], height: [0.3, 0.7] },
+  laptop: { width: [0.25, 0.45], depth: [0.18, 0.35], height: [0.15, 0.4] },
+  deskLamp: { width: [0.12, 0.3], depth: [0.12, 0.3], height: [0.25, 0.7] },
+  wallClock: { width: [0.2, 0.8], depth: [0.03, 0.1], height: [0.2, 0.8] },
+  filingCabinet: { width: [0.35, 0.9], depth: [0.45, 0.75], height: [0.5, 1.4] },
 }
 
 const cm = (metres: number) => Math.round(metres * 100) / 100

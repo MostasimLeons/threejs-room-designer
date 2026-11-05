@@ -237,6 +237,48 @@ export const PRODUCTS: Record<FurnitureType, ProductInfo> = {
     height: { ergonomic: 120, task: 95 },
     price: { ergonomic: 459, task: 229 },
   },
+  monitor: {
+    description: 'Computer monitor on a height-adjustable stand, for a desk or table.',
+    materials: 'Matte screen, aluminium stand',
+    height: { '24': 42, '27': 46, ultrawide: 46, dual: 42 },
+    price: { '24': 189, '27': 329, ultrawide: 549, dual: 378 },
+  },
+  laptop: {
+    description: 'Laptop, open on the desk or raised on a stand.',
+    materials: 'Aluminium case',
+    height: { open: 22, stand: 32 },
+    price: { open: 999, stand: 1049 },
+  },
+  keyboardMouse: {
+    description: 'Wireless keyboard and mouse.',
+    materials: 'Plastic and aluminium',
+    height: 3,
+    price: { full: 79, compact: 59 },
+  },
+  deskLamp: {
+    description: 'LED desk lamp that lights your work from the evening on.',
+    materials: 'Powder-coated steel, LED',
+    height: { arm: 45, dome: 38 },
+    price: { arm: 69, dome: 59 },
+  },
+  deskAccessories: {
+    description: 'Small things for the desk: a pen pot, notepad and phone, or a little plant.',
+    materials: 'Wood, ceramic and paper',
+    height: { organiser: 14, plant: 22 },
+    price: { organiser: 39, plant: 25 },
+  },
+  wallClock: {
+    description: 'Round wall clock with a silent movement.',
+    materials: 'Metal or wooden frame, glass front',
+    height: { '30': 30, '40': 40 },
+    price: { '30': 45, '40': 65 },
+  },
+  filingCabinet: {
+    description: 'Lockable filing cabinet for A4 hanging files.',
+    materials: 'Powder-coated steel',
+    height: { '2': 72, '3': 102 },
+    price: { '2': 219, '3': 289 },
+  },
 }
 
 /** Height of one option in cm. */
