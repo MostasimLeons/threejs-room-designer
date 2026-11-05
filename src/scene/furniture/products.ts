@@ -225,6 +225,18 @@ export const PRODUCTS: Record<FurnitureType, ProductInfo> = {
     height: { mid: 46, mini: 34 },
     price: { mid: 1199, mini: 899 },
   },
+  officeDesk: {
+    description: 'Work desk with a cable tray under the top. The sit-stand desk rises on two electric columns.',
+    materials: 'Wood-veneer top, powder-coated steel frame',
+    height: 75,
+    price: { straight: 549, compact: 399, standing: 799 },
+  },
+  officeChair: {
+    description: 'Swivel office chair with a breathable mesh back, adjustable armrests and castors.',
+    materials: 'Mesh back, fabric seat, nylon or aluminium base',
+    height: { ergonomic: 120, task: 95 },
+    price: { ergonomic: 459, task: 229 },
+  },
 }
 
 /** Height of one option in cm. */

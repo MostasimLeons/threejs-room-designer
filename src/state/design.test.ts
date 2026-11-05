@@ -106,7 +106,7 @@ describe('parseDesign', () => {
 })
 
 describe('parseHouseDesign', () => {
-  it('reads the current whole-house format (all five rooms)', () => {
+  it('reads the current whole-house format (all six rooms)', () => {
     expect(parseHouseDesign({ rooms: DEFAULT_HOUSE })).toEqual(DEFAULT_HOUSE)
     expect(Object.keys(DEFAULT_HOUSE).toSorted()).toEqual(ROOM_IDS.toSorted())
   })

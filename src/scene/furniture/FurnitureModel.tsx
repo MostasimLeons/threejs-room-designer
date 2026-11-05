@@ -29,6 +29,7 @@ import { CornerSofa } from './CornerSofa'
 import { WallArt, WallMirror, WallShelf } from './WallDecor'
 import { Bench, DeskChair, Ottoman } from './Seating'
 import { DrawerUnit, PcTower } from './UnderDesk'
+import { OfficeChair, OfficeDesk } from './Office'
 import { BathroomCabinet, Bookshelf, ChestOfDrawers, Desk, SideTable } from './TablesAndStorage'
 
 interface ModelChoice {
@@ -66,6 +67,7 @@ const BUILT_TO_SIZE: Partial<Record<FurnitureType, 'wd' | 'w'>> = {
   wallMirror: 'wd',
   wallShelf: 'wd',
   wardrobe: 'wd',
+  officeDesk: 'wd',
 }
 
 /** Options whose shape is fixed in the code (they don't read their footprint), so they're scaled. */
@@ -178,5 +180,9 @@ function CodeModel({ type, variant, color, frame }: ModelChoice) {
       return <DrawerUnit color={color} variant={variant} frame={frame} />
     case 'pcTower':
       return <PcTower color={color} variant={variant} frame={frame} />
+    case 'officeDesk':
+      return <OfficeDesk color={color} variant={variant} frame={frame} />
+    case 'officeChair':
+      return <OfficeChair color={color} variant={variant} frame={frame} />
   }
 }

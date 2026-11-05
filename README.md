@@ -6,23 +6,24 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms,
 
 ## Features
 
-- **Five rooms, each its own 3D scene:**
+- **Six rooms, each its own 3D scene:**
   - **Living Room** (7 × 6 m): sofa, armchair, coffee table, TV unit, plant, floor lamp.
   - **Bedroom** (5 × 4 m, modern luxury): king bed with upholstered headboard, two bedside tables with lamps, sliding wardrobe, dressing table with mirror, accent chair, two plants, curtained window, oak slat accent wall and cream carpet.
   - **Dining Room** (4.5 × 4 m): rectangular or round dining table, six dining chairs (upholstered or spindle back), sideboard, plant, and a black pendant light over the table.
   - **Kitchen** (4 × 3.5 m): built-in units along the back wall (stone worktop, sink under the window, hob and extractor, splashback, wall units with an under-cabinet light), plus a movable island, three bar stools and a fridge (fridge-freezer or American style).
   - **Bathroom** (3 × 2.5 m): freestanding bath or walk-in shower, wall-hung vanity with basin(s) and mirror, towel rail, built-in toilet, tiled walls and a terrazzo floor.
+  - **Office** (4.5 × 4 m): a work desk under a wide window with an ergonomic office chair tucked in, a PC tower and a drawer unit under the desk, a bookshelf, a plant, a floor lamp and a framed print. Sage walls, oak floor.
 
-  Pick a room in the **room bar** at the bottom of the 3D view, or press `1`–`5`. The view fades briefly and shows that room. Only the selected room is drawn, which keeps the app fast. Each room keeps its own furniture, finishes, lighting and undo history. Pieces only go in rooms where they belong: a bed only in the Bedroom, a sofa only in the Living Room, while a plant or a chair can move around (see **Move to another room** below).
+  Pick a room in the **room bar** at the bottom of the 3D view, or press `1`–`6`. The view fades briefly and shows that room. Only the selected room is drawn, which keeps the app fast. Each room keeps its own furniture, finishes, lighting and undo history. Pieces only go in rooms where they belong: a bed only in the Bedroom, a sofa only in the Living Room, while a plant or a chair can move around (see **Move to another room** below).
 
 - **Add furniture:** **+ Add** in the Objects list opens a catalog of every piece that belongs in the room, grouped by category (Seating, Tables & desks, Beds, Storage, Office, Lighting, Plants & decor, Kitchen, Bathroom) with chips to show one category. Each piece has a small 3D picture (drawn in your browser the first time the catalog opens). Click one and it's placed at a free spot and selected, ready to drag into place. If the default option has no room, the first option that fits is used instead (for example a round dining table in a busy kitchen), and the message says so.
-- **34 kinds of furniture** (Phase 10 added nine and several new options; Phase 11 added three that hang on a wall; Phase 15 added two that go under a desk):
+- **36 kinds of furniture** (Phase 10 added nine and several new options; Phase 11 added three that hang on a wall; Phase 15 added two that go under a desk; Phase 16 added two for the Office):
   - Seating: sofa, **corner sofa** (chaise left or right), armchair, accent chair, **ottoman** (round pouf or leather footstool), dining chair (now also **leather**), bar stool, **desk chair** (swivel or upholstered), **bench** (upholstered or wooden)
   - Tables & desks: coffee table (now also **square, carved top**), **side table** (round or wooden cube), **desk** (120 or 100 cm), dining table (now also **long, 220 cm for eight**), bedside table, dressing table
   - Beds: king, queen, **double** and **single**
   - Storage: TV unit, wardrobe, sideboard, **bookshelf** (open shelves or 200 cm wall shelving), **chest of drawers** (low, or tall steel frame)
   - Bathroom: bath or shower, vanity, towel rail, **bathroom cabinet** (tall or low)
-  - Office: **drawer unit** (on castors, 58 cm tall, or desk height with a file drawer) and **PC tower** (mid tower or small form factor), in the Bedroom and Living Room
+  - Office: **office desk** (straight 160 × 80, compact 120 × 70, or a sit-stand desk you can raise to 125 cm with the Size card), **office chair** (ergonomic with headrest, or task chair), **drawer unit** (on castors, 58 cm tall, or desk height with a file drawer) and **PC tower** (mid tower or small form factor). In the Office, Bedroom and Living Room. The Office also takes the desk and desk chair, bookshelf, plants, floor lamps, side tables, accent chairs, wall art, wall shelves and mirrors.
   - On the wall: **wall art** (portrait, landscape or a set of three prints), **mirror** (round or tall), **wall shelf** (floating, or two shelves on brackets)
 
   Pieces that suit several rooms can go in each of them (a bench in the Bedroom, Dining Room, Kitchen or Living Room); a bed or bath still only goes in its own room.
@@ -45,7 +46,7 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms,
 - **Rotate** with the 45° buttons, the slider, or `R` / `Shift+R`.
 - **Overlap warnings:** pieces that overlap each other, or a built-in unit such as the kitchen units or the toilet, get a red outline, a ⚠ in the Objects list, and a message in the panel (for example "Overlaps kitchen units").
 - **Tucking under desks and tables** (every room): desks and dining tables have knee space (up to 12 cm below their top). A chair may be pushed in as far as its seat goes, with its back left outside (a swivel chair as far as its armrests). A drawer unit, PC tower, pouf, bench or bar stool may go fully under if it's lower than the knee space. These don't count as overlaps. A chair turned the wrong way, a piece too tall for the space, or two pieces in the same spot under one desk still get the warning.
-- **Custom sizes:** every piece has a **Size** card with its width, depth and height (a diameter for round pieces), dragged or typed in any unit like the room sizes. Each option has limits: about half to twice its standard size, and real-life limits for desks (60–240 cm wide, 60–90 cm high), dining tables, chairs, drawer units and PCs. **Back to the standard size** undoes it; picking another option starts from that option's size. A custom size is used everywhere: keeping it inside the walls and snapping, overlaps and tucking under, the outline and measurements, the product card ("custom size") and the shopping list (its own line). Desks, tables, beds, storage and wall pieces are rebuilt at the new width and depth, so legs and handles keep their thickness; other pieces (and real 3D models) are stretched, which shows at extreme sizes. Saved in every format (now version 6; older files load at standard sizes).
+- **Custom sizes:** every piece has a **Size** card with its width, depth and height (a diameter for round pieces), dragged or typed in any unit like the room sizes. Each option has limits: about half to twice its standard size, and real-life limits for desks (60–240 cm wide, 60–90 cm high), dining tables, chairs, drawer units and PCs. **Back to the standard size** undoes it; picking another option starts from that option's size. A custom size is used everywhere: keeping it inside the walls and snapping, overlaps and tucking under, the outline and measurements, the product card ("custom size") and the shopping list (its own line). Desks, tables, beds, storage and wall pieces are rebuilt at the new width and depth, so legs and handles keep their thickness; other pieces (and real 3D models) are stretched, which shows at extreme sizes. Saved in every format (version 6 and up; older files load at standard sizes).
 - **Customise** each piece:
   - furniture options, such as sofa size, table shape, chair style, TV size, plant size and lamp shade
   - named colour swatches or a custom colour
@@ -236,7 +237,7 @@ Exact versions are in `package.json`. `package-lock.json` pins them so every ins
 | Pan                | Right-drag (Perspective) or drag empty space (Plan)                                                                             |
 | Zoom               | Mouse wheel                                                                                                                     |
 | Time of day        | Clock button above the 3D view, or the **Light** row under Finishes. Sliders and presets can be undone                          |
-| Switch room        | Click it in the room bar, or press `1`–`5`. With the bar focused, `←` / `→` move between rooms                                  |
+| Switch room        | Click it in the room bar, or press `1`–`6`. With the bar focused, `←` / `→` move between rooms                                  |
 | Select             | Click a piece, or its row in **Objects**                                                                                        |
 | Add furniture      | **+ Add** in Objects, then click a piece in the catalog                                                                         |
 | Delete / Duplicate | **Actions** in the right panel, or `Delete` (`Backspace`) / `Ctrl+D`                                                            |
@@ -277,7 +278,7 @@ A whole drag, slider movement or held-down arrow key counts as **one** undo step
 
 - **Saved in this browser:** designs are stored in your browser's `localStorage`, so they exist only in that browser on that computer. Clearing site data removes them.
 - **Export file / Import file:** use these to back up a design, move it to another computer, or share it. Imported files are checked first: unknown furniture is skipped, and anything outside the room is moved back inside.
-- **All rooms are always saved together:** saves, the autosave and exported files hold the whole house. Older saves and files still load. Rooms they don't contain (for example the Dining Room, Kitchen and Bathroom in a save from before those rooms existed) start from their default design. A one-room file from the very first version becomes the Living Room. A Dining Room, Kitchen or Bathroom saved while it only had its starter plant is given the new furniture automatically, and keeps its paint and floor.
+- **All rooms are always saved together:** saves, the autosave and exported files hold the whole house. Older saves and files still load. Rooms they don't contain (for example the Office in a save from before it existed, or the Dining Room, Kitchen and Bathroom in even older ones) start from their default design. Exported files are now version 7 (six rooms). A one-room file from the very first version becomes the Living Room. A Dining Room, Kitchen or Bathroom saved while it only had its starter plant is given the new furniture automatically, and keeps its paint and floor.
 
 ## Project structure
 
@@ -384,6 +385,7 @@ src/
       sizes.ts             Custom sizes: standard size, limits, tidying a size before it's stored
       footprintContext.ts  Lets models build themselves at a custom width and depth
       UnderDesk.tsx        Drawer unit and PC tower (Phase 15)
+      Office.tsx           Office desk and office chair (Phase 16)
       WallDecor.tsx        Wall art, mirrors and wall shelves
       FurnitureModel.tsx   Picks the 3D model for a furniture type (real model if there is one)
       models.ts            Which options use a real model, and how it's sized to the footprint
