@@ -246,7 +246,7 @@ Exact versions are in `package.json`. `package-lock.json` pins them so every ins
 | Share              | **Save / Load** → **Copy share link**                                                                                           |
 | Shopping list      | List button in the top bar: this room or the whole house; Download CSV or Print                                                 |
 | Legs / frame       | The finish card under Colour in the right panel (Standard keeps the original look)                                              |
-| Room size          | Deselect everything: **Room size** card in the right panel (width, depth, ceiling height, wall thickness); drag or type          |
+| Room size          | Deselect everything: **Room size** card in the right panel (width, depth, ceiling height, wall thickness); drag or type         |
 | Units              | **Units** at the bottom of the left panel: m, cm or ft & in                                                                     |
 | Measurements       | Ruler button next to the clock shows / hides the room's dimensions                                                              |
 | Windows and doors  | Click one in 3D or in the Objects list; **+ Window** / **+ Door** in the Room size card                                         |
