@@ -35,33 +35,35 @@ interface FurnitureLayerProps {
 
 interface OutlineProps {
   footprint: [number, number]
+  /** Round piece: draw a circle instead of a rectangle. */
+  round?: boolean
   /** Faint outline (hover / overlap hint) instead of the solid selection outline. */
   faint: boolean
   color: string
 }
 
 /** Floor outline drawn around the selected (solid) or hovered/overlapping (faint) object. */
-function SelectionOutline({ footprint, faint, color }: OutlineProps) {
+function SelectionOutline({ footprint, round, faint, color }: OutlineProps) {
   const w = footprint[0] / 2 + 0.08
   const d = footprint[1] / 2 + 0.08
+  const points: [number, number, number][] = round
+    ? Array.from({ length: 49 }, (_, i) => {
+        const a = (i / 48) * Math.PI * 2
+        return [Math.cos(a) * w, 0, Math.sin(a) * w]
+      })
+    : [
+        [-w, 0, -d],
+        [w, 0, -d],
+        [w, 0, d],
+        [-w, 0, d],
+        [-w, 0, -d],
+      ]
   return (
     <group position={[0, 0.02, 0]}>
-      <Line
-        points={[
-          [-w, 0, -d],
-          [w, 0, -d],
-          [w, 0, d],
-          [-w, 0, d],
-          [-w, 0, -d],
-        ]}
-        color={color}
-        lineWidth={faint ? 1.5 : 2.5}
-        transparent
-        opacity={faint ? 0.55 : 1}
-      />
+      <Line points={points} color={color} lineWidth={faint ? 1.5 : 2.5} transparent opacity={faint ? 0.55 : 1} />
       {!faint && (
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[w * 2, d * 2]} />
+          {round ? <circleGeometry args={[w, 48]} /> : <planeGeometry args={[w * 2, d * 2]} />}
           <meshBasicMaterial color={color} transparent opacity={0.1} depthWrite={false} />
         </mesh>
       )}
@@ -196,7 +198,7 @@ export function FurnitureLayer({
         // The selected piece gets a 3D outline (PostEffects) and the rotate ring; the floor
         // rectangle is for hover (faint blue) and overlaps (red).
         const showOutline = isHovered || isOverlapping
-        const footprint = getVariant(item.type, item.variant).footprint
+        const { footprint, round } = getVariant(item.type, item.variant)
         return (
           <group key={item.id}>
             <group
@@ -219,7 +221,12 @@ export function FurnitureLayer({
                 <FurnitureModel type={item.type} variant={item.variant} color={item.color} />
               </Select>
               {showOutline && (
-                <SelectionOutline footprint={footprint} faint={!isOverlapping} color={isOverlapping ? WARNING_COLOR : SELECT_COLOR} />
+                <SelectionOutline
+                  footprint={footprint}
+                  round={round}
+                  faint={!isOverlapping}
+                  color={isOverlapping ? WARNING_COLOR : SELECT_COLOR}
+                />
               )}
             </group>
             {isSelected && <DimensionGuides item={item} room={room} />}

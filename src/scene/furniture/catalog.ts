@@ -50,6 +50,8 @@ export interface VariantInfo {
   detail: string
   /** Width × depth in metres, used for the selection outline and keeping it inside the room. */
   footprint: [number, number]
+  /** A circular footprint (diameter = footprint[0]), e.g. a round table: overlap and wall checks use the circle. */
+  round?: boolean
 }
 
 interface FurnitureInfo {
@@ -164,7 +166,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     variantLabel: 'Shape',
     variants: [
       { id: 'rectangle', label: 'Rectangle', detail: '120 × 60 cm', footprint: [1.2, 0.6] },
-      { id: 'round', label: 'Round', detail: 'Ø 90 cm', footprint: [0.9, 0.9] },
+      { id: 'round', label: 'Round', detail: 'Ø 90 cm', footprint: [0.9, 0.9], round: true },
     ],
     colorLabel: 'Wood',
     swatches: WOOD_SWATCHES,
@@ -287,7 +289,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     variantLabel: 'Shape',
     variants: [
       { id: 'rectangle', label: 'Rectangle', detail: '180 × 90 cm, seats 6', footprint: [1.8, 0.9] },
-      { id: 'round', label: 'Round', detail: 'Ø 120 cm, seats 4', footprint: [1.2, 1.2] },
+      { id: 'round', label: 'Round', detail: 'Ø 120 cm, seats 4', footprint: [1.2, 1.2], round: true },
     ],
     colorLabel: 'Wood',
     swatches: WOOD_SWATCHES,
@@ -474,17 +476,26 @@ export const DEFAULT_LAYOUTS: Record<RoomId, FurnitureItem[]> = {
  * Keeps a piece of furniture inside the room walls. A rotated object takes up
  * a different amount of space along x and z, so the rotation is included.
  */
+/**
+ * Half the size of a piece along x and z, after its rotation. A round piece is the
+ * same size whichever way it's turned.
+ */
+export function footprintHalfExtents(item: Pick<FurnitureItem, 'type' | 'variant' | 'rotation'>): [number, number] {
+  const { footprint, round } = getVariant(item.type, item.variant)
+  const [w, d] = footprint
+  if (round) return [w / 2, w / 2]
+  const angle = degToRad(item.rotation)
+  const cos = Math.abs(Math.cos(angle))
+  const sin = Math.abs(Math.sin(angle))
+  return [(cos * w + sin * d) / 2, (sin * w + cos * d) / 2]
+}
+
 export function clampToRoom(
   item: Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation'>,
   /** The room's inner size. */
   room: { width: number; depth: number },
 ): [number, number] {
-  const [w, d] = getVariant(item.type, item.variant).footprint
-  const angle = degToRad(item.rotation)
-  const cos = Math.abs(Math.cos(angle))
-  const sin = Math.abs(Math.sin(angle))
-  const halfX = (cos * w + sin * d) / 2
-  const halfZ = (sin * w + cos * d) / 2
+  const [halfX, halfZ] = footprintHalfExtents(item)
   const maxX = room.width / 2 - halfX
   const maxZ = room.depth / 2 - halfZ
   return [clamp(item.position[0], -maxX, maxX), clamp(item.position[1], -maxZ, maxZ)]
@@ -523,9 +534,47 @@ function rectCorners([cx, cz]: Point, [w, d]: Point, rotation: number): Point[] 
   )
 }
 
-/** The four floor corners of an item's footprint, rotated the same way as the 3D model. */
-function footprintCorners(item: FurnitureItem): Point[] {
-  return rectCorners(item.position, getVariant(item.type, item.variant).footprint, item.rotation)
+/** A footprint on the floor: a (rotated) rectangle by its corners, or a circle. */
+type Shape = { kind: 'rect'; corners: Point[] } | { kind: 'circle'; center: Point; radius: number }
+
+/** An item's footprint, rotated the same way as the 3D model. */
+function footprintShape(item: FurnitureItem): Shape {
+  const { footprint, round } = getVariant(item.type, item.variant)
+  if (round) return { kind: 'circle', center: item.position, radius: footprint[0] / 2 }
+  return { kind: 'rect', corners: rectCorners(item.position, footprint, item.rotation) }
+}
+
+const TOLERANCE = 0.02 // 2 cm, so pieces that merely touch don't count
+
+/** Do two footprints overlap (by more than the tolerance)? */
+function shapesOverlap(a: Shape, b: Shape): boolean {
+  if (a.kind === 'rect' && b.kind === 'rect') return cornersOverlap(a.corners, b.corners)
+  if (a.kind === 'circle' && b.kind === 'circle') {
+    return Math.hypot(a.center[0] - b.center[0], a.center[1] - b.center[1]) < a.radius + b.radius - TOLERANCE
+  }
+  const circle = (a.kind === 'circle' ? a : b) as Extract<Shape, { kind: 'circle' }>
+  const rect = (a.kind === 'rect' ? a : b) as Extract<Shape, { kind: 'rect' }>
+  return circleRectGap(circle, rect.corners) < -TOLERANCE
+}
+
+/**
+ * Distance from a circle's edge to a rectangle (negative = they overlap by that much).
+ * Works in the rectangle's own frame, where it's axis-aligned.
+ */
+function circleRectGap(circle: { center: Point; radius: number }, corners: Point[]): number {
+  const [c0, c1, , c3] = corners
+  const ux: Point = [c1[0] - c0[0], c1[1] - c0[1]]
+  const uz: Point = [c3[0] - c0[0], c3[1] - c0[1]]
+  const lx = Math.hypot(...ux)
+  const lz = Math.hypot(...uz)
+  const rel: Point = [circle.center[0] - c0[0], circle.center[1] - c0[1]]
+  const px = (rel[0] * ux[0] + rel[1] * ux[1]) / lx
+  const pz = (rel[0] * uz[0] + rel[1] * uz[1]) / lz
+  const dx = Math.max(-px, 0, px - lx)
+  const dz = Math.max(-pz, 0, pz - lz)
+  // Centre inside the rectangle: overlapping by at least the radius.
+  if (dx === 0 && dz === 0) return -circle.radius - Math.min(px, lx - px, pz, lz - pz)
+  return Math.hypot(dx, dz) - circle.radius
 }
 
 /**
@@ -534,7 +583,6 @@ function footprintCorners(item: FurnitureItem): Point[] {
  * along which their shadows don't touch.
  */
 function cornersOverlap(cornersA: Point[], cornersB: Point[]): boolean {
-  const TOLERANCE = 0.02 // 2 cm, so pieces that merely touch don't count
   for (const corners of [cornersA, cornersB]) {
     for (let i = 0; i < 2; i++) {
       const [x1, z1] = corners[i]
@@ -558,16 +606,16 @@ function cornersOverlap(cornersA: Point[], cornersB: Point[]): boolean {
 export function findOverlaps(items: FurnitureItem[], zones: FixedZone[] = []): Map<string, string[]> {
   const overlaps = new Map<string, string[]>()
   const add = (id: string, other: string) => overlaps.set(id, [...(overlaps.get(id) ?? []), other])
-  const corners = items.map(footprintCorners)
-  const zoneCorners = zones.map((zone) => rectCorners(zone.position, zone.size, 0))
+  const shapes = items.map(footprintShape)
+  const zoneShapes = zones.map((zone): Shape => ({ kind: 'rect', corners: rectCorners(zone.position, zone.size, 0) }))
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
-      if (!cornersOverlap(corners[i], corners[j])) continue
+      if (!shapesOverlap(shapes[i], shapes[j])) continue
       add(items[i].id, items[j].id)
       add(items[j].id, items[i].id)
     }
     zones.forEach((zone, z) => {
-      if (cornersOverlap(corners[i], zoneCorners[z])) add(items[i].id, ZONE_PREFIX + zone.label)
+      if (shapesOverlap(shapes[i], zoneShapes[z])) add(items[i].id, ZONE_PREFIX + zone.label)
     })
   }
   return overlaps

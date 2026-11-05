@@ -1,5 +1,5 @@
-import { clamp, degToRad } from '../../utils/math'
-import { clampToRoom, findOverlaps, getVariant, type FixedZone, type FurnitureItem } from './catalog'
+import { clamp } from '../../utils/math'
+import { clampToRoom, findOverlaps, footprintHalfExtents, type FixedZone, type FurnitureItem } from './catalog'
 
 /**
  * Where to put furniture: finding a free spot for a new or duplicated piece,
@@ -10,14 +10,8 @@ import { clampToRoom, findOverlaps, getVariant, type FixedZone, type FurnitureIt
 type Room = { width: number; depth: number }
 type Placeable = Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation'>
 
-/** Half the size of a piece along x and z, after its rotation. */
-export function halfExtents(item: Placeable): [number, number] {
-  const [w, d] = getVariant(item.type, item.variant).footprint
-  const angle = degToRad(item.rotation)
-  const cos = Math.abs(Math.cos(angle))
-  const sin = Math.abs(Math.sin(angle))
-  return [(cos * w + sin * d) / 2, (sin * w + cos * d) / 2]
-}
+/** Half the size of a piece along x and z, after its rotation (round pieces don't change). */
+export const halfExtents = (item: Placeable): [number, number] => footprintHalfExtents(item)
 
 /** How close (in metres) a dragged piece has to get before it snaps flush to a wall. */
 export const WALL_SNAP = 0.12

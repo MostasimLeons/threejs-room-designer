@@ -68,6 +68,43 @@ describe('findOverlaps', () => {
   })
 })
 
+/** A round coffee table (Ø 90 cm). */
+const round = (position: [number, number], id: string, rotation = 0): FurnitureItem => ({
+  id,
+  type: 'coffeeTable',
+  variant: 'round',
+  position,
+  rotation,
+  color: '#c49a6c',
+})
+
+describe('round pieces (circle footprint)', () => {
+  it('a sofa near the corner of a round table does not count as overlapping', () => {
+    // Their bounding squares overlap at the corner, but the circle doesn't reach the sofa.
+    const [w, d] = getVariant('sofa', '2-seat').footprint
+    const r = 0.45
+    const offset = r * Math.SQRT1_2 + 0.03 // just outside the circle along the diagonal
+    const table = round([0, 0], 't')
+    const s = item([w / 2 + offset, d / 2 + offset], 0, 's')
+    expect(findOverlaps([table, s]).size).toBe(0)
+  })
+
+  it('still flags a sofa that cuts into the table', () => {
+    const [w] = getVariant('sofa', '2-seat').footprint
+    expect(findOverlaps([round([0, 0], 't'), item([w / 2 + 0.3, 0], 0, 's')]).size).toBe(2)
+  })
+
+  it('compares two round tables by their circles', () => {
+    expect(findOverlaps([round([0, 0], 'a'), round([0.66, 0.66], 'b')]).size).toBe(0) // 0.93 apart > 0.9
+    expect(findOverlaps([round([0, 0], 'a'), round([0.5, 0.5], 'b')]).size).toBe(2)
+  })
+
+  it('a round table fits the same space whichever way it is turned', () => {
+    expect(clampToRoom(round([10, 10], 'a', 45), room)).toEqual(clampToRoom(round([10, 10], 'a', 0), room))
+    expect(clampToRoom(round([10, 10], 'a', 45), room)[0]).toBeCloseTo(room.width / 2 - 0.45)
+  })
+})
+
 describe('default layouts', () => {
   it.each(ROOM_IDS)('%s: every piece starts inside its room', (roomId) => {
     for (const piece of DEFAULT_LAYOUTS[roomId]) expect(clampToRoom(piece, ROOMS[roomId])).toEqual(piece.position)
