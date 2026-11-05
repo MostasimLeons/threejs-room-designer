@@ -25,6 +25,8 @@ interface PropertiesPanelProps {
   finishes: RoomFinishes
   /** Names of what the selected item currently overlaps (other pieces, built-in units). */
   overlapping: string[]
+  /** A desk-top piece (a monitor, a lamp) standing on the floor. */
+  needsSurface?: boolean
   /** Apply a change and record an undo step. */
   onUpdate: (changes: ItemChanges) => void
   /** Apply a change live (while sliding); `onCommit` records it when you let go. */
@@ -154,6 +156,11 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         {overlapping.length > 0 && (
           <p className="warning" role="status">
             Overlaps {overlapping.join(' and ')}. Move or rotate it to make space.
+          </p>
+        )}
+        {props.needsSurface && (
+          <p className="warning" role="status">
+            Needs a desk or table. Drag it onto one.
           </p>
         )}
       </section>

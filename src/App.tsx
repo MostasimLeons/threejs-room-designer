@@ -7,10 +7,13 @@ import {
   getVariant,
   isAllowedIn,
   overlapName,
+  NEEDS_SURFACE,
+  canGoOnSurface,
   type FurnitureItem,
   type FurnitureType,
 } from './scene/furniture/catalog'
 import { findFreeSpot, placeNew } from './scene/furniture/placement'
+import { findSpotOnSurface, fromHostFrame, toHostFrame } from './scene/furniture/surfaces'
 import { createId } from './utils/id'
 import { downloadBlob } from './utils/download'
 import { decodeShare, shareCodeFromHash, shareUrl } from './state/share'
@@ -341,8 +344,14 @@ export default function App() {
   function handleDuplicate() {
     if (!selectedItem) return
     const copy: FurnitureItem = { ...selectedItem, id: createId() }
-    const near: [number, number] = [selectedItem.position[0] + 0.3, selectedItem.position[1] + 0.3]
-    copy.position = findFreeSpot(copy, design.items, info, info.fixedZones, near)
+    // On a desk: a free spot on the same desk (or another one), else the floor.
+    const onTop = selectedItem.on ? findSpotOnSurface(copy, design.items, selectedItem.on) : null
+    if (onTop) Object.assign(copy, onTop)
+    else {
+      delete copy.on
+      const near: [number, number] = [selectedItem.position[0] + 0.3, selectedItem.position[1] + 0.3]
+      copy.position = findFreeSpot(copy, design.items, info, info.fixedZones, near)
+    }
     history.addItem(copy)
     setSelectedId(copy.id)
   }
@@ -369,6 +378,7 @@ export default function App() {
     item.variant = placed.variant
     item.position = placed.position
     item.rotation = placed.rotation
+    if (placed.on) item.on = placed.on
     history.addItem(item)
     setSelectedId(item.id)
     const option = item.variant === product.variants[0].id ? '' : ` (${getVariant(type, item.variant).label.toLowerCase()}, to fit)`
@@ -383,10 +393,19 @@ export default function App() {
     if (!selectedItem || !isAllowedIn(selectedItem.type, target)) return
     const targetHistory = forRoom(target)
     const moved: FurnitureItem = { ...selectedItem, id: createId() }
+    delete moved.on
     const targetInfo = resolveRoom(target, targetHistory.design.layout)
-    moved.position = findFreeSpot(moved, targetHistory.design.items, targetInfo, targetInfo.fixedZones)
+    // A monitor or lamp goes onto a desk or table there if one has room.
+    const onTop = canGoOnSurface(moved.type) ? findSpotOnSurface(moved, targetHistory.design.items) : null
+    if (onTop) Object.assign(moved, onTop)
+    else moved.position = findFreeSpot(moved, targetHistory.design.items, targetInfo, targetInfo.fixedZones)
+    // A desk takes what stands on it along (where those pieces belong), keeping their places on top.
+    const along = design.items
+      .filter((item) => item.on === selectedItem.id && isAllowedIn(item.type, target))
+      .map((item) => ({ ...item, id: createId(), on: moved.id, position: fromHostFrame(toHostFrame(item.position, selectedItem), moved) }))
     history.removeItem(selectedItem.id)
-    targetHistory.addItem(moved)
+    if (along.length > 0) targetHistory.addItems([moved, ...along])
+    else targetHistory.addItem(moved)
     setSelectedId(null)
     setToast(`Moved ${label(selectedItem).toLowerCase()} to the ${ROOMS[target].label}. Undo in each room to reverse.`)
   }
@@ -612,7 +631,9 @@ export default function App() {
     if (withTour) startTour('house')
   }
 
-  const overlapping = selectedItem ? (overlaps.get(selectedItem.id) ?? []).map((id) => overlapName(id, design.items)) : []
+  const selectedOverlaps = selectedItem ? (overlaps.get(selectedItem.id) ?? []) : []
+  const overlapping = selectedOverlaps.filter((id) => id !== NEEDS_SURFACE).map((id) => overlapName(id, design.items))
+  const needsDesk = selectedOverlaps.includes(NEEDS_SURFACE)
 
   return (
     <UnitContext.Provider value={unit}>
@@ -695,7 +716,7 @@ export default function App() {
                   selectedId={shownRoom === room ? selectedId : null}
                   overlaps={shownOverlaps}
                   onSelect={setSelectedId}
-                  onMove={(id, position) => history.previewItem(id, { position })}
+                  onMove={(id, changes) => history.previewItem(id, changes)}
                   onRotate={(id, rotation) => history.previewItem(id, { rotation })}
                   onDragBoundary={history.commit}
                   onPickWall={handlePickWall}
@@ -876,6 +897,7 @@ export default function App() {
             wall={wall}
             finishes={design.finishes}
             overlapping={overlapping}
+            needsSurface={needsDesk}
             onUpdate={(changes) => selectedItem && history.updateItem(selectedItem.id, changes)}
             onPreview={(changes) => selectedItem && history.previewItem(selectedItem.id, changes)}
             onUpdateFinishes={history.updateFinishes}

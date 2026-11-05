@@ -9,6 +9,8 @@ export interface ModelProps {
   variant: string
   /** Finish of the legs / frame / handles; missing = the model's standard finish (frames.ts). */
   frame?: FrameId
+  /** Leave the decoration on top off: something else stands there (desks and tables only). */
+  bare?: boolean
 }
 
 /**

@@ -3,7 +3,7 @@ import { Block, Cylinder } from '../parts'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 
 /** Coffee table (rectangular or round) with a lower shelf, books and a small vase. */
-export function CoffeeTable({ color, variant }: ModelProps) {
+export function CoffeeTable({ color, variant, bare }: ModelProps) {
   const wood = useTintedMaterial(materials.woodLight, color)
   const round = variant === 'round'
   if (variant === 'square') {
@@ -46,18 +46,22 @@ export function CoffeeTable({ color, variant }: ModelProps) {
         </>
       )}
 
-      {/* Decoration: two books and a vase */}
-      <group position={[round ? 0.1 : 0, 0, 0]}>
-        <Block size={[0.3, 0.035, 0.22]} position={[-0.3, 0.448, 0.02]} rotation={[0, 0.15, 0]} material={materials.bookA} />
-        <Block size={[0.26, 0.03, 0.2]} position={[-0.29, 0.481, 0.02]} rotation={[0, -0.1, 0]} material={materials.bookB} />
-      </group>
-      <Cylinder
-        radiusTop={0.045}
-        radiusBottom={0.06}
-        height={0.16}
-        position={[round ? 0.2 : 0.32, 0.51, -0.05]}
-        material={materials.ceramic}
-      />
+      {!bare && (
+        <>
+          {/* Decoration: two books and a vase */}
+          <group position={[round ? 0.1 : 0, 0, 0]}>
+            <Block size={[0.3, 0.035, 0.22]} position={[-0.3, 0.448, 0.02]} rotation={[0, 0.15, 0]} material={materials.bookA} />
+            <Block size={[0.26, 0.03, 0.2]} position={[-0.29, 0.481, 0.02]} rotation={[0, -0.1, 0]} material={materials.bookB} />
+          </group>
+          <Cylinder
+            radiusTop={0.045}
+            radiusBottom={0.06}
+            height={0.16}
+            position={[round ? 0.2 : 0.32, 0.51, -0.05]}
+            material={materials.ceramic}
+          />
+        </>
+      )}
     </group>
   )
 }
