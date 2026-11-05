@@ -1,4 +1,5 @@
 import { getVariant, type FurnitureItem, type FurnitureType } from './catalog'
+import { formatLength, type LengthUnit } from '../../utils/units'
 
 /**
  * Product details for the product card and the shopping list: a short
@@ -228,11 +229,18 @@ export function productPrice(type: FurnitureType, variant: string): number {
 
 const cm = (metres: number) => Math.round(metres * 100)
 
-/** Width × depth × height in whole cm, e.g. "220 × 90 × 85 cm". Round pieces show the diameter. */
-export function productSize(item: Pick<FurnitureItem, 'type' | 'variant'>): string {
+/**
+ * Width × depth × height, e.g. "220 × 90 × 85 cm", "2.20 × 0.90 × 0.85 m" or, in
+ * feet, each length in feet and inches. Round pieces show the diameter (Ø).
+ */
+export function productSize(item: Pick<FurnitureItem, 'type' | 'variant'>, unit: LengthUnit = 'cm'): string {
   const { footprint, round } = getVariant(item.type, item.variant)
-  const h = productHeight(item.type, item.variant)
-  return round ? `Ø ${cm(footprint[0])} × ${h} cm` : `${cm(footprint[0])} × ${cm(footprint[1])} × ${h} cm`
+  const h = productHeight(item.type, item.variant) / 100
+  const parts = round ? [footprint[0], h] : [footprint[0], footprint[1], h]
+  const prefix = round ? 'Ø ' : ''
+  if (unit === 'cm') return `${prefix}${parts.map(cm).join(' × ')} cm`
+  if (unit === 'm') return `${prefix}${parts.map((v) => v.toFixed(2)).join(' × ')} m`
+  return prefix + parts.map((v) => formatLength(v, 'ft')).join(' × ')
 }
 
 const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: CURRENCY, maximumFractionDigits: 0 })

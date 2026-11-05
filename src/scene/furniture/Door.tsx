@@ -10,13 +10,15 @@ interface DoorProps extends GroupProps {
   height: number
   /** Swing the leaf open (into the +z side) by this many degrees. Leave out for a closed door. */
   openAngle?: number
+  /** Thickness of the wall it's in (the casing and panel follow it). */
+  wallThickness?: number
 }
 
 /** Panelled white door with a casing and brass lever handle. Faces +z. */
-export function Door({ width: w, height: h, openAngle = 0, ...props }: DoorProps) {
+export function Door({ width: w, height: h, openAngle = 0, wallThickness = ROOM.wallThickness, ...props }: DoorProps) {
   const casing = 0.07
-  const casingDepth = ROOM.wallThickness + 0.04
-  const panelZ = ROOM.wallThickness / 2 - 0.03
+  const casingDepth = wallThickness + 0.04
+  const panelZ = wallThickness / 2 - 0.03
 
   return (
     <group {...props}>

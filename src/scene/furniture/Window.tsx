@@ -13,18 +13,26 @@ interface WindowProps extends GroupProps {
    * centre, so near a corner it stops at the wall's end instead of showing past it.
    */
   skyReach?: [number, number]
+  /** Thickness of the wall it's in (the frame and sill follow it). */
+  wallThickness?: number
 }
 
 /**
  * White window frame placed inside the wall opening. The group origin is at the
  * bottom-centre of the opening, in the middle of the wall's thickness.
  */
-export function Window({ width: w, height: h, skyReach = [Infinity, Infinity], ...props }: WindowProps) {
+export function Window({
+  width: w,
+  height: h,
+  skyReach = [Infinity, Infinity],
+  wallThickness = ROOM.wallThickness,
+  ...props
+}: WindowProps) {
   // The backdrop is 40 cm wider than the window on each side, but never past the wall's ends.
   const skyLeft = Math.min(w / 2 + 0.4, skyReach[0])
   const skyRight = Math.min(w / 2 + 0.4, skyReach[1])
   const f = 0.06 // frame thickness
-  const d = ROOM.wallThickness + 0.03 // frame depth
+  const d = wallThickness + 0.03 // frame depth
   return (
     <group {...props}>
       <Block size={[w, f, d]} position={[0, h - f / 2, 0]} material={materials.trim} />
@@ -34,7 +42,7 @@ export function Window({ width: w, height: h, skyReach = [Infinity, Infinity], .
       <Block size={[0.04, h - 2 * f, 0.05]} position={[0, h / 2, 0]} material={materials.trim} />
 
       {/* Window sill sticking out into the room */}
-      <Block size={[w + 0.16, 0.035, 0.2]} position={[0, -0.0175, ROOM.wallThickness / 2 + 0.05]} material={materials.trim} />
+      <Block size={[w + 0.16, 0.035, 0.2]} position={[0, -0.0175, wallThickness / 2 + 0.05]} material={materials.trim} />
 
       {/* Glass: transparent and does not block sunlight */}
       <mesh position={[0, h / 2, 0]} material={materials.glass}>

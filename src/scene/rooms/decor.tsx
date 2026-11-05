@@ -173,15 +173,17 @@ interface CurtainsProps {
   wallHalf: number
   /** Ceiling height: the rod hangs just below it. */
   ceiling?: number
+  /** Thickness of the wall (the curtains hang in front of the sill). */
+  wallThickness?: number
 }
 
 /**
  * A brass rod with two cream curtains drawn to the sides, in the wall's local
  * frame (+z points into the room; see walls.ts).
  */
-export function Curtains({ left, right, wallHalf, ceiling = ROOM.height }: CurtainsProps) {
+export function Curtains({ left, right, wallHalf, ceiling = ROOM.height, wallThickness = T }: CurtainsProps) {
   const rodY = Math.min(2.52, ceiling - 0.08)
-  const z = T / 2 + 0.2 // in front of the window sill
+  const z = wallThickness / 2 + 0.2 // in front of the window sill
   const rodLeft = Math.max(left - 0.33, -wallHalf + 0.02)
   const rodRight = Math.min(right + 0.33, wallHalf - 0.02)
   return (

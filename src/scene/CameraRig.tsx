@@ -82,9 +82,9 @@ function PerspectiveRig({ room, cameraViewId, aspect }: { room: RoomId; cameraVi
       <CameraControls
         ref={controls}
         makeDefault
-        // Close enough to stand inside the smallest room, far enough to see the biggest (10 × 10 m).
+        // Close enough to stand inside the smallest room, far enough to see the biggest (20 × 20 m).
         minDistance={0.6}
-        maxDistance={30}
+        maxDistance={60}
         // Stop the camera from going below the floor.
         maxPolarAngle={Math.PI / 2 - 0.06}
         smoothTime={0.55}
