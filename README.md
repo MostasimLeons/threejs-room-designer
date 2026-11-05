@@ -63,7 +63,12 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms,
 - **Perspective and Plan** (top-down) views.
 - **Camera views:** in Perspective, pick **Overview** (outside and above, as before), **Eye level** (standing inside the room, like a photo: ceiling, lights and all four walls) or **Corner** (from a front corner across the room). The camera glides smoothly to the chosen view and keeps it when you switch rooms. On tall, narrow screens the overview steps back so the whole room fits.
 - **Showcase mode:** the **Showcase** button hides the editing panels for a clean, full-screen view with just the camera views, the time of day and the room bar. Nothing can be changed by accident. `Esc` or **Exit showcase** goes back.
-- **Intro screen** on the first visit: **Start designing** or **Take a tour** (showcase at eye level). Add `?intro` to the address to see it again.
+- **Intro screen** on the first visit: **Start designing** or **Take a tour** (the guided tour of every room). Add `?intro` to the address to see it again.
+- **Guided tour:** in showcase mode, **Tour all rooms** or **Tour this room**. Each room gets three slow camera moves of 5 seconds: a gentle orbit of the overview, a push-in from the corner and a pan at eye level, with a caption (room, size, number of pieces). Play/pause, previous/next, **End tour**; `Esc` ends it. The moves are worked out from each room's own size, so a resized room gets a matching tour.
+- **Video:** the video button in the top bar records a **turntable** (one slow 12-second circle around the room), a **tour of this room** (15 s) or a **tour of every room** (about 1.3 minutes). The 3D view is recorded as it plays, at about 1080p with the quality level held steady, plus the ambient sound if it's on, and saved as MP4 where the browser can make it (Chrome, Edge, Safari) or WebM (Firefox). Keep the tab in front while it records.
+- **Before / after:** **Compare** (top bar, or in showcase) wipes between the room now and a "Before": its **starting design**, a **saved design**, or a picture taken earlier with **Use this view as Before**. Both pictures come from the same camera and time of day; drag the divider or use the arrow keys, and **Download side by side** saves both as one PNG. Your design and its undo history aren't touched.
+- **Ambient sound:** the speaker button next to the clock (off when the page opens; browsers only allow sound after a click). Made live in the browser, nothing to download: a soft room tone always, outdoor air and the occasional bird by day (more around sunrise and sunset), crickets at night. It follows the room's time of day and dips as the view fades between rooms. The volume is remembered.
+- **View in AR:** **View in AR** (selected piece, at real size) or **View the room in AR** (the whole room as a 1:20 table-top model). On an iPhone or iPad it opens AR Quick Look; on an Android phone with AR support, a WebXR view where you point at the floor and tap to place it. Anywhere, the model can be downloaded as **.glb** (most 3D apps) or **.usdz** (Apple). Phones only allow AR on a secure (https) site.
 - **Room thumbnails:** once you've visited a room, its button in the room bar shows a small picture of it (taken as you leave; kept in this browser). Narrow layouts keep the icons.
 - **Time of day and sun:** click the clock button (☀ 2:30 PM) above the 3D view. Pick a preset (Sunrise, Morning, Midday, Golden hour, Dusk, Night) or drag the time slider from 5 AM to 9 PM, and turn the room to change which way its windows face. The sun moves from east to west and only shines in through the windows when it's on that side; a low sun is warm and orange, and the sky in the windows changes colour. As it gets dark the ceiling lights, lamps and bulbs come on, the room's own lights light it, and the backdrop turns night blue. Each room keeps its own time and orientation, and every change can be undone.
 - **Realistic rendering**, all generated in code with no image downloads:
@@ -235,6 +240,11 @@ Exact versions are in `package.json`. `package-lock.json` pins them so every ins
 | Legs / frame       | The finish card under Colour in the right panel (Standard keeps the original look)                                              |
 | Room size          | Deselect everything: **Room size** card in the right panel (width, depth, ceiling height)                                       |
 | Windows and doors  | Click one in 3D or in the Objects list; **+ Window** / **+ Door** in the Room size card                                         |
+| Guided tour        | **Showcase** → **Tour all rooms** / **Tour this room**; `Esc` ends it                                                           |
+| Video              | Video button in the top bar: turntable or tour                                                                                  |
+| Before / after     | **Compare** in the top bar or in showcase                                                                                       |
+| Ambient sound      | Speaker button next to the clock                                                                                                |
+| AR                 | **View in AR** under Actions (a piece) or in the Room card (the whole room)                                                     |
 | Paint a wall       | Click the wall: pick paint/tiles and a colour in the picker that opens there                                                    |
 | Change the floor   | Click the floor (if something is selected, the first click just deselects it)                                                   |
 | Rotate by dragging | Drag the round handle on the blue ring (15° steps, `Shift` for 1°)                                                              |
@@ -285,6 +295,11 @@ src/
     QualityControl.tsx     The 3D quality setting (left panel)
     ShoppingListDialog.tsx Shopping list / quote window (CSV, print)
     LayoutEditor.tsx       Room size card and the window / door panel
+    TourPlayer.tsx         Guided tour caption and controls
+    RecordDialog.tsx       Choose what to record as a video
+    CompareView.tsx        Before / after chooser and wipe slider
+    SoundControl.tsx       Speaker button and volume
+    ArDialog.tsx           View in AR and model downloads
     CatalogDrawer.tsx      "Add furniture" catalog for the current room
     ViewToggle.tsx         Perspective / Plan switch
     ErrorBoundary.tsx      Friendly message if the 3D view fails (e.g. no WebGL)
@@ -328,6 +343,17 @@ src/
     house.ts               Room registry: every room's size, windows, doors, lights, camera, default design; resolveRoom applies a room's own layout
     layout.ts              Layout editor rules: size limits, keeping windows and doors valid, add / move / remove
     roomContext.ts         The room as laid out, shared with everything in the 3D view
+    tour.ts                Tour and turntable camera moves (shot lists), worked out from each room
+    TourCamera.tsx         Drives the camera through a tour shot
+    arExport.ts            Preparing a piece or the room (1:20) for AR; what the device supports
+    arFiles.ts             GLB and USDZ export (loaded only when View in AR is used)
+    ArSource.tsx           Hands a copy of a piece or the room to View in AR
+  audio/
+    ambience.ts            The ambient sound (Web Audio): layers and how they follow the time of day
+    sound.ts               The one shared sound player (also used by video recording)
+  ar/
+    webxrViewer.ts         Android AR view (WebXR): point at the floor, tap to place
+  utils/video.ts           Recording the 3D view as a video (format choice, MediaRecorder)
     CameraRig.tsx          Perspective / Plan cameras and mouse controls
     Lighting.tsx           Sun, fill and night room lights from sun.ts; shadows once per frame; environment
     finishes.ts            Wall colour presets and floor material options
@@ -378,6 +404,9 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 - The corner sofa's footprint is the whole rectangle around its L, so a piece in the empty corner in front of the seats counts as overlapping it.
 - Choosing a bigger option for a piece after placing it can make it overlap its neighbours (it's then flagged, as before); adding from the catalog avoids this by picking an option that fits.
 - Rooms are rectangles: no L-shapes or angled walls.
+- AR was not tested on a real phone: the exports (GLB, USDZ) are tested, but AR Quick Look and the Android WebXR view need the app on a secure (https) site and a phone. Room models are large for phones (about 2–4 MB as GLB, up to about 13 MB as USDZ, which stores textures uncompressed).
+- Desktop browsers only download the AR model; there's no QR code to open it on a phone, because share links (1–3 thousand characters) are too long for a scannable QR code. Copy the share link and open it on the phone instead.
+- The video records only the 3D view: the tour captions and controls aren't in it. Recording needs the tab in front (browsers pause drawing in background tabs).
 - Doors between rooms don't stay in sync: moving the Living Room's "Door to bedroom" doesn't move the Bedroom's (each room is its own scene).
 - The camera doesn't move while you resize a room; pick a camera view again (or Reset view) to frame the new size.
 - Pieces on a wall can't be placed at a chosen height; each type hangs at a fixed height (art and mirrors at eye level).

@@ -13,7 +13,7 @@ import {
 import { findFreeSpot, placeNew } from './scene/furniture/placement'
 import { createId } from './utils/id'
 import { downloadBlob } from './utils/download'
-import { decodeShare, shareCodeFromHash } from './state/share'
+import { decodeShare, shareCodeFromHash, shareUrl } from './state/share'
 import { CatalogDrawer, catalogFor } from './components/CatalogDrawer'
 import { CatalogThumbnailRenderer } from './scene/CatalogThumbnailRenderer'
 import { Sidebar } from './components/Sidebar'
@@ -29,6 +29,16 @@ import { daylightAt, formatTime, sunPosition } from './scene/sun'
 import { PropertiesPanel } from './components/PropertiesPanel'
 import { preloadModels } from './scene/furniture/GltfModel'
 import { CameraViewPicker } from './components/CameraViewPicker'
+import { TourPlayer } from './components/TourPlayer'
+import { tourShots, turntableShot, type TourShot } from './scene/tour'
+import { RecordDialog, type VideoMode } from './components/RecordDialog'
+import { SoundControl } from './components/SoundControl'
+import { ArDialog } from './components/ArDialog'
+import type { ArTarget } from './scene/ArSource'
+import type * as THREE from 'three'
+import { soundDip, soundStream } from './audio/sound'
+import { CompareView, type CompareSource, type CompareState } from './components/CompareView'
+import { startRecording, videoExtension, type Recording } from './utils/video'
 import { IntroScreen } from './components/IntroScreen'
 import type { CameraViewId } from './scene/cameraViews'
 import { loadQualitySetting, loadThumbnails, saveQualitySetting, saveThumbnail, introSeen, markIntroSeen } from './state/viewerPrefs'
@@ -39,8 +49,8 @@ import { ShoppingListDialog } from './components/ShoppingListDialog'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useHouseHistory } from './state/useDesignHistory'
-import { DEFAULT_HOUSE, type HouseDesign } from './state/design'
-import { loadAutosave, writeAutosave } from './state/storage'
+import { DEFAULT_HOUSE, type HouseDesign, type RoomDesign } from './state/design'
+import { listSaves, loadAutosave, writeAutosave } from './state/storage'
 import { resolveRoom, ROOM_IDS, ROOMS, type RoomId, type RoomLayout, type WallSide } from './scene/house'
 import { defaultLayout, isDefaultLayout, openingSelection, removeOpening, selectedOpening, type OpeningRef } from './scene/layout'
 
@@ -71,6 +81,18 @@ const HINTS = {
 
 /** A touch screen is the main input (phones, tablets). */
 const isTouch = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+
+/** Width ÷ height of the 3D view (showcase mode makes it the full window). */
+function viewAspect() {
+  return window.innerWidth / Math.max(window.innerHeight - 56, 1)
+}
+
+/** A new number for each tour shot shown (restarts the camera move, even for the same shot). */
+let shotSeq = 0
+const nextShotId = () => ++shotSeq
+
+/** Waits a little (for the 3D view to draw something new). */
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
@@ -104,6 +126,20 @@ export default function App() {
   const [cameraViewId, setCameraViewId] = useState<CameraViewId>('overview')
   // Showcase: the editing panels are hidden and nothing can be changed, just looked at.
   const [showcase, setShowcase] = useState(false)
+  /** The guided tour, while it plays: its shots, which one is on screen, paused or not. */
+  const [tour, setTour] = useState<{ shots: TourShot[]; index: number; paused: boolean; shotId: number } | null>(null)
+  /** A video being recorded (it plays tour shots), and the record dialog. */
+  const recording = useRef<{ recording: Recording; name: string } | null>(null)
+  const [recordingDpr, setRecordingDpr] = useState<number | null>(null)
+  const [recordOpen, setRecordOpen] = useState(false)
+  /** Before/after comparison: its state, the design drawn instead for a moment, and pictures kept as "Before". */
+  const [compare, setCompare] = useState<CompareState | null>(null)
+  const [compareDesign, setCompareDesign] = useState<RoomDesign | null>(null)
+  const [compareCapture, setCompareCapture] = useState<{ id: number; onCapture: (image: Blob | null) => void } | null>(null)
+  const [beforeSnapshots, setBeforeSnapshots] = useState<Partial<Record<RoomId, string>>>({})
+  /** View in AR: what's shown, and the model copy once the 3D view has made it. */
+  const [ar, setAr] = useState<{ title: string; fileName: string; model: THREE.Group | null } | null>(null)
+  const [arRequest, setArRequest] = useState<{ id: number; target: ArTarget } | null>(null)
   // Welcome screen on the first visit, or with ?intro in the address.
   const [introOpen, setIntroOpen] = useState(() => !introSeen() || new URLSearchParams(window.location.search).has('intro'))
   // Small pictures of each room for the room bar, taken when you leave a room.
@@ -260,6 +296,7 @@ export default function App() {
     history.commit() // finish any drag/slide in the room you're leaving
     setSelectedId(null)
     setRoom(next)
+    soundDip()
     // Picture of the room you're leaving, for the room bar (taken on the next frame,
     // before the view swaps to the new room).
     setThumbnailRequest({ room: shownRoom, id: Date.now() })
@@ -381,23 +418,182 @@ export default function App() {
     setShowcase(true)
   }
 
+  /**
+   * Starts the guided tour in showcase mode: every room (starting with this one), or
+   * just this room. Three slow camera moves per room (tour.ts).
+   */
+  function startTour(scope: 'house' | 'room', turntable = false) {
+    enterShowcase()
+    const shots = turntable ? [turntableShot(room, info, viewAspect())] : tourShotsFor(scope)
+    setTour({ shots, index: 0, paused: false, shotId: nextShotId() })
+  }
+
+  function tourShotsFor(scope: 'house' | 'room') {
+    const start = ROOM_IDS.indexOf(room)
+    const rooms = scope === 'room' ? [room] : [...ROOM_IDS.slice(start), ...ROOM_IDS.slice(0, start)]
+    return tourShots(
+      rooms.map((r) => ({ room: r, info: resolveRoom(r, house[r].layout) })),
+      viewAspect(),
+    )
+  }
+
+  /**
+   * Records a video: plays a turntable or a tour in showcase mode and records the 3D
+   * view (about 1080p, quality fixed) until it ends, then downloads the file.
+   */
+  function startVideo(mode: VideoMode) {
+    setRecordOpen(false)
+    startTour(mode === 'house' ? 'house' : 'room', mode === 'turntable')
+    // Hold the first shot while the panels close and the view resizes to its recording size.
+    setTour((t) => (t ? { ...t, paused: true } : t))
+    setRecordingDpr(Math.min(2, Math.max(1, 1920 / window.innerWidth)))
+    const name = `${mode === 'house' ? 'Room Designer tour' : ROOMS[room].label + (mode === 'turntable' ? ' turntable' : ' tour')} ${fileStamp(new Date())}`
+    setTimeout(() => {
+      const canvas = document.querySelector<HTMLCanvasElement>('.viewport canvas')
+      const started = canvas ? startRecording(canvas, soundStream()) : null
+      if (!started) {
+        setRecordingDpr(null)
+        setToast("This browser can't record video.")
+        return
+      }
+      recording.current = { recording: started, name }
+      setTour((t) => (t ? { ...t, paused: false, shotId: nextShotId() } : t))
+    }, 600)
+  }
+
+  /** Opens View in AR for the selected piece, or the whole room when nothing is selected. */
+  function openAr() {
+    const target: ArTarget = selectedItem ? { kind: 'piece', itemId: selectedItem.id } : { kind: 'room' }
+    const title = selectedItem ? label(selectedItem) : `${ROOMS[room].label} (1:20 model)`
+    setAr({ title, fileName: selectedItem ? label(selectedItem) : `${ROOMS[room].label} model`, model: null })
+    setArRequest({ id: nextShotId(), target })
+  }
+
+  async function copyShareLink() {
+    try {
+      await navigator.clipboard.writeText(await shareUrl(house))
+      setToast('Share link copied. Open it on your phone to view in AR.')
+    } catch {
+      setToast("Couldn't copy the link. Use Save / Load → Copy share link.")
+    }
+  }
+
+  /** A picture of the 3D view as it is now (for the comparison), as a data URL. */
+  function captureView(): Promise<string | null> {
+    return new Promise((resolve) => {
+      setCompareCapture({
+        id: nextShotId(),
+        onCapture: (image) => {
+          setCompareCapture(null)
+          if (!image) return resolve(null)
+          const reader = new FileReader()
+          reader.addEventListener('load', () => resolve(reader.result as string))
+          reader.readAsDataURL(image)
+        },
+      })
+    })
+  }
+
+  /**
+   * Builds the comparison: a picture of the room now (After), then, for a saved or the
+   * starting design, the 3D view briefly draws that design instead (same camera, same
+   * time of day) for the Before picture. Your design and its undo history aren't touched.
+   */
+  async function runCompare(source: CompareSource) {
+    const beforeLabel = source.kind === 'standard' ? 'starting design' : source.kind === 'saved' ? source.name : 'your picture'
+    setSelectedId(null)
+    setPick(null)
+    setCompare({ phase: 'preparing', beforeLabel })
+    await delay(250) // let the selection outline disappear
+    const after = await captureView()
+    let before: string | null | undefined
+    if (source.kind === 'snapshot') {
+      before = beforeSnapshots[room]
+    } else {
+      const other = source.kind === 'standard' ? DEFAULT_HOUSE[room] : listSaves().find((s) => s.id === source.id)?.design[room]
+      if (other) {
+        setCompareDesign({ ...other, lighting: design.lighting })
+        await delay(1600) // models, textures and shadows of the other design
+        before = await captureView()
+        setCompareDesign(null)
+      }
+    }
+    if (!after || !before) {
+      setCompare(null)
+      setToast("Couldn't make the comparison pictures.")
+      return
+    }
+    setCompare({ phase: 'ready', before, after, beforeLabel })
+  }
+
+  /** "Use this view as Before": keep a picture of the room as it looks now. */
+  async function takeBeforeSnapshot() {
+    setSelectedId(null)
+    setPick(null)
+    setCompare({ phase: 'preparing', beforeLabel: 'your picture' })
+    await delay(250)
+    const picture = await captureView()
+    setCompare(null)
+    if (!picture) return setToast("Couldn't take the picture.")
+    setBeforeSnapshots((current) => ({ ...current, [room]: picture }))
+    setToast(`Kept this view of the ${ROOMS[room].label} as Before. Make your changes, then Compare → Your Before picture.`)
+  }
+
+  /** The tour finished: save the video, if one was recording. */
+  async function finishVideo() {
+    const current = recording.current
+    recording.current = null
+    setRecordingDpr(null)
+    if (!current) return
+    const blob = await current.recording.stop()
+    downloadBlob(blob, `${current.name}.${videoExtension(current.recording.type)}`)
+    setToast(`Saved the video (${(blob.size / 1e6).toFixed(1)} MB).`)
+  }
+
+  /** Stopped before the end: throw the recording away. */
+  function cancelVideo() {
+    if (!recording.current) return
+    recording.current.recording.cancel()
+    recording.current = null
+    setRecordingDpr(null)
+    setToast('Recording cancelled.')
+  }
+
+  /** Shows shot `index` of the tour (switching room if needed), or ends the tour past the last one. */
+  function goToShot(index: number) {
+    if (!tour) return
+    if (index >= tour.shots.length) {
+      setTour(null)
+      if (recording.current) void finishVideo()
+      else setToast('End of the tour. Esc leaves showcase.')
+      return
+    }
+    const next = Math.max(0, index)
+    if (tour.shots[next].room !== room) handleRoomChange(tour.shots[next].room)
+    setTour({ ...tour, index: next, shotId: nextShotId() })
+  }
+
+  /** Leaves showcase mode (Esc or the button), which also ends the tour. */
+  function exitShowcase() {
+    setShowcase(false)
+    setTour(null)
+    cancelVideo()
+  }
+
   // Esc leaves showcase mode.
   useEffect(() => {
     if (!showcase) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setShowcase(false)
+      if (event.key === 'Escape') exitShowcase()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [showcase])
 
-  function closeIntro(tour: boolean) {
+  function closeIntro(withTour: boolean) {
     markIntroSeen()
     setIntroOpen(false)
-    if (tour) {
-      enterShowcase()
-      setCameraViewId('eye')
-    }
+    if (withTour) startTour('house')
   }
 
   const overlapping = selectedItem ? (overlaps.get(selectedItem.id) ?? []).map((id) => overlapName(id, design.items)) : []
@@ -426,6 +622,8 @@ export default function App() {
           onSaveImage={handleSaveImage}
           savingImage={screenshotRequest !== null}
           onShoppingList={() => setShoppingOpen(true)}
+          onRecordVideo={() => setRecordOpen(true)}
+          onCompare={() => setCompare({ phase: 'choose' })}
         />
       </header>
 
@@ -467,7 +665,7 @@ export default function App() {
                 view={view}
                 resetKey={resetKey}
                 room={shownRoom}
-                design={house[shownRoom]}
+                design={compareDesign && shownRoom === room ? compareDesign : house[shownRoom]}
                 selectedId={shownRoom === room ? selectedId : null}
                 overlaps={shownOverlaps}
                 onSelect={setSelectedId}
@@ -488,15 +686,29 @@ export default function App() {
                 onThumbnail={handleThumbnail}
                 screenshotRequest={screenshotRequest}
                 onScreenshot={handleScreenshot}
+                compareCapture={compareCapture}
+                arRequest={arRequest}
+                onArModel={(model) => setAr((current) => (current ? { ...current, model } : current))}
                 qualitySetting={qualitySetting}
                 onQualityLevel={setQualityLevel}
+                recordingDpr={recordingDpr}
+                tour={
+                  tour
+                    ? {
+                        shot: tour.shots[tour.index],
+                        shotId: tour.shotId,
+                        paused: tour.paused,
+                        onEnd: () => goToShot(tour.index + 1),
+                      }
+                    : null
+                }
               />
             </ErrorBoundary>
           </div>
 
           <div className="overlay-top">
             {!showcase && <ViewToggle view={view} onChange={setView} />}
-            {view === 'perspective' && <CameraViewPicker room={room} value={cameraViewId} onChange={setCameraViewId} />}
+            {view === 'perspective' && !tour && <CameraViewPicker room={room} value={cameraViewId} onChange={setCameraViewId} />}
             <button
               className={`time-toggle ${timeOpen ? 'active' : ''}`}
               aria-pressed={timeOpen}
@@ -506,8 +718,22 @@ export default function App() {
               {sunPosition(design.lighting.time).elevation < 0 ? <MoonIcon /> : <SunIcon />}
               {formatTime(design.lighting.time)}
             </button>
+            <SoundControl time={house[shownRoom].lighting.time} />
+            {showcase && !tour && (
+              <>
+                <button className="showcase-exit" onClick={() => setCompare({ phase: 'choose' })}>
+                  Compare
+                </button>
+                <button className="showcase-exit" onClick={() => startTour('house')}>
+                  Tour all rooms
+                </button>
+                <button className="showcase-exit" onClick={() => startTour('room')}>
+                  Tour this room
+                </button>
+              </>
+            )}
             {showcase && (
-              <button className="showcase-exit" onClick={() => setShowcase(false)}>
+              <button className="showcase-exit" onClick={exitShowcase}>
                 Exit showcase <kbd>Esc</kbd>
               </button>
             )}
@@ -558,6 +784,39 @@ export default function App() {
             </div>
           )}
 
+          {compare && (
+            <CompareView
+              state={compare}
+              roomLabel={ROOMS[room].label}
+              saves={compare.phase === 'choose' ? listSaves().map(({ id, name }) => ({ id, name })) : []}
+              hasSnapshot={Boolean(beforeSnapshots[room])}
+              onChoose={(source) => void runCompare(source)}
+              onTakeSnapshot={() => void takeBeforeSnapshot()}
+              onClose={() => {
+                if (compare.phase !== 'preparing') setCompare(null)
+              }}
+            />
+          )}
+
+          {tour && (
+            <TourPlayer
+              shot={tour.shots[tour.index]}
+              index={tour.index}
+              count={tour.shots.length}
+              info={resolveRoom(tour.shots[tour.index].room, house[tour.shots[tour.index].room].layout)}
+              pieces={house[tour.shots[tour.index].room].items.length}
+              paused={tour.paused}
+              onTogglePause={() => setTour((t) => (t ? { ...t, paused: !t.paused } : t))}
+              onPrevious={() => goToShot(tour.index - 1)}
+              onNext={() => goToShot(tour.index + 1)}
+              onStop={() => {
+                setTour(null)
+                cancelVideo()
+              }}
+              recording={recordingDpr !== null}
+            />
+          )}
+
           {toast && (
             <div className="toast" role="status">
               {toast}
@@ -596,6 +855,7 @@ export default function App() {
           onSelectOpening={(ref) => setSelectedId(openingSelection(ref))}
           onDeleteOpening={handleDeleteOpening}
           onMessage={setToast}
+          onViewInAr={openAr}
         />
       </div>
 
@@ -608,6 +868,16 @@ export default function App() {
 
       {introOpen && <IntroScreen onStart={() => closeIntro(false)} onTour={() => closeIntro(true)} />}
 
+      {ar && (
+        <ArDialog
+          model={ar.model}
+          title={ar.title}
+          fileName={ar.fileName}
+          onClose={() => setAr(null)}
+          onCopyShareLink={() => void copyShareLink()}
+        />
+      )}
+      <RecordDialog open={recordOpen} room={room} roomCount={ROOM_IDS.length} onRecord={startVideo} onClose={() => setRecordOpen(false)} />
       <ShoppingListDialog open={shoppingOpen} house={house} room={room} onClose={() => setShoppingOpen(false)} />
       <DesignsDialog open={designsOpen} design={house} onClose={() => setDesignsOpen(false)} onLoad={handleLoad} />
     </div>

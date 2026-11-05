@@ -12,7 +12,16 @@ const WARM_UP_FRAMES = 3
  * frame right after it's drawn, then puts the resolution back. The picture is the
  * same view as on screen, just sharper (about 4K on the long side).
  */
-export function SceneScreenshot({ request, onCapture }: { request: number | null; onCapture: (image: Blob | null) => void }) {
+export function SceneScreenshot({
+  request,
+  onCapture,
+  longSide = SCREENSHOT_LONG_SIDE,
+}: {
+  request: number | null
+  onCapture: (image: Blob | null) => void
+  /** Long side of the picture in pixels (Save image: about 4K). 0 = as on screen (the before/after comparison). */
+  longSide?: number
+}) {
   const gl = useThree((state) => state.gl)
   const get = useThree((state) => state.get)
 
@@ -21,8 +30,8 @@ export function SceneScreenshot({ request, onCapture }: { request: number | null
     const { viewport, size, setDpr, invalidate } = get()
     const previousDpr = viewport.dpr
     const maxSize = gl.capabilities.maxTextureSize
-    const target = Math.min(SCREENSHOT_LONG_SIDE, maxSize) / Math.max(size.width, size.height, 1)
-    setDpr(Math.max(previousDpr, target))
+    const target = longSide > 0 ? Math.min(longSide, maxSize) / Math.max(size.width, size.height, 1) : previousDpr
+    if (target > previousDpr) setDpr(target)
 
     let frames = 0
     let finished = false

@@ -5,6 +5,7 @@ import { Html, Line } from '@react-three/drei'
 import { Select } from '@react-three/postprocessing'
 import { getVariant, isWallMounted, type FurnitureItem } from './furniture/catalog'
 import { Cutaway } from './Cutaway'
+import { itemObjectName } from './ArSource'
 import { isCameraBehindWall } from './walls'
 import type { WallSide } from './house'
 import { FurnitureModel } from './furniture/FurnitureModel'
@@ -208,6 +209,7 @@ export function FurnitureLayer({
         const piece = (
           <group key={item.id}>
             <group
+              name={itemObjectName(item.id)}
               position={[item.position[0], 0, item.position[1]]}
               rotation={[0, (item.rotation * Math.PI) / 180, 0]}
               onPointerDown={interactive ? handlePointerDown(item) : undefined}
@@ -286,7 +288,7 @@ function DimensionGuides({ item, room }: { item: FurnitureItem; room: { width: n
     guides.push({ from: [x, y, edge], to: [x, y, wall], cm: toCm(toBack ? gaps.back : gaps.front) })
   }
   return (
-    <group>
+    <group userData={{ noExport: true }}>
       {guides.map((guide, i) => (
         <group key={i}>
           <Line points={[guide.from, guide.to]} color={SELECT_COLOR} lineWidth={1.5} dashed dashSize={0.06} gapSize={0.04} />
@@ -335,7 +337,7 @@ function RotateRing({ position, rotation, radius, onGrab }: RotateRingProps) {
 
   const angle = (rotation * Math.PI) / 180
   return (
-    <group position={position}>
+    <group position={position} userData={{ noExport: true }}>
       {/* Drawn on top of everything (depthTest off), so furniture in the way can't hide it. */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 0]} renderOrder={10}>
         <ringGeometry args={[radius - 0.025, radius + 0.025, 96]} />

@@ -1,4 +1,4 @@
-import { CameraIcon, ListIcon, ResetViewIcon, RedoIcon, ResetIcon, SaveIcon, ShowcaseIcon, UndoIcon } from './icons'
+import { CameraIcon, CompareIcon, ListIcon, VideoIcon, ResetViewIcon, RedoIcon, ResetIcon, SaveIcon, ShowcaseIcon, UndoIcon } from './icons'
 
 interface ToolbarProps {
   canUndo: boolean
@@ -13,6 +13,10 @@ interface ToolbarProps {
   onSaveImage: () => void
   /** Open the shopping list (quote). */
   onShoppingList: () => void
+  /** Open the "record a video" dialog. */
+  onRecordVideo: () => void
+  /** Open the before/after comparison. */
+  onCompare: () => void
   /** True while a picture is being made. */
   savingImage: boolean
 }
@@ -30,6 +34,8 @@ export function Toolbar({
   onSaveImage,
   savingImage,
   onShoppingList,
+  onRecordVideo,
+  onCompare,
 }: ToolbarProps) {
   return (
     <div className="toolbar">
@@ -63,6 +69,19 @@ export function Toolbar({
       >
         <CameraIcon />
         <span className="label">{savingImage ? 'Saving…' : 'Save image'}</span>
+      </button>
+      <button className="ghost-button" onClick={onCompare} title="Compare before and after" aria-label="Compare">
+        <CompareIcon />
+        <span className="label">Compare</span>
+      </button>
+      <button
+        className="ghost-button"
+        onClick={onRecordVideo}
+        title="Record a video of the room (turntable or tour)"
+        aria-label="Record video"
+      >
+        <VideoIcon />
+        <span className="label">Video</span>
       </button>
       <button
         className="ghost-button"
