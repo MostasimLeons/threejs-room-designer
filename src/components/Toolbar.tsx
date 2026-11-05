@@ -1,4 +1,4 @@
-import { CameraIcon, RedoIcon, ResetIcon, SaveIcon, ShowcaseIcon, UndoIcon } from './icons'
+import { CameraIcon, ResetViewIcon, RedoIcon, ResetIcon, SaveIcon, ShowcaseIcon, UndoIcon } from './icons'
 
 interface ToolbarProps {
   canUndo: boolean
@@ -43,8 +43,9 @@ export function Toolbar({
         <ResetIcon />
         <span className="label">Reset</span>
       </button>
-      <button className="ghost-button" onClick={onResetView} title="Move the camera back to the start">
-        Reset view
+      <button className="ghost-button" onClick={onResetView} title="Move the camera back to the start" aria-label="Reset view">
+        <ResetViewIcon />
+        <span className="label">Reset view</span>
       </button>
       <button className="ghost-button" onClick={onShowcase} title="Full-screen view without the editing panels" aria-label="Showcase">
         <ShowcaseIcon />

@@ -3,10 +3,58 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4f2ee" />
     <title>Room Designer</title>
+    <style>
+      /* Shown while the app's code downloads; React replaces it as soon as the app starts. */
+      .boot {
+        display: grid;
+        place-items: center;
+        height: 100vh;
+        margin: 0;
+        background: #f4f2ee;
+        color: #8a847a;
+        font:
+          14px Inter,
+          'Segoe UI',
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      .boot-inner {
+        display: grid;
+        justify-items: center;
+        gap: 14px;
+      }
+      .boot-mark {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #c49a6c, #8e9c80);
+        animation: boot-pulse 1.2s ease-in-out infinite alternate;
+      }
+      @keyframes boot-pulse {
+        to {
+          opacity: 0.45;
+          transform: scale(0.9);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-mark {
+          animation: none;
+        }
+      }
+    </style>
   </head>
-  <body>
-    <div id="root"></div>
+  <body style="margin: 0">
+    <div id="root">
+      <div class="boot" role="status">
+        <div class="boot-inner">
+          <div class="boot-mark"></div>
+          <span>Loading Room Designer…</span>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { ROOM } from '../scene/roomConfig'
 import { ROOMS, WALL_SIDES, type RoomId } from '../scene/house'
 import { FURNITURE_INFO, getVariant, type FurnitureItem } from '../scene/furniture/catalog'
@@ -37,6 +38,8 @@ interface SidebarProps {
   onShowLighting: () => void
   /** Open the furniture catalog. */
   onAddFurniture: () => void
+  /** Extra cards at the bottom (the 3D quality setting). */
+  footer?: ReactNode
 }
 
 export function Sidebar({
@@ -50,6 +53,7 @@ export function Sidebar({
   lighting,
   onShowLighting,
   onAddFurniture,
+  footer,
 }: SidebarProps) {
   const { label, width, depth } = ROOMS[room]
   const fixtures = fixturesOf(room)
@@ -149,6 +153,7 @@ export function Sidebar({
           ))}
         </ul>
       </section>
+      {footer}
     </aside>
   )
 }

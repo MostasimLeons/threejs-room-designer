@@ -1,6 +1,7 @@
 import { Bloom, EffectComposer, N8AO, Outline, SMAA, ToneMapping, Vignette } from '@react-three/postprocessing'
 import { BlendFunction, ToneMappingMode } from 'postprocessing'
 import type { ViewMode } from './roomConfig'
+import { useQuality } from './quality'
 
 /**
  * Effects applied to the finished image, in this order:
@@ -19,16 +20,21 @@ import type { ViewMode } from './roomConfig'
  * 5. Vignette: a slight darkening at the edges that draws the eye to the room.
  * 6. SMAA: smooths jagged edges. It replaces the browser's built-in antialiasing,
  *    which doesn't apply once the image goes through post-processing.
+ *
+ * Lower quality levels (quality.ts) use cheaper ambient occlusion or none, and no bloom.
  */
 export function PostEffects({ view }: { view: ViewMode }) {
   const plan = view === 'plan'
+  const { ambientOcclusion, bloom } = useQuality()
   return (
     // autoClear off: required for the Outline effect's <Selection> (see the library's docs).
     <EffectComposer multisampling={0} autoClear={false}>
       <N8AO
+        // Off on Low quality (enabled=false skips the work but keeps the effect chain the same shape).
+        enabled={ambientOcclusion !== null}
         // Half resolution would be faster, but crashes with Three.js 0.187.
         halfRes={false}
-        quality="medium"
+        quality={ambientOcclusion ?? 'performance'}
         // World-space radius in metres: how far contact shadows spread from a corner.
         aoRadius={plan ? 0.4 : 0.7}
         distanceFalloff={1}
@@ -38,7 +44,7 @@ export function PostEffects({ view }: { view: ViewMode }) {
       {/* Blue outline around whatever is selected (furniture, a wall, the floor); see <Select>. */}
       {/* Alpha blending: the default "screen" blend only brightens, so blue edges vanish on light walls. */}
       <Outline blendFunction={BlendFunction.ALPHA} visibleEdgeColor="#2f6fed" hiddenEdgeColor="#5f86d6" edgeStrength={40} blur xRay />
-      <Bloom mipmapBlur luminanceThreshold={1.05} luminanceSmoothing={0.2} intensity={0.55} />
+      {bloom ? <Bloom mipmapBlur luminanceThreshold={1.05} luminanceSmoothing={0.2} intensity={0.55} /> : <></>}
       <ToneMapping mode={ToneMappingMode.NEUTRAL} />
       <Vignette offset={0.32} darkness={plan ? 0.2 : 0.38} />
       <SMAA />

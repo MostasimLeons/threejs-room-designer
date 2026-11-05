@@ -1,12 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { useFrame, useThree } from '@react-three/fiber'
+import { addAfterEffect, useThree } from '@react-three/fiber'
 import { Environment, Lightformer } from '@react-three/drei'
 import { ROOMS, type RoomId } from './house'
 import { materials } from './materials'
 import { daylightAt, type RoomLighting } from './sun'
 import { InteriorLightContext } from './interiorLight'
 import { SHADOW_ONLY_LAYER } from './Cutaway'
+import { useQuality } from './quality'
+import { shadowSignature } from './shadowUpdates'
 
 /** The ceiling lights' glow colour at full brightness (see materials.coveLight). */
 const COVE_BASE = new THREE.Color('#fff1dc')
@@ -37,13 +39,15 @@ export function Lighting({ room, lighting }: { room: RoomId; lighting: RoomLight
   const state = daylightAt(lighting)
   const [dx, dy, dz] = state.sunDirection
   const invalidate = useThree((s) => s.invalidate)
+  const quality = useQuality()
+  const shadowSize = quality.shadowMapSize
 
   // The sun's shadow also sees hidden walls and the invisible roof (see Cutaway.tsx),
   // so it only gets in through windows. The fill light's shadow doesn't.
   const sunRef = useRef<THREE.DirectionalLight>(null)
   useLayoutEffect(() => {
     sunRef.current?.shadow.camera.layers.enable(SHADOW_ONLY_LAYER)
-  }, [])
+  }, [shadowSize])
 
   // Glowing materials are shared by every room, so they're updated in place.
   useEffect(() => {
@@ -65,13 +69,15 @@ export function Lighting({ room, lighting }: { room: RoomId; lighting: RoomLight
       <primitive object={ceilingTarget} position={[0, 0, 0]} />
       <primitive object={sunTarget} position={[0, 0, 0]} />
 
+      {/* key: a new shadow size needs a new shadow map, so the light is rebuilt. */}
       <directionalLight
-        castShadow
+        key={`fill-${shadowSize}`}
+        castShadow={quality.fillShadows}
         target={ceilingTarget}
         position={ceiling}
         intensity={state.fillIntensity}
         color={state.fillColor}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[shadowSize, shadowSize]}
         shadow-camera-left={-6}
         shadow-camera-right={6}
         shadow-camera-top={6}
@@ -82,13 +88,14 @@ export function Lighting({ room, lighting }: { room: RoomId; lighting: RoomLight
       />
 
       <directionalLight
+        key={`sun-${shadowSize}`}
         ref={sunRef}
         castShadow
         target={sunTarget}
         position={[dx * SUN_DISTANCE, Math.max(dy, 0.02) * SUN_DISTANCE, dz * SUN_DISTANCE]}
         intensity={state.sunIntensity}
         color={state.sunColor}
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[shadowSize, shadowSize]}
         shadow-camera-left={-7}
         shadow-camera-right={7}
         shadow-camera-top={7}
@@ -117,29 +124,46 @@ export function Lighting({ room, lighting }: { room: RoomId; lighting: RoomLight
         <Lightformer form="rect" intensity={0.9} color="#ffe9cf" position={[9, 2, 3]} rotation-y={-Math.PI / 2} scale={[10, 4, 1]} />
         <Lightformer form="rect" intensity={0.5} color="#c99a6b" position={[0, -3, 0]} rotation-x={-Math.PI / 2} scale={[14, 14, 1]} />
       </Environment>
-      <ShadowsOncePerFrame />
+      <ShadowsWhenChanged />
     </InteriorLightContext.Provider>
   )
 }
 
 /**
- * Three.js normally redraws every shadow map on *every* render call. A polished
- * floor's reflection is a second render of the scene, which would redraw both
- * shadow maps again for nothing. This makes shadows update once per frame instead.
- * (Shadow maps don't depend on the camera, so the reflection can reuse them.)
+ * Three.js normally redraws every shadow map on *every* render call: each frame,
+ * and again for a polished floor's reflection. But shadow maps don't depend on the
+ * camera, so while you orbit or zoom nothing about them changes. This redraws them
+ * only when something that casts a shadow moved, appeared, disappeared or changed,
+ * or a light moved (see shadowSignature).
+ *
+ * The check runs once at the end of each frame, when the scene is in its normal
+ * state (effects such as the selection outline briefly hide things while they draw).
+ * If something changed, the shadows are redrawn in one extra frame right after,
+ * about 16 ms later, which you can't see.
  */
-function ShadowsOncePerFrame() {
+function ShadowsWhenChanged() {
   const gl = useThree((state) => state.gl)
+  const scene = useThree((state) => state.scene)
+  const invalidate = useThree((state) => state.invalidate)
   useEffect(() => {
     gl.shadowMap.autoUpdate = false
     gl.shadowMap.needsUpdate = true
+    let last: number | null = null
+    const unsubscribe = addAfterEffect(() => {
+      scene.updateMatrixWorld()
+      const signature = shadowSignature(scene)
+      if (signature === last) return
+      const first = last === null
+      last = signature
+      if (first) return // the first frame already drew them (needsUpdate above)
+      gl.shadowMap.needsUpdate = true
+      // Ask for that frame from outside the render loop (a request made here is dropped).
+      requestAnimationFrame(() => invalidate())
+    })
     return () => {
+      unsubscribe()
       gl.shadowMap.autoUpdate = true
     }
-  }, [gl])
-  // Runs before each frame is drawn; the first render in the frame consumes the flag.
-  useFrame(() => {
-    gl.shadowMap.needsUpdate = true
-  })
+  }, [gl, scene, invalidate])
   return null
 }

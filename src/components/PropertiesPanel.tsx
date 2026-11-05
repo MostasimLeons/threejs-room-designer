@@ -71,7 +71,8 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
   const [x, z] = item.position
 
   return (
-    <aside className="properties">
+    // item-properties: on phones this panel slides up over the 3D view as a sheet (index.css).
+    <aside className="properties item-properties" aria-label={`${info.label} settings`}>
       <section className="card">
         <div className="panel-header">
           <div>

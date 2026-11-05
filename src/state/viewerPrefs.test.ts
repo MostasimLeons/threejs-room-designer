@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { introSeen, loadThumbnails, markIntroSeen, saveThumbnail } from './viewerPrefs'
+import { introSeen, loadQualitySetting, loadThumbnails, markIntroSeen, saveQualitySetting, saveThumbnail } from './viewerPrefs'
 
 function memoryStorage() {
   const data = new Map<string, string>()
@@ -50,5 +50,15 @@ describe('viewer preferences', () => {
     expect(() => markIntroSeen()).not.toThrow()
     expect(loadThumbnails()).toEqual({})
     expect(() => saveThumbnail('living', JPEG)).not.toThrow()
+  })
+
+  it('remembers the 3D quality setting, Auto by default', () => {
+    expect(loadQualitySetting()).toBe('auto')
+    saveQualitySetting('low')
+    expect(loadQualitySetting()).toBe('low')
+    saveQualitySetting('auto')
+    expect(loadQualitySetting()).toBe('auto')
+    localStorage.setItem('room-designer:quality', 'ultra')
+    expect(loadQualitySetting()).toBe('auto')
   })
 })

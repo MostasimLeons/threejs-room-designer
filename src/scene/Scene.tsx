@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import { Selection } from '@react-three/postprocessing'
@@ -10,6 +10,8 @@ import { DevStats, PERF_ENABLED } from './DevStats'
 import { PostEffects } from './PostEffects'
 import { RoomThumbnails } from './RoomThumbnails'
 import { SceneScreenshot } from './SceneScreenshot'
+import { AutoQuality } from './AutoQuality'
+import { browserDeviceHints, QUALITY, QualityContext, startingLevel, type QualityLevel, type QualitySetting } from './quality'
 import type { CameraViewId } from './cameraViews'
 import { ROOMS, type RoomId, type WallSide } from './house'
 import type { ViewMode } from './roomConfig'
@@ -42,6 +44,10 @@ interface SceneProps {
   /** Ask for a high-resolution picture (a new id = a new picture). */
   screenshotRequest: number | null
   onScreenshot: (image: Blob | null) => void
+  /** Auto, or a fixed quality level (quality.ts). */
+  qualitySetting: QualitySetting
+  /** Tells the app which level is in use (for Auto, the one it picked). */
+  onQualityLevel: (level: QualityLevel) => void
   /** A small panel shown in the 3D view, pinned to a point (the wall or floor picker). */
   popover?: { point: [number, number, number]; content: ReactNode } | null
 }
@@ -73,61 +79,79 @@ export function Scene({
   onThumbnail,
   screenshotRequest,
   onScreenshot,
+  qualitySetting,
+  onQualityLevel,
 }: SceneProps) {
+  // Auto starts from a guess for this device and can only step down from there.
+  const [autoLevel, setAutoLevel] = useState<QualityLevel>(() => startingLevel(browserDeviceHints()))
+  const level = qualitySetting === 'auto' ? autoLevel : qualitySetting
+  const quality = QUALITY[level]
+  useEffect(() => onQualityLevel(level), [level, onQualityLevel])
+
   return (
     // `shadows` turns on shadow maps ("percentage" = PCF filtering, the smooth mode in current Three.js).
-    // `dpr` keeps it sharp on high-DPI screens without going overboard.
+    // `dpr` keeps it sharp on high-DPI screens without going overboard (lower on lower quality).
     // `frameloop="demand"` draws a new frame only when something changes (camera move, furniture
     // edit) instead of 60 times a second, so the GPU rests while you're just looking.
     // `onPointerMissed` fires when you click empty space → deselect.
     // `flat` + `antialias: false`: tone mapping and antialiasing happen in PostEffects instead.
-    <Canvas shadows="percentage" dpr={[1, 2]} frameloop="demand" flat gl={{ antialias: false }} onPointerMissed={() => onSelect(null)}>
-      {/* Selection: anything inside a <Select enabled> gets the blue outline (PostEffects). */}
-      <Selection>
-        <CameraRig view={view} resetKey={resetKey} room={room} cameraViewId={cameraViewId} />
-        <RoomThumbnails request={thumbnailRequest} onCapture={onThumbnail} />
-        <SceneScreenshot request={screenshotRequest} onCapture={onScreenshot} />
-        {/* Also sets the background colour, which follows the time of day. */}
-        <Lighting room={room} lighting={design.lighting} />
-        {PERF_ENABLED && <DevStats />}
+    <Canvas
+      shadows="percentage"
+      dpr={[1, quality.maxDpr]}
+      frameloop="demand"
+      flat
+      gl={{ antialias: false }}
+      onPointerMissed={() => onSelect(null)}
+    >
+      <QualityContext.Provider value={quality}>
+        {qualitySetting === 'auto' && <AutoQuality level={autoLevel} onStepDown={setAutoLevel} />}
+        {/* Selection: anything inside a <Select enabled> gets the blue outline (PostEffects). */}
+        <Selection>
+          <CameraRig view={view} resetKey={resetKey} room={room} cameraViewId={cameraViewId} />
+          <RoomThumbnails request={thumbnailRequest} onCapture={onThumbnail} />
+          <SceneScreenshot request={screenshotRequest} onCapture={onScreenshot} />
+          {/* Also sets the background colour, which follows the time of day. */}
+          <Lighting room={room} lighting={design.lighting} />
+          {PERF_ENABLED && <DevStats />}
 
-        {/*
+          {/*
         key={room}: switching rooms swaps the whole room out, so nothing from one room can
         linger in another. Materials and reflection buffers are freed when a room is removed;
         floor textures are cached, so coming back to a room is quick.
       */}
-        <group key={room}>
-          <RoomShell
-            room={room}
-            finishes={design.finishes}
-            selectedId={editable ? selectedId : null}
-            onPickWall={editable ? onPickWall : noPick}
-            onPickFloor={editable ? onPickFloor : noPick}
-          />
-          <FurnitureLayer
-            items={design.items}
-            origin={ROOM_ORIGIN}
-            room={ROOMS[room]}
-            interactive={editable}
-            selectedId={editable ? selectedId : null}
-            overlaps={overlaps}
-            onSelect={onSelect}
-            onMove={onMove}
-            onRotate={onRotate}
-            onDragBoundary={onDragBoundary}
-          />
-        </group>
+          <group key={room}>
+            <RoomShell
+              room={room}
+              finishes={design.finishes}
+              selectedId={editable ? selectedId : null}
+              onPickWall={editable ? onPickWall : noPick}
+              onPickFloor={editable ? onPickFloor : noPick}
+            />
+            <FurnitureLayer
+              items={design.items}
+              origin={ROOM_ORIGIN}
+              room={ROOMS[room]}
+              interactive={editable}
+              selectedId={editable ? selectedId : null}
+              overlaps={overlaps}
+              onSelect={onSelect}
+              onMove={onMove}
+              onRotate={onRotate}
+              onDragBoundary={onDragBoundary}
+            />
+          </group>
 
-        {popover && (
-          // Pinned to the clicked point; follows it as the camera moves. `zIndexRange` keeps
-          // it under the app's own overlays (room bar, dialogs).
-          <Html key={popover.point.join(',')} position={popover.point} zIndexRange={[3, 0]} className="surface-popover-anchor">
-            {popover.content}
-          </Html>
-        )}
+          {popover && (
+            // Pinned to the clicked point; follows it as the camera moves. `zIndexRange` keeps
+            // it under the app's own overlays (room bar, dialogs).
+            <Html key={popover.point.join(',')} position={popover.point} zIndexRange={[3, 0]} className="surface-popover-anchor">
+              {popover.content}
+            </Html>
+          )}
 
-        <PostEffects view={view} />
-      </Selection>
+          <PostEffects view={view} />
+        </Selection>
+      </QualityContext.Provider>
     </Canvas>
   )
 }

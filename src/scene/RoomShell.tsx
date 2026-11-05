@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, type ComponentRef } from 'react'
 import { BoxGeometry } from 'three'
 import type * as THREE from 'three'
 import { MeshReflectorMaterial } from '@react-three/drei'
+import { useQuality } from './quality'
 import { Select } from '@react-three/postprocessing'
 import type { ThreeEvent } from '@react-three/fiber'
 import { ROOM } from './roomConfig'
@@ -49,7 +50,17 @@ type ReflectorRef = ComponentRef<typeof MeshReflectorMaterial>
  * removed, so switching rooms or floors would slowly fill GPU memory. The cleanup
  * below frees them.
  */
-function ReflectiveMaterial({ maps, roughness, strength }: { maps: SurfaceMaps; roughness: number; strength: number }) {
+function ReflectiveMaterial({
+  maps,
+  roughness,
+  strength,
+  resolution,
+}: {
+  maps: SurfaceMaps
+  roughness: number
+  strength: number
+  resolution: number
+}) {
   const ref = useRef<ReflectorRef>(null)
   useEffect(() => {
     const material = ref.current
@@ -69,7 +80,7 @@ function ReflectiveMaterial({ maps, roughness, strength }: { maps: SurfaceMaps; 
       // floor) and from the floor's own surface detail rippling the reflection.
       // Drei's blur is left off on purpose: it allocates two more off-screen images
       // that it never frees and that this component can't reach to clean up.
-      resolution={256}
+      resolution={resolution}
       blur={[0, 0]}
       distortionMap={maps.normalMap}
       distortion={0.15}
@@ -92,13 +103,21 @@ interface FloorProps {
 export function Floor({ floor, width, depth, selected, onPick }: FloorProps) {
   const maps = getFloorMaps(floor, width, depth)
   const { roughness, reflection } = getFloorOption(floor)
+  // Lower quality levels use a smaller reflection, or none (quality.ts).
+  const { reflectionResolution } = useQuality()
   return (
     <Select enabled={selected}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={pickHandler(onPick)}>
         <planeGeometry args={[width, depth]} />
-        {reflection > 0 ? (
-          // key: switching between floors with different settings rebuilds the reflection cleanly.
-          <ReflectiveMaterial key={floor} maps={maps} roughness={roughness} strength={reflection} />
+        {reflection > 0 && reflectionResolution > 0 ? (
+          // key: switching floors or reflection size rebuilds the reflection cleanly.
+          <ReflectiveMaterial
+            key={`${floor}-${reflectionResolution}`}
+            maps={maps}
+            roughness={roughness}
+            strength={reflection}
+            resolution={reflectionResolution}
+          />
         ) : (
           <meshStandardMaterial {...maps} roughness={roughness} metalness={0.02} />
         )}

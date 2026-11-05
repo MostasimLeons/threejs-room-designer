@@ -36,7 +36,7 @@ export function CatalogDrawer({ room, thumbnails, onAdd, onClose }: CatalogDrawe
       <div className="catalog-head">
         <div>
           <h2>Add furniture</h2>
-          <p className="muted small">For the {ROOMS[room].label}. Click a piece to add it.</p>
+          <p className="muted small">For the {ROOMS[room].label}. Pick a piece to add it.</p>
         </div>
         <button ref={closeRef} className="icon-button" onClick={onClose} aria-label="Close">
           ✕

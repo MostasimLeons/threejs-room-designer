@@ -1,4 +1,5 @@
 import type { RoomId } from '../scene/house'
+import type { QualitySetting } from '../scene/quality'
 
 /**
  * Small per-browser conveniences that aren't part of a design (so they aren't
@@ -47,5 +48,27 @@ export function saveThumbnail(room: RoomId, url: string) {
     localStorage.setItem(THUMBNAILS_KEY, JSON.stringify({ ...loadThumbnails(), [room]: url }))
   } catch {
     // Storage full or blocked: the picture just isn't kept for next time.
+  }
+}
+
+const QUALITY_KEY = 'room-designer:quality'
+const QUALITY_SETTINGS: QualitySetting[] = ['auto', 'high', 'medium', 'low']
+
+/** The 3D quality setting chosen in this browser (Auto unless changed). */
+export function loadQualitySetting(): QualitySetting {
+  try {
+    const value = localStorage.getItem(QUALITY_KEY)
+    return QUALITY_SETTINGS.includes(value as QualitySetting) ? (value as QualitySetting) : 'auto'
+  } catch {
+    return 'auto'
+  }
+}
+
+export function saveQualitySetting(setting: QualitySetting) {
+  try {
+    if (setting === 'auto') localStorage.removeItem(QUALITY_KEY)
+    else localStorage.setItem(QUALITY_KEY, setting)
+  } catch {
+    // Not remembered: Auto next time. Harmless.
   }
 }

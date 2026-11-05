@@ -23,7 +23,9 @@ import { preloadModels } from './scene/furniture/GltfModel'
 import { CameraViewPicker } from './components/CameraViewPicker'
 import { IntroScreen } from './components/IntroScreen'
 import type { CameraViewId } from './scene/cameraViews'
-import { loadThumbnails, saveThumbnail, introSeen, markIntroSeen } from './state/viewerPrefs'
+import { loadQualitySetting, loadThumbnails, saveQualitySetting, saveThumbnail, introSeen, markIntroSeen } from './state/viewerPrefs'
+import { QualityControl } from './components/QualityControl'
+import type { QualityLevel, QualitySetting } from './scene/quality'
 import { DesignsDialog } from './components/DesignsDialog'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
@@ -45,6 +47,21 @@ function fileStamp(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}.${pad(date.getMinutes())}`
 }
 
+/** The help line under the 3D view, for mouse or touch, per view. */
+const HINTS = {
+  mouse: {
+    perspective: 'Click furniture to select · drag it to move · drag empty space to rotate · right-drag to pan · scroll to zoom',
+    plan: 'Click furniture to select · drag it to move · drag empty space to pan · scroll to zoom',
+  },
+  touch: {
+    perspective: 'Tap furniture to select · drag it to move · drag the room to turn · pinch to zoom · two fingers to pan',
+    plan: 'Tap furniture to select · drag it to move · drag the room to pan · pinch to zoom',
+  },
+} as const
+
+/** A touch screen is the main input (phones, tablets). */
+const isTouch = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+
 const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 export default function App() {
@@ -58,8 +75,12 @@ export default function App() {
   // Where a wall or the floor was clicked, so its quick picker appears right there.
   const [pick, setPick] = useState<{ id: string; point: [number, number, number] } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [touch] = useState(isTouch)
   /** The furniture catalog drawer, and its pictures (drawn the first time it opens; kept for this visit only). */
   const [catalogOpen, setCatalogOpen] = useState(false)
+  /** 3D quality: the setting (kept in this browser) and the level in use. */
+  const [qualitySetting, setQualitySetting] = useState<QualitySetting>(loadQualitySetting)
+  const [qualityLevel, setQualityLevel] = useState<QualityLevel>('high')
   /** A design from a share link, waiting for you to open it (or not). */
   const [shared, setShared] = useState<HouseDesign | null>(null)
   // Read once when the app starts (the address bar is cleared right after).
@@ -369,7 +390,21 @@ export default function App() {
           onShowRoom={() => setSelectedId(null)}
           lighting={design.lighting}
           onShowLighting={() => setTimeOpen(true)}
-          onAddFurniture={() => setCatalogOpen(true)}
+          onAddFurniture={() => {
+            setCatalogOpen(true)
+            // On phones the panels are below the 3D view: bring the view (and the catalog in it) on screen.
+            document.querySelector('.viewport')?.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+          }}
+          footer={
+            <QualityControl
+              setting={qualitySetting}
+              level={qualityLevel}
+              onChange={(setting) => {
+                setQualitySetting(setting)
+                saveQualitySetting(setting)
+              }}
+            />
+          }
         />
 
         {/* Background follows the time of day, so the room-switch fade dips to the same tone as the 3D backdrop. */}
@@ -396,6 +431,8 @@ export default function App() {
                 onThumbnail={handleThumbnail}
                 screenshotRequest={screenshotRequest}
                 onScreenshot={handleScreenshot}
+                qualitySetting={qualitySetting}
+                onQualityLevel={setQualityLevel}
               />
             </ErrorBoundary>
           </div>
@@ -431,9 +468,7 @@ export default function App() {
           )}
 
           <p className="hint" hidden={timeOpen || showcase}>
-            {view === 'perspective'
-              ? 'Click furniture to select · drag it to move · drag empty space to rotate · right-drag to pan · scroll to zoom'
-              : 'Click furniture to select · drag it to move · drag empty space to pan · scroll to zoom'}
+            {HINTS[touch ? 'touch' : 'mouse'][view]}
           </p>
 
           {catalogOpen && !showcase && (
