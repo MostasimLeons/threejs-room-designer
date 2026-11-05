@@ -8,6 +8,8 @@ interface RoomPanelProps {
   room: RoomId
   /** Extra cards after the room header (the Room size card). */
   children?: ReactNode
+  /** View the whole room as a table-top model in AR. */
+  onViewInAr: () => void
   finishes: RoomFinishes
   onUpdateFinishes: (changes: FinishChanges) => void
   onPreviewFinishes: (changes: FinishChanges) => void
@@ -15,7 +17,7 @@ interface RoomPanelProps {
 }
 
 /** Right-hand panel when nothing is selected: wall paint, floor material and shortcut tips. */
-export function RoomPanel({ room, finishes, onUpdateFinishes, onPreviewFinishes, onCommit, children }: RoomPanelProps) {
+export function RoomPanel({ room, finishes, onUpdateFinishes, onPreviewFinishes, onCommit, children, onViewInAr }: RoomPanelProps) {
   return (
     <aside className="properties">
       <section className="card">
@@ -24,6 +26,9 @@ export function RoomPanel({ room, finishes, onUpdateFinishes, onPreviewFinishes,
         <p className="muted">
           Select furniture to edit it, or style the room below. Tip: click a wall, the floor, a window or a door in the 3D view.
         </p>
+        <button className="ghost-button ar-button" onClick={onViewInAr} title="The whole room as a table-top model (1:20) in AR">
+          View the room in AR
+        </button>
       </section>
       {children}
 

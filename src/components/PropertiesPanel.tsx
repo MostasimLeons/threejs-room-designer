@@ -52,6 +52,8 @@ interface PropertiesPanelProps {
   onSelectOpening: (ref: OpeningRef) => void
   onDeleteOpening: () => void
   onMessage: (text: string) => void
+  /** View the selected piece (or, with nothing selected, the room) in AR. */
+  onViewInAr: () => void
 }
 
 /** Props that make a slider record ONE undo step when you let go. */
@@ -300,6 +302,13 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             Delete
           </button>
         </div>
+        <button
+          className="ghost-button ar-button"
+          onClick={props.onViewInAr}
+          title="See it at real size in your own room (phone or tablet)"
+        >
+          View in AR
+        </button>
         {props.moveTargets.length > 0 && (
           <label className="field move-field">
             <span>Move to another room</span>

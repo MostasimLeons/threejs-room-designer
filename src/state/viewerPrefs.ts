@@ -72,3 +72,23 @@ export function saveQualitySetting(setting: QualitySetting) {
     // Not remembered: Auto next time. Harmless.
   }
 }
+
+const VOLUME_KEY = 'room-designer:sound-volume'
+
+/** The ambient sound volume chosen in this browser (0–1, half by default). */
+export function loadSoundVolume(): number {
+  try {
+    const value = Number(localStorage.getItem(VOLUME_KEY))
+    return localStorage.getItem(VOLUME_KEY) !== null && value >= 0 && value <= 1 ? value : 0.5
+  } catch {
+    return 0.5
+  }
+}
+
+export function saveSoundVolume(volume: number) {
+  try {
+    localStorage.setItem(VOLUME_KEY, String(volume))
+  } catch {
+    // Not remembered: half volume next time. Harmless.
+  }
+}

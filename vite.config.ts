@@ -11,7 +11,8 @@ export default defineConfig({
         // browser can keep them cached when only our own code is updated.
         codeSplitting: {
           groups: [
-            { name: 'three', test: /node_modules[\\/]three[\\/]/ },
+            // Three.js itself, but not its file exporters: those are only for View in AR (loaded on demand).
+            { name: 'three', test: /node_modules[\\/]three[\\/](?!examples[\\/]jsm[\\/](exporters|utils[\\/]TextureUtils))/ },
             // `(?!postprocessing)`: @react-three/postprocessing goes in the effects group instead.
             { name: 'r3f', test: /node_modules[\\/](@react-three[\\/](?!postprocessing)|three-stdlib|camera-controls|maath)/ },
             // Post-processing (ambient occlusion, bloom, tone mapping).

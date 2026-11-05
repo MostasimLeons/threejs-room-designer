@@ -16,6 +16,10 @@ import type { CameraViewId } from './cameraViews'
 import { resolveRoom, type RoomId, type WallSide } from './house'
 import { RoomInfoContext } from './roomContext'
 import type { OpeningRef } from './layout'
+import { TourCamera } from './TourCamera'
+import { ArSource, ROOM_OBJECT_NAME, type ArTarget } from './ArSource'
+import type * as THREE from 'three'
+import type { TourShot } from './tour'
 import type { ViewMode } from './roomConfig'
 import type { RoomDesign } from '../state/design'
 
@@ -38,6 +42,13 @@ interface SceneProps {
   onPickFloor: (point: [number, number, number]) => void
   /** Clicked a window or door in 3D. */
   onPickOpening: (ref: OpeningRef) => void
+  /** Asks for a copy of a piece or the room for AR (a new id = a new copy). */
+  arRequest?: { id: number; target: ArTarget } | null
+  onArModel?: (model: THREE.Group | null) => void
+  /** While a video records: draw at this pixel ratio, and keep the quality level fixed. */
+  recordingDpr?: number | null
+  /** The guided tour's current shot, while the tour plays (it drives the camera). */
+  tour?: { shot: TourShot; shotId: number; paused: boolean; onEnd: () => void } | null
   /** Which camera view (Overview / Eye level / Corner) the Perspective camera shows. */
   cameraViewId: CameraViewId
   /** False in showcase mode: nothing can be selected, moved or painted. */
@@ -48,6 +59,8 @@ interface SceneProps {
   /** Ask for a high-resolution picture (a new id = a new picture). */
   screenshotRequest: number | null
   onScreenshot: (image: Blob | null) => void
+  /** A smaller picture for the before/after comparison (a new id = a new picture). */
+  compareCapture?: { id: number; onCapture: (image: Blob | null) => void } | null
   /** Auto, or a fixed quality level (quality.ts). */
   qualitySetting: QualitySetting
   /** Tells the app which level is in use (for Auto, the one it picked). */
@@ -77,6 +90,10 @@ export function Scene({
   onPickWall,
   onPickFloor,
   onPickOpening,
+  tour,
+  recordingDpr,
+  arRequest,
+  onArModel,
   popover,
   cameraViewId,
   editable,
@@ -84,6 +101,7 @@ export function Scene({
   onThumbnail,
   screenshotRequest,
   onScreenshot,
+  compareCapture,
   qualitySetting,
   onQualityLevel,
 }: SceneProps) {
@@ -104,7 +122,7 @@ export function Scene({
     // `flat` + `antialias: false`: tone mapping and antialiasing happen in PostEffects instead.
     <Canvas
       shadows="percentage"
-      dpr={[1, quality.maxDpr]}
+      dpr={recordingDpr ? recordingDpr : [1, quality.maxDpr]}
       frameloop="demand"
       flat
       gl={{ antialias: false }}
@@ -112,12 +130,17 @@ export function Scene({
     >
       <QualityContext.Provider value={quality}>
         <RoomInfoContext.Provider value={info}>
-          {qualitySetting === 'auto' && <AutoQuality level={autoLevel} onStepDown={setAutoLevel} />}
+          {qualitySetting === 'auto' && !recordingDpr && <AutoQuality level={autoLevel} onStepDown={setAutoLevel} />}
           {/* Selection: anything inside a <Select enabled> gets the blue outline (PostEffects). */}
           <Selection>
             <CameraRig view={view} resetKey={resetKey} room={room} cameraViewId={cameraViewId} />
+            {tour && view === 'perspective' && tour.shot.room === room && (
+              <TourCamera shot={tour.shot} shotId={tour.shotId} paused={tour.paused} onEnd={tour.onEnd} />
+            )}
             <RoomThumbnails request={thumbnailRequest} onCapture={onThumbnail} />
             <SceneScreenshot request={screenshotRequest} onCapture={onScreenshot} />
+            <ArSource request={arRequest ?? null} onModel={(model) => onArModel?.(model)} />
+            <SceneScreenshot request={compareCapture?.id ?? null} onCapture={(image) => compareCapture?.onCapture(image)} longSide={0} />
             {/* Also sets the background colour, which follows the time of day. */}
             <Lighting lighting={design.lighting} />
             {PERF_ENABLED && <DevStats />}
@@ -127,7 +150,7 @@ export function Scene({
         linger in another. Materials and reflection buffers are freed when a room is removed;
         floor textures are cached, so coming back to a room is quick.
       */}
-            <group key={room}>
+            <group key={room} name={ROOM_OBJECT_NAME}>
               <RoomShell
                 room={room}
                 finishes={design.finishes}

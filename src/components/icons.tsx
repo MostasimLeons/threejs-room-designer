@@ -104,6 +104,31 @@ export const MoonIcon = () => (
 )
 
 /** Showcase mode: a play/presentation symbol. */
+/** Ambient sound: a speaker, with sound waves when on or a cross when muted. */
+export const SoundIcon = ({ muted }: { muted: boolean }) => (
+  <Icon>
+    <path d="M4 9h4l5-4v14l-5-4H4Z" />
+    {muted ? <path d="m17 9 5 6M22 9l-5 6" /> : <path d="M17 8.5a5 5 0 0 1 0 7M19.5 6a8.5 8.5 0 0 1 0 12" />}
+  </Icon>
+)
+
+/** Compare: a frame split down the middle. */
+export const CompareIcon = () => (
+  <Icon>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="M12 3v18" />
+    <path d="m9 10-2 2 2 2M15 10l2 2-2 2" />
+  </Icon>
+)
+
+/** Record video: a video camera. */
+export const VideoIcon = () => (
+  <Icon>
+    <rect x="3" y="6" width="13" height="12" rx="2" />
+    <path d="m16 10 5-3v10l-5-3Z" />
+  </Icon>
+)
+
 /** Shopping list: a list with bullet points. */
 export const ListIcon = () => (
   <Icon>

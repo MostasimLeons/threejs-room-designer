@@ -43,7 +43,8 @@ export function Ceiling({ width, depth, overhang = ROOM.wallThickness, downlight
   ]
 
   return (
-    <>
+    // Not part of an AR model: you look into the room from above.
+    <group userData={{ noExport: true }}>
       <RoofShadow width={width + 2 * overhang} depth={depth + 2 * overhang} height={H} />
       {/*
         Hidden whenever the camera is above the ceiling. Backface culling would already
@@ -76,7 +77,7 @@ export function Ceiling({ width, depth, overhang = ROOM.wallThickness, downlight
           ))}
         </group>
       </Cutaway>
-    </>
+    </group>
   )
 }
 
