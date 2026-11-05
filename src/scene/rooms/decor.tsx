@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, type ComponentType } from 'react'
 import * as THREE from 'three'
 import { ROOM } from '../roomConfig'
-import { KITCHEN_UNIT_DEPTH, ROOMS, TOILET_POSITION, TOILET_SIZE, type RoomId, type WallSide } from '../house'
+import { KITCHEN_UNIT_DEPTH, ROOMS, type Opening, type RoomId, type WallSide } from '../house'
+import { useRoomInfo } from '../roomContext'
 import { materials } from '../materials'
 import { Block, Cylinder } from '../parts'
 
@@ -22,16 +23,46 @@ export const ROOM_DECOR: Record<RoomId, { floor?: ComponentType; walls?: Partial
 
 const T = ROOM.wallThickness
 
+/**
+ * How much the room has been resized compared with its standard size (1 = standard),
+ * so decor keeps its place: a rug stays under the sofa area, shrinking with a smaller room.
+ */
+function useResize(room: RoomId) {
+  const info = useRoomInfo()
+  const base = ROOMS[room]
+  return { info, sx: info.width / base.width, sz: info.depth / base.depth }
+}
+
+/**
+ * Free stretches of a wall between its openings, as [from, to] along the wall (room
+ * coordinates). `margin` keeps clear of each opening (e.g. for curtains).
+ */
+function freeStretches(length: number, openings: Opening[], margin: number): [number, number][] {
+  const runs: [number, number][] = []
+  let x = -length / 2
+  for (const o of openings.toSorted((a, b) => a.at - b.at)) {
+    const from = o.at - o.width / 2 - margin
+    if (from > x) runs.push([x, from])
+    x = Math.max(x, o.at + o.width / 2 + margin)
+  }
+  if (length / 2 > x) runs.push([x, length / 2])
+  return runs
+}
+
 // ---------- Living Room ----------
 
 function LivingRug() {
+  // Under the seating area; smaller in a smaller room (never bigger than the standard 3 × 2.2 m).
+  const { sx, sz } = useResize('living')
+  const w = 3.0 * Math.min(1, sx)
+  const d = 2.2 * Math.min(1, sz)
   return (
-    <group position={[0.2, 0, -1.15]}>
+    <group position={[0.2 * sx, 0, -1.15 * sz]}>
       <mesh position={[0, 0.004, 0]} material={materials.rugBorder} receiveShadow>
-        <boxGeometry args={[3.0, 0.008, 2.2]} />
+        <boxGeometry args={[w, 0.008, d]} />
       </mesh>
       <mesh position={[0, 0.0045, 0]} material={materials.rug} receiveShadow>
-        <boxGeometry args={[2.84, 0.009, 2.04]} />
+        <boxGeometry args={[w - 0.16, 0.009, d - 0.16]} />
       </mesh>
     </group>
   )
@@ -40,28 +71,42 @@ function LivingRug() {
 // ---------- Bedroom ----------
 
 function BedroomCarpet() {
+  const { sx, sz } = useResize('bedroom')
+  const w = 3.2 * Math.min(1, sx)
+  const d = 2.5 * Math.min(1, sz)
   return (
-    <group position={[-0.35, 0, -0.35]}>
+    <group position={[-0.35 * sx, 0, -0.35 * sz]}>
       <mesh position={[0, 0.005, 0]} material={materials.carpetBorder} receiveShadow>
-        <boxGeometry args={[3.2, 0.01, 2.5]} />
+        <boxGeometry args={[w, 0.01, d]} />
       </mesh>
       <mesh position={[0, 0.0055, 0]} material={materials.carpet} receiveShadow>
-        <boxGeometry args={[3.06, 0.011, 2.36]} />
+        <boxGeometry args={[w - 0.14, 0.011, d - 0.14]} />
       </mesh>
     </group>
   )
 }
 
-/** Vertical natural-oak slats on a dark backing, behind the bed. One InstancedMesh = one draw call for all slats. */
+/**
+ * Vertical natural-oak slats on a dark backing, behind the bed. One InstancedMesh =
+ * one draw call for all slats. Up to 3 m wide, centred behind the bed and kept clear
+ * of any window or door on the back wall (and its curtains); left out if there's no room.
+ */
 function SlatAccentWall() {
-  const backFace = -ROOMS.bedroom.depth / 2
-  // Centred behind the bed (x = -0.35), stopping before the curtains
-  const from = -1.85
-  const to = 1.15
-  const height = 2.6
+  const { info, sx } = useResize('bedroom')
+  const backFace = -info.depth / 2
+  const centre = -0.35 * sx // behind the bed
+  const stretch =
+    freeStretches(info.width, info.openings.back ?? [], 0.35).find(([a, b]) => a <= centre && centre <= b) ??
+    freeStretches(info.width, info.openings.back ?? [], 0.35).toSorted((a, b) => b[1] - b[0] - (a[1] - a[0]))[0]
+  const [runFrom, runTo] = stretch ?? [0, 0]
+  const half = Math.min(1.5, (runTo - runFrom - 0.1) / 2)
+  const mid = Math.min(Math.max(centre, runFrom + half + 0.05), runTo - half - 0.05)
+  const from = mid - half
+  const to = mid + half
+  const height = Math.min(2.6, info.height - 0.2)
   const slatW = 0.035
   const pitch = 0.06
-  const count = Math.floor((to - from) / pitch)
+  const count = Math.max(0, Math.floor((to - from) / pitch))
   const ref = useRef<THREE.InstancedMesh>(null)
 
   useLayoutEffect(() => {
@@ -73,8 +118,9 @@ function SlatAccentWall() {
       mesh.setMatrixAt(i, matrix)
     }
     mesh.instanceMatrix.needsUpdate = true
-  }, [count, from, backFace])
+  }, [count, from, backFace, height])
 
+  if (count < 10) return null
   return (
     <group>
       <Block
@@ -82,7 +128,8 @@ function SlatAccentWall() {
         position={[(from + to) / 2, height / 2, backFace + 0.0075]}
         material={materials.slatBacking}
       />
-      <instancedMesh ref={ref} args={[undefined, undefined, count]} material={materials.woodLight} castShadow receiveShadow>
+      {/* key: a different number of slats needs a new InstancedMesh */}
+      <instancedMesh key={count} ref={ref} args={[undefined, undefined, count]} material={materials.woodLight} castShadow receiveShadow>
         <boxGeometry args={[slatW, height, 0.03]} />
       </instancedMesh>
       {/* Oak cap along the top */}
@@ -98,10 +145,9 @@ function SlatAccentWall() {
 // ---------- Curtains (any window with `curtains: true`) ----------
 
 /** Curtain panel made of vertical "pleats" (squashed cylinders) so it looks folded. */
-function CurtainPanel({ fromX, toX, z }: { fromX: number; toX: number; z: number }) {
+function CurtainPanel({ fromX, toX, z, height }: { fromX: number; toX: number; z: number; height: number }) {
   const pleats = Math.max(3, Math.round((toX - fromX) / 0.055))
   const step = (toX - fromX) / pleats
-  const height = 2.44
   return (
     <group>
       {Array.from({ length: pleats }, (_, i) => (
@@ -125,13 +171,16 @@ interface CurtainsProps {
   right: number
   /** Half the inside length of the wall, so the rod never pokes through the next wall. */
   wallHalf: number
+  /** Ceiling height: the rod hangs just below it. */
+  ceiling?: number
 }
 
 /**
  * A brass rod with two cream curtains drawn to the sides, in the wall's local
  * frame (+z points into the room; see walls.ts).
  */
-export function Curtains({ left, right, wallHalf }: CurtainsProps) {
+export function Curtains({ left, right, wallHalf, ceiling = ROOM.height }: CurtainsProps) {
+  const rodY = Math.min(2.52, ceiling - 0.08)
   const z = T / 2 + 0.2 // in front of the window sill
   const rodLeft = Math.max(left - 0.33, -wallHalf + 0.02)
   const rodRight = Math.min(right + 0.33, wallHalf - 0.02)
@@ -141,11 +190,11 @@ export function Curtains({ left, right, wallHalf }: CurtainsProps) {
         radiusTop={0.013}
         height={rodRight - rodLeft}
         rotation={[0, 0, Math.PI / 2]}
-        position={[(rodLeft + rodRight) / 2, 2.52, z]}
+        position={[(rodLeft + rodRight) / 2, rodY, z]}
         material={materials.brass}
       />
-      <CurtainPanel fromX={rodLeft + 0.02} toX={left + 0.1} z={z} />
-      <CurtainPanel fromX={right - 0.1} toX={rodRight - 0.02} z={z} />
+      <CurtainPanel fromX={rodLeft + 0.02} toX={left + 0.1} z={z} height={rodY - 0.08} />
+      <CurtainPanel fromX={right - 0.1} toX={rodRight - 0.02} z={z} height={rodY - 0.08} />
     </group>
   )
 }
@@ -156,10 +205,11 @@ const pendantShade = new THREE.MeshStandardMaterial({ color: '#1f1f22', roughnes
 
 /** Black cone pendant hanging over the table's starting position, with a glowing bulb. */
 function DiningPendant() {
-  const top = ROOM.height
+  const { info, sz } = useResize('dining')
+  const top = info.height
   const shadeY = 1.6
   return (
-    <group position={[0, 0, -0.1]}>
+    <group position={[0, 0, -0.1 * sz]}>
       <Cylinder radiusTop={0.06} height={0.02} position={[0, top - 0.01, 0]} material={materials.metalBlack} />
       <Cylinder
         radiusTop={0.004}
@@ -179,27 +229,44 @@ function DiningPendant() {
 
 // ---------- Kitchen ----------
 
+/** Positions of the seams between wall-unit doors (about 46 cm wide) on a run from `from` to `to`. */
+function seams(from: number, to: number) {
+  const n = Math.max(1, Math.round((to - from) / 0.46))
+  return Array.from({ length: n - 1 }, (_, i) => from + ((to - from) * (i + 1)) / n)
+}
+
 /**
- * Built-in kitchen along the back wall (4 m): base units with a stone worktop,
- * sink under the window, hob with an extractor, glossy splashback and wall units
- * either side of the window, with a light strip under the left wall unit.
+ * Built-in kitchen along the whole back wall: base units with a stone worktop, the
+ * sink under the back-wall window (if there is one), a hob with an extractor, a
+ * glossy splashback and wall units beside the window(s), with a light strip under
+ * the first wall unit. Everything is worked out from the wall's width and openings,
+ * so it follows the layout editor.
  */
 function KitchenUnits() {
-  const back = -ROOMS.kitchen.depth / 2
+  const info = useRoomInfo()
+  const W = info.width
+  const back = -info.depth / 2
   const D = KITCHEN_UNIT_DEPTH
   const front = back + D - 0.04
-  const doors = 6
-  const doorW = 4 / doors
-  const sinkX = 0.6 // centred under the window
-  const hobX = -1.0
+  const doors = Math.max(2, Math.round(W / 0.67))
+  const doorW = W / doors
+  const openings = info.openings.back ?? []
+  const backWindow = openings.find((o) => o.kind === 'window')
+  const clampX = (x: number, half: number) => Math.min(Math.max(x, -W / 2 + half), W / 2 - half)
+  const sinkX = clampX(backWindow ? backWindow.at : W / 4, 0.4)
+  // The hob 1.6 m to the left of the sink, or to its right if that's off the end.
+  const hobX = sinkX - 1.6 >= -W / 2 + 0.4 ? sinkX - 1.6 : clampX(sinkX + 1.3, 0.4)
+  // Wall units and splashback: the back wall minus its openings (5 cm clear of each).
+  const runs = freeStretches(W, openings, 0.05).filter(([a, b]) => b - a >= 0.35)
+  const lit = runs.toSorted((a, b) => b[1] - b[0] - (a[1] - a[0]))[0]
 
   return (
     <group>
       {/* Base units */}
-      <Block size={[4, 0.1, D - 0.08]} position={[0, 0.05, back + (D - 0.08) / 2]} material={materials.slatBacking} />
-      <Block size={[4, 0.78, D - 0.04]} position={[0, 0.49, back + (D - 0.04) / 2]} material={materials.creamLacquer} />
+      <Block size={[W, 0.1, D - 0.08]} position={[0, 0.05, back + (D - 0.08) / 2]} material={materials.slatBacking} />
+      <Block size={[W, 0.78, D - 0.04]} position={[0, 0.49, back + (D - 0.04) / 2]} material={materials.creamLacquer} />
       {Array.from({ length: doors }, (_, i) => {
-        const x = -2 + doorW * (i + 0.5)
+        const x = -W / 2 + doorW * (i + 0.5)
         return (
           <group key={i}>
             {i > 0 && (
@@ -209,7 +276,7 @@ function KitchenUnits() {
           </group>
         )
       })}
-      <Block size={[4, 0.04, D]} position={[0, 0.9, back + D / 2]} material={materials.stone} />
+      <Block size={[W, 0.04, D]} position={[0, 0.9, back + D / 2]} material={materials.stone} />
 
       {/* Sink and tap */}
       <Block size={[0.56, 0.006, 0.4]} position={[sinkX, 0.922, back + 0.33]} material={materials.steel} />
@@ -236,21 +303,36 @@ function KitchenUnits() {
       ))}
       <Block size={[0.6, 0.05, 0.32]} position={[hobX, 1.47, back + 0.16]} material={materials.steel} />
 
-      {/* Splashback: either side of the window, and a strip under it */}
-      <Block size={[1.98, 0.53, 0.01]} position={[-1.01, 1.185, back + 0.005]} material={materials.splashback} />
-      <Block size={[0.78, 0.53, 0.01]} position={[1.61, 1.185, back + 0.005]} material={materials.splashback} />
-      <Block size={[1.2, 0.11, 0.01]} position={[sinkX, 0.975, back + 0.005]} material={materials.splashback} />
-
-      {/* Wall units either side of the window, with seams */}
-      <Block size={[1.85, 0.7, 0.34]} position={[-1.075, 1.85, back + 0.17]} material={materials.creamLacquer} />
-      <Block size={[0.65, 0.7, 0.34]} position={[1.675, 1.85, back + 0.17]} material={materials.creamLacquer} />
-      {[-1.53, -1.07, -0.61].map((x) => (
-        <Block key={x} size={[0.005, 0.68, 0.004]} position={[x, 1.85, back + 0.342]} material={materials.slatBacking} />
+      {/* Splashback on the free wall, and a strip under each window that sits above the worktop */}
+      {runs.map(([a, b]) => (
+        <Block key={`s${a}`} size={[b - a, 0.53, 0.01]} position={[(a + b) / 2, 1.185, back + 0.005]} material={materials.splashback} />
       ))}
-      {/* Light strip under the left wall unit: lights the worktop and glows */}
-      <mesh position={[-1.075, 1.495, back + 0.3]} material={materials.coveLight}>
-        <boxGeometry args={[1.7, 0.01, 0.02]} />
-      </mesh>
+      {openings
+        .filter((o) => o.kind === 'window' && o.bottom > 0.95)
+        .map((o) => (
+          <Block
+            key={`u${o.at}`}
+            size={[o.width, o.bottom - 0.92, 0.01]}
+            position={[o.at, (0.92 + o.bottom) / 2, back + 0.005]}
+            material={materials.splashback}
+          />
+        ))}
+
+      {/* Wall units on the free wall, with seams */}
+      {runs.map(([a, b]) => (
+        <group key={`w${a}`}>
+          <Block size={[b - a, 0.7, 0.34]} position={[(a + b) / 2, 1.85, back + 0.17]} material={materials.creamLacquer} />
+          {seams(a, b).map((x) => (
+            <Block key={x} size={[0.005, 0.68, 0.004]} position={[x, 1.85, back + 0.342]} material={materials.slatBacking} />
+          ))}
+        </group>
+      ))}
+      {/* Light strip under the longest wall unit: lights the worktop and glows */}
+      {lit && (
+        <mesh position={[(lit[0] + lit[1]) / 2, 1.495, back + 0.3]} material={materials.coveLight}>
+          <boxGeometry args={[lit[1] - lit[0] - 0.15, 0.01, 0.02]} />
+        </mesh>
+      )}
     </group>
   )
 }
@@ -259,8 +341,11 @@ function KitchenUnits() {
 
 /** Wall-hung toilet in front of a concealed cistern, with a chrome flush plate. */
 function Toilet() {
-  const [x, z] = TOILET_POSITION
-  const [w, d] = TOILET_SIZE
+  // Where the toilet's zone is for this room size (toiletZones in house.ts), so the two always agree.
+  const zone = useRoomInfo().fixedZones.find((z) => z.label === 'toilet')
+  if (!zone) return null
+  const [x, z] = zone.position
+  const [w, d] = zone.size
   const wallZ = z - d / 2 // the zone's back edge is the back wall
   const frameD = 0.14
   return (

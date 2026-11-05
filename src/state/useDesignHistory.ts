@@ -3,7 +3,7 @@ import { placeInRoom, type FurnitureItem } from '../scene/furniture/catalog'
 import type { RoomFinishes } from '../scene/finishes'
 import { normalizeDegrees } from '../utils/math'
 import { normalizeLighting, type RoomLighting } from '../scene/sun'
-import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'
+import { ROOM_IDS, ROOMS, type RoomId, type RoomLayout } from '../scene/house'
 import { DEFAULT_HOUSE, type HouseDesign, type RoomDesign } from './design'
 
 export type ItemChanges = Partial<Pick<FurnitureItem, 'position' | 'rotation' | 'color' | 'variant' | 'frame'>>
@@ -34,6 +34,8 @@ export type HistoryAction =
   | { type: 'removeItem'; id: string }
   | { type: 'updateFinishes'; changes: FinishChanges; transient: boolean }
   | { type: 'updateLighting'; changes: LightingChanges; transient: boolean }
+  /** New room size / openings (undefined = the standard layout), with that room's size; furniture is moved back inside. */
+  | { type: 'setLayout'; layout: RoomLayout | undefined; bounds: RoomBounds; transient: boolean }
   | { type: 'load'; design: RoomDesign }
   | { type: 'commit' }
   | { type: 'undo' }
@@ -57,6 +59,11 @@ function applyItemChanges(design: RoomDesign, id: string, changes: ItemChanges, 
       return next
     }),
   }
+}
+
+/** The room's size: its own layout when it has one, otherwise the size the action was sent with. */
+function boundsOf(design: RoomDesign, fallback: RoomBounds): RoomBounds {
+  return design.layout ?? fallback
 }
 
 /** Turns an in-progress drag/slide into a finished undo step. */
@@ -84,12 +91,23 @@ function change(state: HistoryState, next: RoomDesign, transient: boolean): Hist
 export function historyReducer(state: HistoryState, action: HistoryAction): HistoryState {
   switch (action.type) {
     case 'updateItem':
-      return change(state, applyItemChanges(state.present, action.id, action.changes, action.bounds), action.transient)
+      return change(
+        state,
+        applyItemChanges(state.present, action.id, action.changes, boundsOf(state.present, action.bounds)),
+        action.transient,
+      )
+    case 'setLayout': {
+      const { layout: _old, ...rest } = state.present
+      const design: RoomDesign = action.layout ? { ...rest, layout: action.layout } : rest
+      // A smaller room pushes furniture back inside its walls (wall pieces stay on a wall).
+      design.items = design.items.map((item) => ({ ...item, ...placeInRoom(item, action.bounds) }))
+      return change(state, design, action.transient)
+    }
     case 'addItem': {
       // Ids are unique within a room; a clash would make two pieces move together.
       if (state.present.items.some((item) => item.id === action.item.id)) return state
       const item = { ...action.item, rotation: normalizeDegrees(action.item.rotation) }
-      Object.assign(item, placeInRoom(item, action.bounds))
+      Object.assign(item, placeInRoom(item, boundsOf(state.present, action.bounds)))
       return change(state, { ...state.present, items: [...state.present.items, item] }, false)
     }
     case 'removeItem': {
@@ -181,6 +199,10 @@ export interface RoomHistory {
   redo: () => void
   /** Back to the room's starting design. Can be undone. */
   reset: () => void
+  /** New room size or openings (undefined = standard layout). One undo step. */
+  updateLayout: (layout: RoomLayout | undefined) => void
+  /** Live layout change while a slider moves; `commit` records it. */
+  previewLayout: (layout: RoomLayout | undefined) => void
 }
 
 type RoomActions = Omit<RoomHistory, 'design' | 'canUndo' | 'canRedo'>
@@ -217,6 +239,8 @@ export function useHouseHistory(getInitialHouse: () => HouseDesign) {
               undo: () => send({ type: 'undo' }),
               redo: () => send({ type: 'redo' }),
               reset: () => send({ type: 'reset', design: DEFAULT_HOUSE[room] }),
+              updateLayout: (layout) => send({ type: 'setLayout', layout, bounds: layout ?? ROOMS[room], transient: false }),
+              previewLayout: (layout) => send({ type: 'setLayout', layout, bounds: layout ?? ROOMS[room], transient: true }),
             },
           ]
         }),

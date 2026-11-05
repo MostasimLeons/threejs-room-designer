@@ -41,7 +41,8 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useHouseHistory } from './state/useDesignHistory'
 import { DEFAULT_HOUSE, type HouseDesign } from './state/design'
 import { loadAutosave, writeAutosave } from './state/storage'
-import { ROOM_IDS, ROOMS, type RoomId, type WallSide } from './scene/house'
+import { resolveRoom, ROOM_IDS, ROOMS, type RoomId, type RoomLayout, type WallSide } from './scene/house'
+import { defaultLayout, isDefaultLayout, openingSelection, removeOpening, selectedOpening, type OpeningRef } from './scene/layout'
 
 /** Room switch: the view fades out this fast, the room swaps, then it fades back in (see .scene-layer in index.css). */
 const FADE_OUT_MS = 180
@@ -125,6 +126,31 @@ export default function App() {
   const { design } = history
   const selectedItem = design.items.find((item) => item.id === selectedId) ?? null
   const wall = selectedWall(selectedId)
+  // The room as laid out now (its own size and openings, or the standard ones).
+  const info = resolveRoom(room, design.layout)
+  const layout = useMemo(() => design.layout ?? defaultLayout(room), [design.layout, room])
+  // A selected window or door, while it exists (undo can take it away).
+  const openingRef = selectedOpening(selectedId)
+  const opening = openingRef && layout.openings[openingRef.side]?.[openingRef.index] ? openingRef : null
+
+  /**
+   * A new room size or openings from the layout editor. The standard layout isn't
+   * stored (so the design stays as it was). `select` keeps a moved opening selected.
+   */
+  function handleLayout(next: RoomLayout, transient: boolean, select?: OpeningRef) {
+    const stored = isDefaultLayout(room, next) ? undefined : next
+    if (transient) history.previewLayout(stored)
+    else history.updateLayout(stored)
+    if (select) setSelectedId(openingSelection(select))
+  }
+
+  function handleDeleteOpening() {
+    if (!opening) return
+    const name = layout.openings[opening.side]?.[opening.index]?.label ?? 'opening'
+    handleLayout(removeOpening(layout, opening), false)
+    setSelectedId(null)
+    setToast(`Removed ${name.toLowerCase()}. Undo brings it back.`)
+  }
 
   /** Clicked a wall in 3D: select it and show its quick picker there. */
   function handlePickWall(side: WallSide, point: [number, number, number]) {
@@ -164,9 +190,10 @@ export default function App() {
 
   // Which pieces overlap each other. Recalculated only when the furniture changes.
   // Built-in units (kitchen units, toilet) count too.
-  const overlaps = useMemo(() => findOverlaps(design.items, ROOMS[room].fixedZones), [design.items, room])
+  const overlaps = useMemo(() => findOverlaps(design.items, info.fixedZones), [design.items, info])
   const shownItems = house[shownRoom].items
-  const shownOverlaps = useMemo(() => findOverlaps(shownItems, ROOMS[shownRoom].fixedZones), [shownItems, shownRoom])
+  const shownZones = resolveRoom(shownRoom, house[shownRoom].layout).fixedZones
+  const shownOverlaps = useMemo(() => findOverlaps(shownItems, shownZones), [shownItems, shownZones])
 
   useEffect(() => () => clearTimeout(fadeTimer.current), [])
 
@@ -262,37 +289,37 @@ export default function App() {
     if (!selectedItem) return
     const copy: FurnitureItem = { ...selectedItem, id: createId() }
     const near: [number, number] = [selectedItem.position[0] + 0.3, selectedItem.position[1] + 0.3]
-    copy.position = findFreeSpot(copy, design.items, ROOMS[room], ROOMS[room].fixedZones, near)
+    copy.position = findFreeSpot(copy, design.items, info, info.fixedZones, near)
     history.addItem(copy)
     setSelectedId(copy.id)
   }
 
   /** Adds a new piece (from the catalog) at a free spot near the middle of the room, and selects it. */
   function handleAdd(type: FurnitureType) {
-    const info = FURNITURE_INFO[type]
+    const product = FURNITURE_INFO[type]
     const item: FurnitureItem = {
       id: createId(),
       type,
-      variant: info.variants[0].id,
+      variant: product.variants[0].id,
       position: [0, 0],
       rotation: 0,
-      color: info.swatches[0].color,
+      color: product.swatches[0].color,
     }
     // The default option, or the first that has room (e.g. a round table in a busy kitchen).
     const placed = placeNew(
       item,
-      info.variants.map((v) => v.id),
+      product.variants.map((v) => v.id),
       design.items,
-      ROOMS[room],
-      ROOMS[room].fixedZones,
+      info,
+      info.fixedZones,
     )
     item.variant = placed.variant
     item.position = placed.position
     item.rotation = placed.rotation
     history.addItem(item)
     setSelectedId(item.id)
-    const option = item.variant === info.variants[0].id ? '' : ` (${getVariant(type, item.variant).label.toLowerCase()}, to fit)`
-    setToast(`Added ${info.label.toLowerCase()}${option}. Drag it into place.`)
+    const option = item.variant === product.variants[0].id ? '' : ` (${getVariant(type, item.variant).label.toLowerCase()}, to fit)`
+    setToast(`Added ${product.label.toLowerCase()}${option}. Drag it into place.`)
   }
 
   /**
@@ -303,7 +330,8 @@ export default function App() {
     if (!selectedItem || !isAllowedIn(selectedItem.type, target)) return
     const targetHistory = forRoom(target)
     const moved: FurnitureItem = { ...selectedItem, id: createId() }
-    moved.position = findFreeSpot(moved, targetHistory.design.items, ROOMS[target], ROOMS[target].fixedZones)
+    const targetInfo = resolveRoom(target, targetHistory.design.layout)
+    moved.position = findFreeSpot(moved, targetHistory.design.items, targetInfo, targetInfo.fixedZones)
     history.removeItem(selectedItem.id)
     targetHistory.addItem(moved)
     setSelectedId(null)
@@ -412,6 +440,8 @@ export default function App() {
           onShowRoom={() => setSelectedId(null)}
           lighting={design.lighting}
           onShowLighting={() => setTimeOpen(true)}
+          info={info}
+          onSelectOpening={(ref) => setSelectedId(openingSelection(ref))}
           onAddFurniture={() => {
             setCatalogOpen(true)
             // On phones the panels are below the 3D view: bring the view (and the catalog in it) on screen.
@@ -446,6 +476,11 @@ export default function App() {
                 onDragBoundary={history.commit}
                 onPickWall={handlePickWall}
                 onPickFloor={handlePickFloor}
+                onPickOpening={(ref) => {
+                  history.commit()
+                  setPick(null)
+                  setSelectedId(openingSelection(ref))
+                }}
                 popover={!showcase && popoverContent && pick && shownRoom === room ? { point: pick.point, content: popoverContent } : null}
                 cameraViewId={cameraViewId}
                 editable={!showcase}
@@ -548,6 +583,19 @@ export default function App() {
           onDelete={handleDelete}
           moveTargets={selectedItem ? ROOM_IDS.filter((id) => id !== room && isAllowedIn(selectedItem.type, id)) : []}
           onMoveTo={handleMoveTo}
+          info={info}
+          layout={layout}
+          layoutStandard={!design.layout}
+          opening={opening}
+          onUpdateLayout={(next, select) => handleLayout(next, false, select)}
+          onPreviewLayout={(next, select) => handleLayout(next, true, select)}
+          onResetLayout={() => {
+            history.updateLayout(undefined)
+            setToast(`${ROOMS[room].label} is back to its standard size, windows and doors. Undo to go back.`)
+          }}
+          onSelectOpening={(ref) => setSelectedId(openingSelection(ref))}
+          onDeleteOpening={handleDeleteOpening}
+          onMessage={setToast}
         />
       </div>
 

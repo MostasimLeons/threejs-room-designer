@@ -2,11 +2,11 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { addAfterEffect, useThree } from '@react-three/fiber'
 import { Environment, Lightformer } from '@react-three/drei'
-import { ROOMS, type RoomId } from './house'
 import { materials } from './materials'
 import { daylightAt, type RoomLighting } from './sun'
 import { InteriorLightContext } from './interiorLight'
 import { SHADOW_ONLY_LAYER } from './Cutaway'
+import { useRoomInfo } from './roomContext'
 import { useQuality } from './quality'
 import { shadowSignature } from './shadowUpdates'
 
@@ -31,9 +31,14 @@ const SUN_DISTANCE = 14
  *   windows goes from blue to orange to night blue.
  * - Environment: a procedural "room" of light panels (no downloads) for reflections and fill.
  */
-export function Lighting({ room, lighting }: { room: RoomId; lighting: RoomLighting }) {
-  const { ceiling } = ROOMS[room].lights
-  const { downlights } = ROOMS[room]
+export function Lighting({ lighting }: { lighting: RoomLighting }) {
+  const info = useRoomInfo()
+  const { ceiling } = info.lights
+  const { downlights } = info
+  // The shadow cameras cover the room plus a margin; 6 and 7 m for the standard Living Room (7 × 6 m).
+  const reach = Math.max(info.width, info.depth) / 2
+  const fillHalf = reach + 2.5
+  const sunHalf = reach + 3.5
   const ceilingTarget = useMemo(() => new THREE.Object3D(), [])
   const sunTarget = useMemo(() => new THREE.Object3D(), [])
   const state = daylightAt(lighting)
@@ -78,10 +83,10 @@ export function Lighting({ room, lighting }: { room: RoomId; lighting: RoomLight
         intensity={state.fillIntensity}
         color={state.fillColor}
         shadow-mapSize={[shadowSize, shadowSize]}
-        shadow-camera-left={-6}
-        shadow-camera-right={6}
-        shadow-camera-top={6}
-        shadow-camera-bottom={-6}
+        shadow-camera-left={-fillHalf}
+        shadow-camera-right={fillHalf}
+        shadow-camera-top={fillHalf}
+        shadow-camera-bottom={-fillHalf}
         shadow-camera-far={25}
         shadow-bias={-0.0004}
         shadow-normalBias={0.02}
@@ -96,10 +101,10 @@ export function Lighting({ room, lighting }: { room: RoomId; lighting: RoomLight
         intensity={state.sunIntensity}
         color={state.sunColor}
         shadow-mapSize={[shadowSize, shadowSize]}
-        shadow-camera-left={-7}
-        shadow-camera-right={7}
-        shadow-camera-top={7}
-        shadow-camera-bottom={-7}
+        shadow-camera-left={-sunHalf}
+        shadow-camera-right={sunHalf}
+        shadow-camera-top={sunHalf}
+        shadow-camera-bottom={-sunHalf}
         shadow-camera-far={30}
         shadow-bias={-0.0004}
         shadow-normalBias={0.02}

@@ -13,7 +13,9 @@ import { SceneScreenshot } from './SceneScreenshot'
 import { AutoQuality } from './AutoQuality'
 import { browserDeviceHints, QUALITY, QualityContext, startingLevel, type QualityLevel, type QualitySetting } from './quality'
 import type { CameraViewId } from './cameraViews'
-import { ROOMS, type RoomId, type WallSide } from './house'
+import { resolveRoom, type RoomId, type WallSide } from './house'
+import { RoomInfoContext } from './roomContext'
+import type { OpeningRef } from './layout'
 import type { ViewMode } from './roomConfig'
 import type { RoomDesign } from '../state/design'
 
@@ -34,6 +36,8 @@ interface SceneProps {
   /** Clicked a wall / the floor in 3D (the point is where, in room coordinates). */
   onPickWall: (side: WallSide, point: [number, number, number]) => void
   onPickFloor: (point: [number, number, number]) => void
+  /** Clicked a window or door in 3D. */
+  onPickOpening: (ref: OpeningRef) => void
   /** Which camera view (Overview / Eye level / Corner) the Perspective camera shows. */
   cameraViewId: CameraViewId
   /** False in showcase mode: nothing can be selected, moved or painted. */
@@ -72,6 +76,7 @@ export function Scene({
   onDragBoundary,
   onPickWall,
   onPickFloor,
+  onPickOpening,
   popover,
   cameraViewId,
   editable,
@@ -86,6 +91,8 @@ export function Scene({
   const [autoLevel, setAutoLevel] = useState<QualityLevel>(() => startingLevel(browserDeviceHints()))
   const level = qualitySetting === 'auto' ? autoLevel : qualitySetting
   const quality = QUALITY[level]
+  // The room with its current layout (size, height, openings): shared with everything in the canvas.
+  const info = resolveRoom(room, design.layout)
   useEffect(() => onQualityLevel(level), [level, onQualityLevel])
 
   return (
@@ -104,53 +111,56 @@ export function Scene({
       onPointerMissed={() => onSelect(null)}
     >
       <QualityContext.Provider value={quality}>
-        {qualitySetting === 'auto' && <AutoQuality level={autoLevel} onStepDown={setAutoLevel} />}
-        {/* Selection: anything inside a <Select enabled> gets the blue outline (PostEffects). */}
-        <Selection>
-          <CameraRig view={view} resetKey={resetKey} room={room} cameraViewId={cameraViewId} />
-          <RoomThumbnails request={thumbnailRequest} onCapture={onThumbnail} />
-          <SceneScreenshot request={screenshotRequest} onCapture={onScreenshot} />
-          {/* Also sets the background colour, which follows the time of day. */}
-          <Lighting room={room} lighting={design.lighting} />
-          {PERF_ENABLED && <DevStats />}
+        <RoomInfoContext.Provider value={info}>
+          {qualitySetting === 'auto' && <AutoQuality level={autoLevel} onStepDown={setAutoLevel} />}
+          {/* Selection: anything inside a <Select enabled> gets the blue outline (PostEffects). */}
+          <Selection>
+            <CameraRig view={view} resetKey={resetKey} room={room} cameraViewId={cameraViewId} />
+            <RoomThumbnails request={thumbnailRequest} onCapture={onThumbnail} />
+            <SceneScreenshot request={screenshotRequest} onCapture={onScreenshot} />
+            {/* Also sets the background colour, which follows the time of day. */}
+            <Lighting lighting={design.lighting} />
+            {PERF_ENABLED && <DevStats />}
 
-          {/*
+            {/*
         key={room}: switching rooms swaps the whole room out, so nothing from one room can
         linger in another. Materials and reflection buffers are freed when a room is removed;
         floor textures are cached, so coming back to a room is quick.
       */}
-          <group key={room}>
-            <RoomShell
-              room={room}
-              finishes={design.finishes}
-              selectedId={editable ? selectedId : null}
-              onPickWall={editable ? onPickWall : noPick}
-              onPickFloor={editable ? onPickFloor : noPick}
-            />
-            <FurnitureLayer
-              items={design.items}
-              origin={ROOM_ORIGIN}
-              room={ROOMS[room]}
-              interactive={editable}
-              selectedId={editable ? selectedId : null}
-              overlaps={overlaps}
-              onSelect={onSelect}
-              onMove={onMove}
-              onRotate={onRotate}
-              onDragBoundary={onDragBoundary}
-            />
-          </group>
+            <group key={room}>
+              <RoomShell
+                room={room}
+                finishes={design.finishes}
+                selectedId={editable ? selectedId : null}
+                onPickWall={editable ? onPickWall : noPick}
+                onPickFloor={editable ? onPickFloor : noPick}
+                onPickOpening={editable ? onPickOpening : noPick}
+              />
+              <FurnitureLayer
+                items={design.items}
+                origin={ROOM_ORIGIN}
+                room={info}
+                interactive={editable}
+                selectedId={editable ? selectedId : null}
+                overlaps={overlaps}
+                onSelect={onSelect}
+                onMove={onMove}
+                onRotate={onRotate}
+                onDragBoundary={onDragBoundary}
+              />
+            </group>
 
-          {popover && (
-            // Pinned to the clicked point; follows it as the camera moves. `zIndexRange` keeps
-            // it under the app's own overlays (room bar, dialogs).
-            <Html key={popover.point.join(',')} position={popover.point} zIndexRange={[3, 0]} className="surface-popover-anchor">
-              {popover.content}
-            </Html>
-          )}
+            {popover && (
+              // Pinned to the clicked point; follows it as the camera moves. `zIndexRange` keeps
+              // it under the app's own overlays (room bar, dialogs).
+              <Html key={popover.point.join(',')} position={popover.point} zIndexRange={[3, 0]} className="surface-popover-anchor">
+                {popover.content}
+              </Html>
+            )}
 
-          <PostEffects view={view} />
-        </Selection>
+            <PostEffects view={view} />
+          </Selection>
+        </RoomInfoContext.Provider>
       </QualityContext.Provider>
     </Canvas>
   )

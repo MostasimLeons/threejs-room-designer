@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { ROOMS, type RoomId } from '../scene/house'
 import { FLOOR_OPTIONS, hasMixedWalls, WALL_STYLES, WALL_SWATCHES, wallColorName, type RoomFinishes } from '../scene/finishes'
 import type { FinishChanges } from '../state/useDesignHistory'
@@ -5,6 +6,8 @@ import { ColorPicker } from './ColorPicker'
 
 interface RoomPanelProps {
   room: RoomId
+  /** Extra cards after the room header (the Room size card). */
+  children?: ReactNode
   finishes: RoomFinishes
   onUpdateFinishes: (changes: FinishChanges) => void
   onPreviewFinishes: (changes: FinishChanges) => void
@@ -12,14 +15,17 @@ interface RoomPanelProps {
 }
 
 /** Right-hand panel when nothing is selected: wall paint, floor material and shortcut tips. */
-export function RoomPanel({ room, finishes, onUpdateFinishes, onPreviewFinishes, onCommit }: RoomPanelProps) {
+export function RoomPanel({ room, finishes, onUpdateFinishes, onPreviewFinishes, onCommit, children }: RoomPanelProps) {
   return (
     <aside className="properties">
       <section className="card">
         <h2>Room</h2>
         <p className="item-title">{ROOMS[room].label}</p>
-        <p className="muted">Select furniture to edit it, or style the room below. Tip: click a wall or the floor in the 3D view.</p>
+        <p className="muted">
+          Select furniture to edit it, or style the room below. Tip: click a wall, the floor, a window or a door in the 3D view.
+        </p>
       </section>
+      {children}
 
       <section className="card">
         <h2>Walls · {wallColorName(finishes.wallColor)}</h2>

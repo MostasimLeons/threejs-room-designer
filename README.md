@@ -51,6 +51,11 @@ Built with React, TypeScript, Vite, Three.js, React Three Fiber and Drei. Rooms,
 - **Shopping list:** the list button in the top bar shows every piece in this room or the whole house, identical pieces combined with a quantity, and the total. **Download CSV** (opens in Excel, Numbers or Google Sheets) or **Print or save as PDF**. The prices are made-up examples in US dollars for trying out the quote (they're in `src/scene/furniture/products.ts`, one per option, ready to be replaced by a real price list).
 - **Pieces on the wall:** art, mirrors and shelves always hang flush on the nearest wall, facing into the room, at a fixed height. Drag them along a wall, or towards another wall to move them there. They don't clash with floor furniture (a print above the sofa is fine) or built-in units, only with each other and with windows and doors. They hide with their wall when it's cut away for the view.
 - **Lamps at night:** floor lamps and now bedside lamps light their surroundings from dusk (bedside lamps only glow on Low quality).
+- **Room layout editor:** with nothing selected, the **Room size** card in the right panel changes the room's width and depth (2.5–10 m) and ceiling height (2.4–3.5 m), and lists its windows and doors.
+  - Click a window or door (in 3D, in the Objects list or in the card) to move it along its wall, move it to another wall, change its width and sill or top height, or remove it. **+ Window** / **+ Door** add one on the wall with the most free space.
+  - Windows and doors stay inside their wall and 15 cm apart (neighbours are pushed aside); doors start at the floor; windows stay under the ceiling. If a wall gets too short for all of them, the last ones are dropped.
+  - Everything follows the room: furniture is moved back inside a smaller room (and flagged if it now overlaps), pieces on the wall stay on a wall, the kitchen units run along the whole back wall with the sink under the window, the toilet keeps its place by its corner, rugs, the slat wall, curtains, downlights, lights, shadows and camera views adapt.
+  - Every change is one undo step (a slider drag included), and the layout is saved with the room: autosave, named saves, exported files (now version 4; older files still load) and share links. **Back to the standard size and openings** restores the room's own layout.
 - **Room finishes:**
   - walls in **paint**, glossy ceramic **tiles**, patterned **wallpaper** or painted wooden **panelling**, in six colour presets or a custom colour
   - seven floor materials: oak, walnut, whitewashed ash, polished concrete, stone tiles, white marble and terrazzo
@@ -228,6 +233,8 @@ Exact versions are in `package.json`. `package-lock.json` pins them so every ins
 | Share              | **Save / Load** → **Copy share link**                                                                                           |
 | Shopping list      | List button in the top bar: this room or the whole house; Download CSV or Print                                                 |
 | Legs / frame       | The finish card under Colour in the right panel (Standard keeps the original look)                                              |
+| Room size          | Deselect everything: **Room size** card in the right panel (width, depth, ceiling height)                                       |
+| Windows and doors  | Click one in 3D or in the Objects list; **+ Window** / **+ Door** in the Room size card                                         |
 | Paint a wall       | Click the wall: pick paint/tiles and a colour in the picker that opens there                                                    |
 | Change the floor   | Click the floor (if something is selected, the first click just deselects it)                                                   |
 | Rotate by dragging | Drag the round handle on the blue ring (15° steps, `Shift` for 1°)                                                              |
@@ -277,6 +284,7 @@ src/
     DesignsDialog.tsx      Save / load / export / import / share-link window
     QualityControl.tsx     The 3D quality setting (left panel)
     ShoppingListDialog.tsx Shopping list / quote window (CSV, print)
+    LayoutEditor.tsx       Room size card and the window / door panel
     CatalogDrawer.tsx      "Add furniture" catalog for the current room
     ViewToggle.tsx         Perspective / Plan switch
     ErrorBoundary.tsx      Friendly message if the 3D view fails (e.g. no WebGL)
@@ -317,7 +325,9 @@ src/
     rooms/decor.tsx        Built-in decor per room: rug, carpet, oak slat wall, curtains,
                            dining pendant, kitchen units, toilet
                            and the shared wall with the connecting door
-    house.ts               Room registry: every room's size, windows, doors, lights, camera, default design
+    house.ts               Room registry: every room's size, windows, doors, lights, camera, default design; resolveRoom applies a room's own layout
+    layout.ts              Layout editor rules: size limits, keeping windows and doors valid, add / move / remove
+    roomContext.ts         The room as laid out, shared with everything in the 3D view
     CameraRig.tsx          Perspective / Plan cameras and mouse controls
     Lighting.tsx           Sun, fill and night room lights from sun.ts; shadows once per frame; environment
     finishes.ts            Wall colour presets and floor material options
@@ -367,7 +377,9 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 - Overlapping furniture is flagged but not blocked. You decide where things go.
 - The corner sofa's footprint is the whole rectangle around its L, so a piece in the empty corner in front of the seats counts as overlapping it.
 - Choosing a bigger option for a piece after placing it can make it overlap its neighbours (it's then flagged, as before); adding from the catalog avoids this by picking an option that fits.
-- The window and door are fixed parts of the walls.
+- Rooms are rectangles: no L-shapes or angled walls.
+- Doors between rooms don't stay in sync: moving the Living Room's "Door to bedroom" doesn't move the Bedroom's (each room is its own scene).
+- The camera doesn't move while you resize a room; pick a camera view again (or Reset view) to frame the new size.
 - Pieces on a wall can't be placed at a chosen height; each type hangs at a fixed height (art and mirrors at eye level).
 - The "Print or save as PDF" button uses the browser's print window; its print layout was not checked in an automated test.
 - Prices in the shopping list are examples, not real shop prices.
@@ -375,7 +387,7 @@ Tool settings: `.oxlintrc.json` (lint rules), `.prettierrc.json` (formatting), `
 - Catalog pictures are drawn again on each visit (they aren't stored), which takes a second or two the first time the catalog opens.
 - Share links hold the design, not the room pictures or camera position. Very heavily edited houses make longer links (still well within browser limits).
 - Doors between rooms are closed. Each room is a separate scene, so there's nothing to see through them.
-- Built-in units (kitchen units, toilet, dining pendant) can't be moved or restyled. The pendant stays put if you move the dining table.
+- Built-in units (kitchen units, toilet, dining pendant) follow the room's size but can't be moved or restyled. The pendant stays put if you move the dining table.
 - Selecting something costs extra drawing while it's selected: the outline redraws the scene's depth (about 95 more draw calls in the Living Room, 165 in the Kitchen).
 - Phase 9 was tested on a desktop graphics card and in the browser's phone emulation, not yet on real phones or tablets. Touch gestures (dragging furniture with a finger, pinch zoom) still need checking on a real device.
 - Auto quality only steps down during a visit, never back up, so the picture doesn't keep changing. Pick High yourself to go back.

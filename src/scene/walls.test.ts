@@ -5,8 +5,8 @@ import { ROOM } from './roomConfig'
 import { hasMixedWalls, setAllWalls, setWallFinish, wallFinishOf, type RoomFinishes } from './finishes'
 import { selectedWall, wallLabel, wallSelection } from './selection'
 
-const windowOpening: LocalOpening = { kind: 'window', label: 'W', center: -1, width: 1, bottom: 0.9, top: 2.3 }
-const doorOpening: LocalOpening = { kind: 'door', label: 'D', center: 1.5, width: 0.9, bottom: 0, top: 2.1 }
+const windowOpening: LocalOpening = { kind: 'window', label: 'W', center: -1, width: 1, bottom: 0.9, top: 2.3, index: 0 }
+const doorOpening: LocalOpening = { kind: 'door', label: 'D', center: 1.5, width: 0.9, bottom: 0, top: 2.1, index: 1 }
 
 /** Total wall area of the pieces, to check nothing is missing or doubled. */
 const area = (pieces: ReturnType<typeof wallPieces>) => pieces.reduce((sum, p) => sum + p.size[0] * p.size[1], 0)

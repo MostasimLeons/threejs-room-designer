@@ -10,7 +10,8 @@ import {
   type WallName,
   type WallStyle,
 } from '../scene/finishes'
-import { ROOM_IDS, ROOMS, type RoomId } from '../scene/house'
+import { resolveRoom, ROOM_IDS, ROOMS, type RoomId, type RoomLayout } from '../scene/house'
+import { isDefaultLayout, parseLayout } from '../scene/layout'
 
 /**
  * Everything that describes one room configuration. This is what undo/redo
@@ -21,6 +22,11 @@ export interface RoomDesign {
   items: FurnitureItem[]
   /** This room's time of day and which way its windows face. */
   lighting: RoomLighting
+  /**
+   * The room's size, ceiling height, windows and doors when changed in the layout
+   * editor (Phase 12). Missing = the room's standard layout (house.ts).
+   */
+  layout?: RoomLayout
 }
 
 /** The whole house: one independent design per room. This is what Save / Load stores. */
@@ -57,7 +63,7 @@ function parseWallFinishes(raw: unknown): Partial<Record<WallName, WallFinish>> 
   return Object.keys(result).length > 0 ? result : null
 }
 
-function parseItem(raw: unknown, room: RoomId): FurnitureItem | null {
+function parseItem(raw: unknown, room: RoomId, bounds: { width: number; depth: number }): FurnitureItem | null {
   if (!isRecord(raw)) return null
   const { id, type, variant, position, rotation, color, frame } = raw
   if (typeof id !== 'string' || typeof type !== 'string' || !(type in FURNITURE_INFO)) return null
@@ -80,7 +86,7 @@ function parseItem(raw: unknown, room: RoomId): FurnitureItem | null {
   // A frame finish the piece doesn't offer (or from a newer version) is dropped: standard look.
   const frames = FURNITURE_INFO[furnitureType].frame?.options as string[] | undefined
   if (typeof frame === 'string' && frames?.includes(frame)) item.frame = frame as FurnitureItem['frame']
-  Object.assign(item, placeInRoom(item, ROOMS[room]))
+  Object.assign(item, placeInRoom(item, bounds))
   return item
 }
 
@@ -91,9 +97,14 @@ function parseItem(raw: unknown, room: RoomId): FurnitureItem | null {
 export function parseDesign(raw: unknown, room: RoomId = 'living'): RoomDesign | null {
   if (!isRecord(raw) || !Array.isArray(raw.items)) return null
 
+  // The layout first: furniture is kept inside the walls of the room as saved.
+  const parsedLayout = parseLayout(raw.layout)
+  const layout = parsedLayout && !isDefaultLayout(room, parsedLayout) ? parsedLayout : undefined
+  const bounds = resolveRoom(room, layout)
+
   const items: FurnitureItem[] = []
   for (const entry of raw.items) {
-    const item = parseItem(entry, room)
+    const item = parseItem(entry, room, bounds)
     // Skip broken entries and duplicate ids instead of failing the whole file.
     if (item && !items.some((existing) => existing.id === item.id)) items.push(item)
   }
@@ -116,7 +127,7 @@ export function parseDesign(raw: unknown, room: RoomId = 'living'): RoomDesign |
     if (typeof orientation === 'number' && Number.isFinite(orientation)) lighting.orientation = orientation
   }
 
-  return { finishes, items, lighting: normalizeLighting(lighting) }
+  return { finishes, items, lighting: normalizeLighting(lighting), ...(layout ? { layout } : {}) }
 }
 
 /**

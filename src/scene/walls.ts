@@ -57,12 +57,16 @@ export function isCameraBehindWall(side: WallSide, room: Pick<RoomInfo, 'width' 
 export interface LocalOpening extends Omit<Opening, 'at'> {
   /** Centre along the wall's local x. */
   center: number
+  /** Its place in the wall's list in house.ts / the layout (for selecting it). */
+  index: number
 }
 
 /** The wall's openings in local coordinates, sorted left to right along the wall. */
 export function localOpenings(side: WallSide, room: Pick<RoomInfo, 'width' | 'depth' | 'openings'>): LocalOpening[] {
   const { toLocal } = wallFrame(side, room)
-  return (room.openings[side] ?? []).map(({ at, ...rest }) => ({ ...rest, center: toLocal(at) })).toSorted((a, b) => a.center - b.center)
+  return (room.openings[side] ?? [])
+    .map(({ at, ...rest }, index) => ({ ...rest, center: toLocal(at), index }))
+    .toSorted((a, b) => a.center - b.center)
 }
 
 export interface WallPiece {
