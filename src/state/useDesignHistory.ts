@@ -1,13 +1,14 @@
 import { useMemo, useReducer } from 'react'
 import { placeInRoom, type FurnitureItem } from '../scene/furniture/catalog'
 import { normalizeSize } from '../scene/furniture/sizes'
+import { carryWithHosts, settleOnSurfaces } from '../scene/furniture/surfaces'
 import type { RoomFinishes } from '../scene/finishes'
 import { normalizeDegrees } from '../utils/math'
 import { normalizeLighting, type RoomLighting } from '../scene/sun'
 import { ROOM_IDS, ROOMS, type RoomId, type RoomLayout } from '../scene/house'
 import { DEFAULT_HOUSE, type HouseDesign, type RoomDesign } from './design'
 
-export type ItemChanges = Partial<Pick<FurnitureItem, 'position' | 'rotation' | 'color' | 'variant' | 'frame' | 'size'>>
+export type ItemChanges = Partial<Pick<FurnitureItem, 'position' | 'rotation' | 'color' | 'variant' | 'frame' | 'size' | 'on'>>
 export type FinishChanges = Partial<RoomFinishes>
 export type LightingChanges = Partial<RoomLighting>
 
@@ -32,6 +33,8 @@ export type RoomBounds = { width: number; depth: number }
 export type HistoryAction =
   | { type: 'updateItem'; id: string; changes: ItemChanges; transient: boolean; bounds: RoomBounds }
   | { type: 'addItem'; item: FurnitureItem; bounds: RoomBounds }
+  /** Several pieces in one undo step (a desk moved to another room with what's on it). */
+  | { type: 'addItems'; items: FurnitureItem[]; bounds: RoomBounds }
   | { type: 'removeItem'; id: string }
   | { type: 'updateFinishes'; changes: FinishChanges; transient: boolean }
   | { type: 'updateLighting'; changes: LightingChanges; transient: boolean }
@@ -46,26 +49,27 @@ export type HistoryAction =
 export const MAX_HISTORY = 100
 
 function applyItemChanges(design: RoomDesign, id: string, changes: ItemChanges, bounds: RoomBounds): RoomDesign {
-  return {
-    ...design,
-    items: design.items.map((item) => {
-      if (item.id !== id) return item
-      const next = { ...item, ...changes }
-      // Back to the standard finish: drop the field, so the piece is stored as it was before.
-      if ('frame' in changes && changes.frame === undefined) delete next.frame
-      // Picking another option starts from that option's own size (unless a size is set too).
-      if (changes.variant !== undefined && changes.variant !== item.variant && !('size' in changes)) delete next.size
-      // A size is kept within its limits; the standard size (or none) is stored as no size.
-      const size = normalizeSize(next.type, next.variant, next.size)
-      if (size) next.size = size
-      else delete next.size
-      next.rotation = normalizeDegrees(next.rotation)
-      // Re-check the walls: rotating or picking a bigger size can push it outside;
-      // a piece hung on a wall stays on the nearest wall.
-      Object.assign(next, placeInRoom(next, bounds))
-      return next
-    }),
-  }
+  const items = design.items.map((item) => {
+    if (item.id !== id) return item
+    const next = { ...item, ...changes }
+    // Back to the standard finish: drop the field, so the piece is stored as it was before.
+    if ('frame' in changes && changes.frame === undefined) delete next.frame
+    // Picking another option starts from that option's own size (unless a size is set too).
+    if (changes.variant !== undefined && changes.variant !== item.variant && !('size' in changes)) delete next.size
+    // A size is kept within its limits; the standard size (or none) is stored as no size.
+    const size = normalizeSize(next.type, next.variant, next.size)
+    if (size) next.size = size
+    else delete next.size
+    next.rotation = normalizeDegrees(next.rotation)
+    // Off a desk: back on the floor.
+    if ('on' in changes && changes.on === undefined) delete next.on
+    // Re-check the walls: rotating or picking a bigger size can push it outside;
+    // a piece hung on a wall stays on the nearest wall.
+    Object.assign(next, placeInRoom(next, bounds))
+    return next
+  })
+  // What stands on a desk moves and turns with it, and stays within its (possibly resized) top.
+  return { ...design, items: settleOnSurfaces(carryWithHosts(design.items, items)) }
 }
 
 /** The room's size: its own layout when it has one, otherwise the size the action was sent with. */
@@ -107,7 +111,8 @@ export function historyReducer(state: HistoryState, action: HistoryAction): Hist
       const { layout: _old, ...rest } = state.present
       const design: RoomDesign = action.layout ? { ...rest, layout: action.layout } : rest
       // A smaller room pushes furniture back inside its walls (wall pieces stay on a wall).
-      design.items = design.items.map((item) => ({ ...item, ...placeInRoom(item, action.bounds) }))
+      const placed = design.items.map((item) => ({ ...item, ...placeInRoom(item, action.bounds) }))
+      design.items = settleOnSurfaces(carryWithHosts(design.items, placed))
       return change(state, design, action.transient)
     }
     case 'addItem': {
@@ -115,10 +120,22 @@ export function historyReducer(state: HistoryState, action: HistoryAction): Hist
       if (state.present.items.some((item) => item.id === action.item.id)) return state
       const item = { ...action.item, rotation: normalizeDegrees(action.item.rotation) }
       Object.assign(item, placeInRoom(item, boundsOf(state.present, action.bounds)))
-      return change(state, { ...state.present, items: [...state.present.items, item] }, false)
+      return change(state, { ...state.present, items: settleOnSurfaces([...state.present.items, item]) }, false)
+    }
+    case 'addItems': {
+      const ids = new Set(state.present.items.map((item) => item.id))
+      const added = action.items
+        .filter((item) => !ids.has(item.id))
+        .map((item) => {
+          const next = { ...item, rotation: normalizeDegrees(item.rotation) }
+          return Object.assign(next, placeInRoom(next, boundsOf(state.present, action.bounds)))
+        })
+      if (added.length === 0) return state
+      return change(state, { ...state.present, items: settleOnSurfaces([...state.present.items, ...added]) }, false)
     }
     case 'removeItem': {
-      const items = state.present.items.filter((item) => item.id !== action.id)
+      // A desk or table takes what stands on it along (one undo step brings both back).
+      const items = state.present.items.filter((item) => item.id !== action.id && item.on !== action.id)
       return items.length === state.present.items.length ? state : change(state, { ...state.present, items }, false)
     }
     case 'updateLighting':
@@ -191,6 +208,8 @@ export interface RoomHistory {
   previewItem: (id: string, changes: ItemChanges) => void
   /** Add a piece (kept inside the walls). One undo step. */
   addItem: (item: FurnitureItem) => void
+  /** Several pieces as one undo step (a desk moved here with what stands on it). */
+  addItems: (items: FurnitureItem[]) => void
   /** Remove a piece. One undo step. */
   removeItem: (id: string) => void
   updateFinishes: (changes: FinishChanges) => void
@@ -236,6 +255,7 @@ export function useHouseHistory(getInitialHouse: () => HouseDesign) {
               updateItem: (id, changes) => send({ type: 'updateItem', id, changes, transient: false, bounds }),
               previewItem: (id, changes) => send({ type: 'updateItem', id, changes, transient: true, bounds }),
               addItem: (item) => send({ type: 'addItem', item, bounds }),
+              addItems: (items) => send({ type: 'addItems', items, bounds }),
               removeItem: (id) => send({ type: 'removeItem', id }),
               updateFinishes: (changes) => send({ type: 'updateFinishes', changes, transient: false }),
               previewFinishes: (changes) => send({ type: 'updateFinishes', changes, transient: true }),

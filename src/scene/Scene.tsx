@@ -36,7 +36,7 @@ interface SceneProps {
   selectedId: string | null
   overlaps: Map<string, string[]>
   onSelect: (id: string | null) => void
-  onMove: (id: string, position: [number, number]) => void
+  onMove: (id: string, changes: { position: [number, number]; on?: string }) => void
   /** Turning a piece with the rotate ring (degrees). */
   onRotate: (id: string, rotation: number) => void
   onDragBoundary: () => void

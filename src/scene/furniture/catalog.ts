@@ -51,6 +51,14 @@ export type FurnitureType =
   // Phase 16: the Office
   | 'officeDesk'
   | 'officeChair'
+  // Phase 17: on the desk, and around it
+  | 'monitor'
+  | 'laptop'
+  | 'keyboardMouse'
+  | 'deskLamp'
+  | 'deskAccessories'
+  | 'wallClock'
+  | 'filingCabinet'
 
 /** Groups for the catalog ("Add furniture"), in the order they're shown. */
 export type FurnitureCategory = 'seating' | 'tables' | 'beds' | 'storage' | 'office' | 'lighting' | 'decor' | 'kitchen' | 'bathroom'
@@ -87,6 +95,12 @@ export interface FurnitureItem {
    * width as the diameter (depth = width). Kept within limits by sizes.ts.
    */
   size?: [number, number, number]
+  /**
+   * The id of the desk or table this piece stands on (Phase 17): it sits on that
+   * top, at its height, stays within its edges and moves with it. Missing = on the
+   * floor (or on a wall). See surfaces.ts.
+   */
+  on?: string
 }
 
 /** A style or size option for a piece of furniture. */
@@ -126,7 +140,17 @@ interface FurnitureInfo {
    * nearest wall, facing into the room, and never clashes with floor furniture.
    * Its footprint is [width along the wall, depth out from the wall].
    */
-  mount?: 'wall'
+  mount?: 'wall' | 'surface'
+  /**
+   * 'surface' (above): stands on a desk or table top (monitors, laptops, desk lamps).
+   * On the floor it's flagged ("needs a desk or table").
+   * `alsoOnSurface`: a floor piece that may also stand on a desk or table (the PC tower).
+   */
+  alsoOnSurface?: boolean
+  /** A desk or table whose top other pieces can stand on. */
+  surface?: boolean
+  /** Where a new piece goes on a desk: at the back (a monitor), the front (a keyboard) or the middle. */
+  surfaceSpot?: 'back' | 'front' | 'middle'
   /**
    * A desk or table with knee space: how far below its top the space underneath
    * starts (top + apron or drawer). Chairs and low pieces may tuck under it.
@@ -258,6 +282,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     label: 'Coffee table',
     category: 'tables',
     rooms: ['living'],
+    surface: true,
     variantLabel: 'Shape',
     variants: [
       { id: 'rectangle', label: 'Rectangle', detail: '120 × 60 cm', footprint: [1.2, 0.6] },
@@ -399,6 +424,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     category: 'tables',
     rooms: ['dining', 'kitchen'],
     kneeBelowTop: 0.12,
+    surface: true,
     variantLabel: 'Shape',
     variants: [
       { id: 'rectangle', label: 'Rectangle', detail: '180 × 90 cm, seats 6', footprint: [1.8, 0.9] },
@@ -439,6 +465,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     label: 'Kitchen island',
     category: 'kitchen',
     rooms: ['kitchen'],
+    surface: true,
     variantLabel: 'Size',
     variants: [
       { id: 'large', label: 'Large', detail: '180 × 90 cm', footprint: [1.8, 0.9] },
@@ -540,6 +567,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     label: 'Side table',
     category: 'tables',
     rooms: ['living', 'bedroom', 'office'],
+    surface: true,
     variantLabel: 'Style',
     variants: [
       { id: 'round', label: 'Round', detail: 'Ø 45 cm', footprint: [0.45, 0.45], round: true },
@@ -554,6 +582,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     category: 'tables',
     rooms: ['bedroom', 'living', 'office'],
     kneeBelowTop: 0.12,
+    surface: true,
     variantLabel: 'Size',
     variants: [
       { id: '120', label: 'Writing desk', detail: '120 × 60 cm', footprint: [1.2, 0.6] },
@@ -693,6 +722,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     label: 'PC tower',
     category: 'office',
     rooms: ['bedroom', 'living', 'office'],
+    alsoOnSurface: true,
     tuck: { kind: 'low' },
     variantLabel: 'Size',
     variants: [
@@ -713,6 +743,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     category: 'office',
     rooms: ['office', 'bedroom', 'living'],
     kneeBelowTop: 0.1,
+    surface: true,
     variantLabel: 'Style',
     variants: [
       { id: 'straight', label: 'Straight', detail: '160 × 80 cm, steel frame', footprint: [1.6, 0.8] },
@@ -737,10 +768,151 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     swatches: FABRIC_SWATCHES,
     frame: { label: 'Base', options: ['black', 'chrome', 'white'] },
   },
+
+  // ---------- Phase 17: on the desk, and around it ----------
+  monitor: {
+    label: 'Monitor',
+    category: 'office',
+    rooms: ['office', 'bedroom', 'living'],
+    mount: 'surface',
+    surfaceSpot: 'back',
+    variantLabel: 'Size',
+    variants: [
+      { id: '24', label: '24″', detail: '54 × 20 cm, on a stand', footprint: [0.54, 0.2] },
+      { id: '27', label: '27″', detail: '61 × 21 cm, on a stand', footprint: [0.61, 0.21] },
+      { id: 'ultrawide', label: 'Ultrawide 34″', detail: '81 × 23 cm, curved', footprint: [0.81, 0.23] },
+      { id: 'dual', label: 'Two 24″', detail: '110 × 22 cm, side by side', footprint: [1.1, 0.22] },
+    ],
+    colorLabel: 'Frame',
+    swatches: [
+      { color: '#2a2a2c', name: 'Black' },
+      { color: '#f2f0eb', name: 'White' },
+      { color: '#9ea3a8', name: 'Silver' },
+    ],
+  },
+  laptop: {
+    label: 'Laptop',
+    category: 'office',
+    rooms: ['office', 'bedroom', 'living', 'dining', 'kitchen'],
+    mount: 'surface',
+    surfaceSpot: 'middle',
+    variantLabel: 'Style',
+    variants: [
+      { id: 'open', label: 'Open', detail: '33 × 23 cm', footprint: [0.33, 0.23] },
+      { id: 'stand', label: 'On a stand', detail: '33 × 25 cm, raised screen', footprint: [0.33, 0.25] },
+    ],
+    colorLabel: 'Case',
+    swatches: [
+      { color: '#9ea3a8', name: 'Silver' },
+      { color: '#3a3a3c', name: 'Space grey' },
+      { color: '#e8dcc8', name: 'Champagne' },
+    ],
+  },
+  keyboardMouse: {
+    label: 'Keyboard and mouse',
+    category: 'office',
+    rooms: ['office', 'bedroom', 'living'],
+    mount: 'surface',
+    surfaceSpot: 'front',
+    variantLabel: 'Size',
+    variants: [
+      { id: 'full', label: 'Full size', detail: '45 × 15 cm, with a mouse', footprint: [0.62, 0.17] },
+      { id: 'compact', label: 'Compact', detail: '32 × 12 cm, with a mouse', footprint: [0.47, 0.14] },
+    ],
+    colorLabel: 'Colour',
+    swatches: [
+      { color: '#2a2a2c', name: 'Black' },
+      { color: '#f2f0eb', name: 'White' },
+      { color: '#9ea3a8', name: 'Silver' },
+    ],
+  },
+  deskLamp: {
+    label: 'Desk lamp',
+    category: 'lighting',
+    rooms: ['office', 'bedroom', 'living'],
+    mount: 'surface',
+    surfaceSpot: 'back',
+    variantLabel: 'Style',
+    variants: [
+      { id: 'arm', label: 'Arm lamp', detail: '45 cm, adjustable arm', footprint: [0.18, 0.18] },
+      { id: 'dome', label: 'Dome lamp', detail: '38 cm, metal shade', footprint: [0.2, 0.2], round: true },
+    ],
+    colorLabel: 'Colour',
+    swatches: [
+      { color: '#2a2a2c', name: 'Black' },
+      { color: '#f2f0eb', name: 'White' },
+      { color: '#b8925a', name: 'Brass' },
+      { color: '#8e9c80', name: 'Sage' },
+    ],
+  },
+  deskAccessories: {
+    label: 'Desk accessories',
+    category: 'office',
+    rooms: ['office', 'bedroom', 'living'],
+    mount: 'surface',
+    surfaceSpot: 'back',
+    variantLabel: 'Set',
+    variants: [
+      { id: 'organiser', label: 'Organiser', detail: 'pen pot, notepad and phone', footprint: [0.3, 0.16] },
+      { id: 'plant', label: 'Small plant', detail: 'Ø 12 cm pot', footprint: [0.14, 0.14], round: true },
+    ],
+    colorLabel: 'Colour',
+    swatches: [
+      { color: '#c49a6c', name: 'Natural oak' },
+      { color: '#2a2a2c', name: 'Black' },
+      { color: '#f2f0eb', name: 'White' },
+      { color: '#b86f50', name: 'Terracotta' },
+    ],
+  },
+  wallClock: {
+    label: 'Wall clock',
+    category: 'decor',
+    rooms: ['living', 'bedroom', 'dining', 'kitchen', 'bathroom', 'office'],
+    mount: 'wall',
+    variantLabel: 'Size',
+    variants: [
+      { id: '30', label: 'Ø 30 cm', detail: 'silent movement', footprint: [0.3, 0.05] },
+      { id: '40', label: 'Ø 40 cm', detail: 'silent movement', footprint: [0.4, 0.05] },
+    ],
+    colorLabel: 'Frame',
+    swatches: [
+      { color: '#2a2a2c', name: 'Black' },
+      { color: '#f2f0eb', name: 'White' },
+      { color: '#c49a6c', name: 'Natural oak' },
+      { color: '#b8925a', name: 'Brass' },
+    ],
+  },
+  filingCabinet: {
+    label: 'Filing cabinet',
+    category: 'storage',
+    rooms: ['office', 'bedroom', 'living'],
+    variantLabel: 'Size',
+    variants: [
+      { id: '2', label: '2 drawers', detail: '47 × 62 cm, 72 tall', footprint: [0.47, 0.62] },
+      { id: '3', label: '3 drawers', detail: '47 × 62 cm, 102 tall', footprint: [0.47, 0.62] },
+    ],
+    colorLabel: 'Body',
+    swatches: [
+      { color: '#e9e7e2', name: 'Light grey' },
+      { color: '#2a2a2c', name: 'Black' },
+      { color: '#f2f0eb', name: 'White' },
+      { color: '#c49a6c', name: 'Natural oak' },
+    ],
+    frame: { label: 'Handles', options: ['chrome', 'black', 'brass'] },
+  },
 }
 
 /** Does this piece hang on a wall (art, mirrors, shelves)? */
 export const isWallMounted = (type: FurnitureType) => FURNITURE_INFO[type].mount === 'wall'
+
+/** Does this piece belong on a desk or table top (a monitor, a lamp)? */
+export const needsSurface = (type: FurnitureType) => FURNITURE_INFO[type].mount === 'surface'
+
+/** May this piece stand on a desk or table (desk-top pieces, and the PC tower)? */
+export const canGoOnSurface = (type: FurnitureType) => needsSurface(type) || FURNITURE_INFO[type].alsoOnSurface === true
+
+/** Is this a desk or table other pieces can stand on? */
+export const isSurfaceHost = (type: FurnitureType) => FURNITURE_INFO[type].surface === true
 
 /**
  * Where a wall-mounted piece hangs: flush against the wall nearest to its
@@ -873,7 +1045,8 @@ const BATHROOM_LAYOUT: FurnitureItem[] = [
 
 /**
  * Office (4.5 × 4 m): x -2.25…2.25, z -2…2. The desk sits under the window with the
- * chair tucked in, the PC and a drawer unit under it; a bookshelf beside the window.
+ * chair tucked in, the PC and a drawer unit under it, a monitor, keyboard and lamp on
+ * it; a bookshelf beside the window and a clock on the right wall.
  */
 const OFFICE_LAYOUT: FurnitureItem[] = [
   { id: 'office-desk', type: 'officeDesk', variant: 'straight', position: [0, -1.6], rotation: 0, color: '#c49a6c' },
@@ -884,6 +1057,11 @@ const OFFICE_LAYOUT: FurnitureItem[] = [
   { id: 'office-plant', type: 'plant', variant: 'large', position: [-1.85, -1.6], rotation: 0, color: '#ecebe6' },
   { id: 'office-lamp', type: 'floorLamp', variant: 'tapered', position: [-1.95, 0.42], rotation: 0, color: '#f6eedd' },
   { id: 'office-art', type: 'wallArt', variant: 'landscape', position: [-2.23, -0.4], rotation: 90, color: '#41556b' },
+  // Phase 17: on the desk, and a clock on the right wall
+  { id: 'office-monitor', type: 'monitor', variant: '27', position: [0, -1.86], rotation: 0, color: '#2a2a2c', on: 'office-desk' },
+  { id: 'office-keyboard', type: 'keyboardMouse', variant: 'full', position: [0, -1.36], rotation: 0, color: '#2a2a2c', on: 'office-desk' },
+  { id: 'office-desk-lamp', type: 'deskLamp', variant: 'arm', position: [0.6, -1.85], rotation: 0, color: '#2a2a2c', on: 'office-desk' },
+  { id: 'office-clock', type: 'wallClock', variant: '30', position: [2.225, -0.3], rotation: 270, color: '#2a2a2c' },
 ]
 
 /** Each room's starting arrangement, measured from the room's centre. "Reset" returns to it. */
@@ -1026,6 +1204,15 @@ function cornersOverlap(cornersA: Point[], cornersB: Point[]): boolean {
   return true
 }
 
+/** In an overlap list: a desk-top piece standing on the floor (see findOverlaps). */
+export const NEEDS_SURFACE = 'surface:none'
+
+/** Where a piece is: on a wall, on the floor, or on the top of one desk or table. */
+function levelOf(item: FurnitureItem): string {
+  if (isWallMounted(item.type)) return 'wall'
+  return item.on ? `on:${item.on}` : 'floor'
+}
+
 /** Below this knee space a chair can't be pushed under (e.g. a desk made very low). */
 const MIN_SEAT_KNEE = 0.5
 
@@ -1062,18 +1249,23 @@ export function findOverlaps(items: FurnitureItem[], zones: FixedZone[] = []): M
   const overlaps = new Map<string, string[]>()
   const add = (id: string, other: string) => overlaps.set(id, [...(overlaps.get(id) ?? []), other])
   const shapes = items.map(footprintShape)
+  const levels = items.map(levelOf)
   const zoneShapes = zones.map((zone): Shape => ({ kind: 'rect', corners: rectCorners(zone.position, zone.size, 0) }))
   for (let i = 0; i < items.length; i++) {
-    const onWall = isWallMounted(items[i].type)
+    const onWall = levels[i] === 'wall'
+    // A desk-top piece on the floor has nothing to stand on.
+    if (needsSurface(items[i].type) && !items[i].on) add(items[i].id, NEEDS_SURFACE)
     for (let j = i + 1; j < items.length; j++) {
-      // Art above a sofa is fine: pieces on the wall only clash with each other.
-      if (onWall !== isWallMounted(items[j].type)) continue
+      // Art above a sofa is fine: pieces on the wall only clash with each other. A monitor on a
+      // desk only clashes with other things on that desk, never with floor furniture.
+      if (levels[i] !== levels[j]) continue
       if (!shapesOverlap(shapes[i], shapes[j])) continue
       // A chair or drawer unit tucked under a desk or table is fine.
       if (tuckedUnder(items[i], items[j], shapes[j]) || tuckedUnder(items[j], items[i], shapes[i])) continue
       add(items[i].id, items[j].id)
       add(items[j].id, items[i].id)
     }
+    if (levels[i] !== 'floor' && !onWall) continue // on a desk: above the built-in units
     zones.forEach((zone, z) => {
       // Floor pieces clash with built-in units; wall pieces with windows and doors.
       if (onWall === Boolean(zone.onWall) && shapesOverlap(shapes[i], zoneShapes[z])) add(items[i].id, ZONE_PREFIX + zone.label)
@@ -1084,6 +1276,7 @@ export function findOverlaps(items: FurnitureItem[], zones: FixedZone[] = []): M
 
 /** A readable name for something in an overlap list: a furniture label, or a built-in zone's label. */
 export function overlapName(id: string, items: FurnitureItem[]): string {
+  if (id === NEEDS_SURFACE) return 'nothing (it needs a desk or table)'
   if (id.startsWith(ZONE_PREFIX)) return id.slice(ZONE_PREFIX.length)
   const item = items.find((other) => other.id === id)
   return item ? FURNITURE_INFO[item.type].label.toLowerCase() : id

@@ -3,7 +3,8 @@ import * as THREE from 'three'
 import { useThree, type RootState, type ThreeEvent } from '@react-three/fiber'
 import { Html, Line } from '@react-three/drei'
 import { Select } from '@react-three/postprocessing'
-import { getVariant, itemFootprint, isWallMounted, type FurnitureItem } from './furniture/catalog'
+import { canGoOnSurface, getVariant, isSurfaceHost, itemFootprint, isWallMounted, type FurnitureItem } from './furniture/catalog'
+import { elevationOf, onTopOf, surfaceHeight } from './furniture/surfaces'
 import { Cutaway } from './Cutaway'
 import { itemObjectName } from './ArSource'
 import { isCameraBehindWall } from './walls'
@@ -32,8 +33,11 @@ interface FurnitureLayerProps {
   /** Items that overlap another item: their outline turns red. */
   overlaps: Map<string, string[]>
   onSelect: (id: string) => void
-  /** Called repeatedly while dragging with the new floor position. */
-  onMove: (id: string, position: [number, number]) => void
+  /**
+   * Called repeatedly while dragging with the new position, and for pieces that can
+   * stand on a desk, the desk or table now under them (`on`, undefined = the floor).
+   */
+  onMove: (id: string, changes: { position: [number, number]; on?: string }) => void
   /** Called repeatedly while turning a piece with the rotate ring, in degrees. */
   onRotate: (id: string, rotation: number) => void
   /** Called when a drag starts and ends, so the drag becomes one undo step. */
@@ -78,6 +82,30 @@ function SelectionOutline({ footprint, round, faint, color }: OutlineProps) {
   )
 }
 
+/**
+ * The desk or table top the pointer's ray meets first, and where (room coordinates),
+ * for dragging a piece onto it. Not the piece itself, nor anything standing on it.
+ */
+function topUnderPointer(
+  ray: THREE.Ray,
+  items: FurnitureItem[],
+  moving: FurnitureItem,
+  origin: [number, number],
+): { host: FurnitureItem; point: [number, number] } | null {
+  let best: { host: FurnitureItem; point: [number, number]; distance: number } | null = null
+  const hit = new THREE.Vector3()
+  for (const host of items) {
+    if (!isSurfaceHost(host.type) || host.id === moving.id || host.on === moving.id) continue
+    const top = new THREE.Plane(new THREE.Vector3(0, 1, 0), -surfaceHeight(host))
+    if (!ray.intersectPlane(top, hit)) continue
+    const point: [number, number] = [hit.x - origin[0], hit.z - origin[1]]
+    if (!onTopOf(point, host)) continue
+    const distance = ray.origin.distanceTo(hit)
+    if (!best || distance < best.distance) best = { host, point, distance }
+  }
+  return best && { host: best.host, point: best.point }
+}
+
 /** Pause/resume the orbit controls so the camera doesn't move while dragging furniture. */
 function setCameraControlsEnabled(get: RootState['get'], enabled: boolean) {
   const controls = get().controls as unknown as { enabled: boolean } | null
@@ -104,8 +132,8 @@ export function FurnitureLayer({
 
   // Information about the drag in progress (a ref, because it changes on every mouse move).
   const drag = useRef<{ id: string; offsetX: number; offsetZ: number } | null>(null)
-  // A turn in progress with the rotate ring: which piece, and its centre on the floor (world).
-  const turn = useRef<{ id: string; cx: number; cz: number } | null>(null)
+  // A turn in progress with the rotate ring: which piece, its centre (world) and the height it stands at.
+  const turn = useRef<{ id: string; cx: number; cz: number; y: number } | null>(null)
   // Always-current callbacks for the window listeners below.
   const callbacks = useRef({ onMove, onRotate, onDragBoundary, origin, items, room })
   callbacks.current = { onMove, onRotate, onDragBoundary, origin, items, room }
@@ -127,9 +155,11 @@ export function FurnitureLayer({
       // Convert the mouse position into -1…+1 "normalised device coordinates".
       const rect = gl.domElement.getBoundingClientRect()
       pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1)
-      // Shoot a ray from the camera through the mouse and see where it hits the floor.
+      // Shoot a ray from the camera through the mouse and see where it hits the floor
+      // (or, while turning, the level the piece stands at).
       raycaster.setFromCamera(pointer, get().camera)
-      if (!raycaster.ray.intersectPlane(FLOOR_PLANE, hit)) return
+      const level = turn.current ? new THREE.Plane(new THREE.Vector3(0, 1, 0), -turn.current.y) : FLOOR_PLANE
+      if (!raycaster.ray.intersectPlane(level, hit)) return
 
       if (turn.current) {
         // Angle from the piece's centre to the pointer. Models face +z, so rotation 0 = +z.
@@ -146,9 +176,21 @@ export function FurnitureLayer({
       const x = Math.round((hit.x - ox + current.offsetX) / SNAP) * SNAP
       const z = Math.round((hit.z - oz + current.offsetZ) / SNAP) * SNAP
       const item = callbacks.current.items.find((i) => i.id === current.id)
+      // A monitor, lamp or PC goes onto the desk or table top under the pointer, if there is one.
+      if (item && canGoOnSurface(item.type)) {
+        const top = topUnderPointer(raycaster.ray, callbacks.current.items, item, callbacks.current.origin)
+        if (top) {
+          const snap = (v: number) => Math.round(v / SNAP) * SNAP
+          callbacks.current.onMove(current.id, {
+            position: [snap(top.point[0] + current.offsetX), snap(top.point[1] + current.offsetZ)],
+            on: top.host.id,
+          })
+          return
+        }
+      }
       // Close to a wall, the piece goes flush against it. Alt places it freely.
       const position: [number, number] = item && !event.altKey ? snapToWalls({ ...item, position: [x, z] }, callbacks.current.room) : [x, z]
-      callbacks.current.onMove(current.id, position)
+      callbacks.current.onMove(current.id, item && canGoOnSurface(item.type) ? { position, on: undefined } : { position })
     }
 
     function handleUp() {
@@ -173,7 +215,7 @@ export function FurnitureLayer({
   const startTurn = (item: FurnitureItem) => (event: ThreeEvent<PointerEvent>) => {
     if (event.button !== 0) return
     event.stopPropagation()
-    turn.current = { id: item.id, cx: origin[0] + item.position[0], cz: origin[1] + item.position[1] }
+    turn.current = { id: item.id, cx: origin[0] + item.position[0], cz: origin[1] + item.position[1], y: elevationOf(item, items) }
     setDragging(true)
     setCameraControlsEnabled(get, false)
     onDragBoundary()
@@ -187,7 +229,9 @@ export function FurnitureLayer({
     event.stopPropagation() // don't also select objects hidden behind this one
     onSelect(item.id)
 
-    const hit = event.ray.intersectPlane(FLOOR_PLANE, new THREE.Vector3())
+    // Where it was grabbed, at the level it stands at (the floor, or a desk top).
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -elevationOf(item, items))
+    const hit = event.ray.intersectPlane(plane, new THREE.Vector3())
     if (!hit) return
     // Remember where on the object you grabbed it, so it doesn't jump to the cursor.
     drag.current = { id: item.id, offsetX: item.position[0] - (hit.x - origin[0]), offsetZ: item.position[1] - (hit.z - origin[1]) }
@@ -196,9 +240,13 @@ export function FurnitureLayer({
     onDragBoundary()
   }
 
+  // Desks and tables with something on them hide their own decoration (a laptop, vases).
+  const occupied = new Set(items.flatMap((item) => (item.on ? [item.on] : [])))
   return (
     <group position={[origin[0], 0, origin[1]]}>
       {items.map((item) => {
+        // On a desk or table: at the height of its top.
+        const y = elevationOf(item, items)
         const isSelected = interactive && item.id === selectedId
         const isHovered = interactive && !isSelected && item.id === hoveredId && !dragging
         const isOverlapping = interactive && overlaps.has(item.id)
@@ -212,7 +260,7 @@ export function FurnitureLayer({
           <group key={item.id}>
             <group
               name={itemObjectName(item.id)}
-              position={[item.position[0], 0, item.position[1]]}
+              position={[item.position[0], y, item.position[1]]}
               rotation={[0, (item.rotation * Math.PI) / 180, 0]}
               onPointerDown={interactive ? handlePointerDown(item) : undefined}
               onPointerOver={
@@ -228,7 +276,14 @@ export function FurnitureLayer({
               onClick={interactive ? (e) => e.stopPropagation() : undefined}
             >
               <Select enabled={isSelected}>
-                <FurnitureModel type={item.type} variant={item.variant} color={item.color} frame={item.frame} size={item.size} />
+                <FurnitureModel
+                  type={item.type}
+                  variant={item.variant}
+                  color={item.color}
+                  frame={item.frame}
+                  size={item.size}
+                  bare={isSurfaceHost(item.type) && occupied.has(item.id)}
+                />
               </Select>
               {showOutline && (
                 <SelectionOutline
@@ -239,11 +294,11 @@ export function FurnitureLayer({
                 />
               )}
             </group>
-            {isSelected && <DimensionGuides item={item} room={room} />}
+            {isSelected && <DimensionGuides item={item} room={room} elevation={y} />}
             {/* Pieces on a wall face the way their wall decides, so they have no rotate ring. */}
             {isSelected && !onWall && (
               <RotateRing
-                position={[item.position[0], 0, item.position[1]]}
+                position={[item.position[0], y, item.position[1]]}
                 rotation={item.rotation}
                 radius={Math.hypot(footprint[0], footprint[1]) / 2 + 0.15}
                 onGrab={startTurn(item)}
@@ -268,13 +323,13 @@ export function FurnitureLayer({
  * Measurements for the selected piece: its size (W × D) in front of it, and lines
  * with the distance to the nearest wall left/right and back/front.
  */
-function DimensionGuides({ item, room }: { item: FurnitureItem; room: { width: number; depth: number } }) {
+function DimensionGuides({ item, room, elevation }: { item: FurnitureItem; room: { width: number; depth: number }; elevation: number }) {
   const [x, z] = item.position
   const [hx, hz] = halfExtents(item)
   const gaps = wallGaps(item, room)
   const unit = useUnit()
   const [w, d] = itemFootprint(item)
-  const y = 0.03
+  const y = elevation + 0.03
   const guides: { from: [number, number, number]; to: [number, number, number]; length: number }[] = []
   // Along x: to whichever side wall is nearer (none when it's flush).
   if (Math.min(gaps.left, gaps.right) > 0.015) {

@@ -30,6 +30,7 @@ import { WallArt, WallMirror, WallShelf } from './WallDecor'
 import { Bench, DeskChair, Ottoman } from './Seating'
 import { DrawerUnit, PcTower } from './UnderDesk'
 import { OfficeChair, OfficeDesk } from './Office'
+import { DeskAccessories, DeskLamp, FilingCabinet, KeyboardMouse, Laptop, Monitor, WallClock } from './DeskItems'
 import { BathroomCabinet, Bookshelf, ChestOfDrawers, Desk, SideTable } from './TablesAndStorage'
 
 interface ModelChoice {
@@ -40,6 +41,8 @@ interface ModelChoice {
   frame?: FrameId
   /** Custom width × depth × height in metres (Phase 15); missing = the option's size. */
   size?: [number, number, number]
+  /** A desk or table with something standing on it: leave its own decoration off (Phase 17). */
+  bare?: boolean
 }
 
 /**
@@ -76,6 +79,7 @@ const SCALED_OPTIONS = new Set(['diningTable:round', 'wallArt:gallery'])
 /** Height of the middle of a piece hung on a wall: its height is scaled around this, so it stays on the wall. */
 function hangCentre(type: FurnitureType, variant: string): number {
   if (type === 'wallMirror' && getVariant(type, variant).id === 'tall') return 1.15
+  if (type === 'wallClock') return 1.9
   return type === 'wallShelf' ? 1.47 : 1.5
 }
 
@@ -87,9 +91,9 @@ function hangCentre(type: FurnitureType, variant: string): number {
  * Moving or rotating happens on the parent group, so dragging one piece no
  * longer re-builds every model in the room on each mouse move.
  */
-export const FurnitureModel = memo(function FurnitureModel({ type, variant, color, frame, size }: ModelChoice) {
+export const FurnitureModel = memo(function FurnitureModel({ type, variant, color, frame, size, bare }: ModelChoice) {
   const spec = modelFor(type, variant)
-  const code = <CodeModel type={type} variant={variant} color={color} frame={frame} />
+  const code = <CodeModel type={type} variant={variant} color={color} frame={frame} bare={bare} />
   const model = spec ? <GltfFurniture spec={spec} footprint={getVariant(type, variant).footprint} color={color} fallback={code} /> : code
   if (!size) return model
 
@@ -110,14 +114,14 @@ export const FurnitureModel = memo(function FurnitureModel({ type, variant, colo
 })
 
 /** The code-built model for each furniture type (see the files next to this one). */
-function CodeModel({ type, variant, color, frame }: ModelChoice) {
+function CodeModel({ type, variant, color, frame, bare }: Omit<ModelChoice, 'size'>) {
   switch (type) {
     case 'sofa':
       return <Sofa color={color} variant={variant} frame={frame} />
     case 'armchair':
       return <Armchair color={color} variant={variant} frame={frame} />
     case 'coffeeTable':
-      return <CoffeeTable color={color} variant={variant} frame={frame} />
+      return <CoffeeTable color={color} variant={variant} frame={frame} bare={bare} />
     case 'tvUnit':
       return <TvUnit color={color} variant={variant} frame={frame} />
     case 'plant':
@@ -135,7 +139,7 @@ function CodeModel({ type, variant, color, frame }: ModelChoice) {
     case 'accentChair':
       return <AccentChair color={color} variant={variant} frame={frame} />
     case 'diningTable':
-      return <DiningTable color={color} variant={variant} frame={frame} />
+      return <DiningTable color={color} variant={variant} frame={frame} bare={bare} />
     case 'diningChair':
       return <DiningChair color={color} variant={variant} frame={frame} />
     case 'sideboard':
@@ -159,7 +163,7 @@ function CodeModel({ type, variant, color, frame }: ModelChoice) {
     case 'sideTable':
       return <SideTable color={color} variant={variant} frame={frame} />
     case 'desk':
-      return <Desk color={color} variant={variant} frame={frame} />
+      return <Desk color={color} variant={variant} frame={frame} bare={bare} />
     case 'deskChair':
       return <DeskChair color={color} variant={variant} frame={frame} />
     case 'bench':
@@ -184,5 +188,19 @@ function CodeModel({ type, variant, color, frame }: ModelChoice) {
       return <OfficeDesk color={color} variant={variant} frame={frame} />
     case 'officeChair':
       return <OfficeChair color={color} variant={variant} frame={frame} />
+    case 'monitor':
+      return <Monitor color={color} variant={variant} frame={frame} />
+    case 'laptop':
+      return <Laptop color={color} variant={variant} frame={frame} />
+    case 'keyboardMouse':
+      return <KeyboardMouse color={color} variant={variant} frame={frame} />
+    case 'deskLamp':
+      return <DeskLamp color={color} variant={variant} frame={frame} />
+    case 'deskAccessories':
+      return <DeskAccessories color={color} variant={variant} frame={frame} />
+    case 'wallClock':
+      return <WallClock color={color} variant={variant} frame={frame} />
+    case 'filingCabinet':
+      return <FilingCabinet color={color} variant={variant} frame={frame} />
   }
 }

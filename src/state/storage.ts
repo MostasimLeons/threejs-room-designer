@@ -11,7 +11,7 @@ import { downloadJson } from '../utils/download'
 const SAVES_KEY = 'room-designer:saves'
 const AUTOSAVE_KEY = 'room-designer:autosave'
 const FILE_FORMAT = 'room-designer'
-const FILE_VERSION = 7 // 7 = six rooms (the Office); 6 (custom sizes), 5 (wall thickness), 4 (own layouts), 3 (five rooms), 2 (two rooms) and 1 (one room) still import
+const FILE_VERSION = 8 // 8 = pieces on desks and tables; 7 (six rooms), 6 (custom sizes), 5 (wall thickness), 4 (own layouts), 3 (five rooms), 2 (two rooms) and 1 (one room) still import
 
 export interface SavedDesign {
   id: string

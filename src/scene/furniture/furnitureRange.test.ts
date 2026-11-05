@@ -5,6 +5,9 @@ import {
   findOverlaps,
   FURNITURE_INFO,
   isAllowedIn,
+  isSurfaceHost,
+  NEEDS_SURFACE,
+  needsSurface,
   placeInRoom,
   type FurnitureItem,
   type FurnitureType,
@@ -98,7 +101,11 @@ describe('furniture range', () => {
       const { position } = placed
       const inside = clampToRoom(placed, info).every((v, i) => Math.abs(v - position[i]) < 1e-9)
       if (!inside) problems.push(`${type}: placed outside the walls`)
-      if (findOverlaps([...existing, placed], info.fixedZones).has(placed.id)) problems.push(`${type}: no free spot`)
+      const clashes = findOverlaps([...existing, placed], info.fixedZones).get(placed.id) ?? []
+      // A desk-top piece in a room with no desk or table stands on the floor, flagged as needing one.
+      const noTop = needsSurface(type) && !existing.some((other) => isSurfaceHost(other.type))
+      const expected = noTop ? [NEEDS_SURFACE] : []
+      if (JSON.stringify(clashes) !== JSON.stringify(expected)) problems.push(`${type}: ${clashes.join(', ') || 'no warning'}`)
     }
     expect(problems).toEqual([])
   })

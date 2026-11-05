@@ -45,7 +45,7 @@ export function SideTable({ color, variant, frame }: ModelProps) {
 const DESK_H = 0.74
 
 /** Writing desk on slim black legs, with a drawer, a closed laptop and a cup. Colour = the wood. */
-export function Desk({ color, variant, frame }: ModelProps) {
+export function Desk({ color, variant, frame, bare }: ModelProps) {
   const legs = frameMaterial(frame, materials.metalBlack)
   const wood = useTintedMaterial(materials.woodLight, color)
   const [w, d] = useFootprint('desk', variant)
@@ -68,21 +68,25 @@ export function Desk({ color, variant, frame }: ModelProps) {
       {/* Shallow drawer under the right side */}
       <Block size={[0.4, 0.09, d - 0.1]} position={[w / 2 - 0.27, DESK_H - 0.075, 0]} material={wood} />
       <Block size={[0.12, 0.012, 0.015]} position={[w / 2 - 0.27, DESK_H - 0.075, d / 2 - 0.04]} material={materials.brass} />
-      {/* Laptop and a cup */}
-      <Block
-        size={[0.33, 0.02, 0.23]}
-        radius={0.006}
-        position={[-0.1, DESK_H + 0.01, 0.02]}
-        rotation={[0, 0.08, 0]}
-        material={materials.steel}
-      />
-      <Cylinder
-        radiusTop={0.04}
-        radiusBottom={0.035}
-        height={0.09}
-        position={[w / 2 - 0.2, DESK_H + 0.045, -0.1]}
-        material={materials.ceramic}
-      />
+      {!bare && (
+        <>
+          {/* Laptop and a cup */}
+          <Block
+            size={[0.33, 0.02, 0.23]}
+            radius={0.006}
+            position={[-0.1, DESK_H + 0.01, 0.02]}
+            rotation={[0, 0.08, 0]}
+            material={materials.steel}
+          />
+          <Cylinder
+            radiusTop={0.04}
+            radiusBottom={0.035}
+            height={0.09}
+            position={[w / 2 - 0.2, DESK_H + 0.045, -0.1]}
+            material={materials.ceramic}
+          />
+        </>
+      )}
     </group>
   )
 }

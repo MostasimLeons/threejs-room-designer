@@ -13,7 +13,7 @@ const MAX_JSON_BYTES = 1_000_000
 
 /** Packs a house into the text used in a share link. */
 export async function encodeShare(house: HouseDesign): Promise<string> {
-  const json = new TextEncoder().encode(JSON.stringify({ v: 7, rooms: house }))
+  const json = new TextEncoder().encode(JSON.stringify({ v: 8, rooms: house }))
   const packed = await readAll(new Blob([json]).stream().pipeThrough(new CompressionStream('deflate-raw')))
   return toBase64Url(packed)
 }

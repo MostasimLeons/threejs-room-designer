@@ -1,5 +1,15 @@
 import { clamp } from '../../utils/math'
-import { findOverlaps, footprintHalfExtents, isWallMounted, placeInRoom, type FixedZone, type FurnitureItem } from './catalog'
+import {
+  findOverlaps,
+  footprintHalfExtents,
+  isWallMounted,
+  NEEDS_SURFACE,
+  needsSurface,
+  placeInRoom,
+  type FixedZone,
+  type FurnitureItem,
+} from './catalog'
+import { findSpotOnSurface } from './surfaces'
 
 /**
  * Where to put furniture: finding a free spot for a new or duplicated piece,
@@ -12,6 +22,11 @@ type Placeable = Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation
 
 /** Half the size of a piece along x and z, after its rotation (round pieces don't change). */
 export const halfExtents = (item: Placeable): [number, number] => footprintHalfExtents(item)
+
+/** Does the piece overlap something? (Standing on the floor when it needs a desk doesn't count here.) */
+function blocked(items: FurnitureItem[], zones: FixedZone[], id: string): boolean {
+  return (findOverlaps(items, zones).get(id) ?? []).some((other) => other !== NEEDS_SURFACE)
+}
 
 /** How close (in metres) a dragged piece has to get before it snaps flush to a wall. */
 export const WALL_SNAP = 0.12
@@ -59,7 +74,7 @@ export function findFreeSpot(
   const maxRing = Math.ceil(Math.max(room.width, room.depth) / step)
   const fits = (position: [number, number], rotation: number) => {
     const probe = { ...item, id: '__probe__', color: '#000000', position, rotation } as FurnitureItem
-    return !findOverlaps([probe, ...others], zones).has(probe.id)
+    return !blocked([probe, ...others], zones, probe.id)
   }
   // A new wall piece (no preferred spot; a duplicate asks for one next to the original):
   if (isWallMounted(item.type) && near[0] === 0 && near[1] === 0) {
@@ -99,6 +114,8 @@ const round = (v: number) => Math.round(v * 100) / 100
  * (the default) if it fits somewhere free, otherwise the first one that does (a
  * round dining table in a kitchen with no room for a long one). If none fits,
  * the first option anyway; the overlap warning then shows.
+ * A desk-top piece (a monitor, a lamp) goes onto a desk or table with room for it
+ * (Phase 17); with none in the room it stands on the floor and is flagged.
  */
 export function placeNew(
   item: FurnitureItem,
@@ -106,11 +123,17 @@ export function placeNew(
   others: FurnitureItem[],
   room: Room,
   zones: FixedZone[],
-): { variant: string; position: [number, number]; rotation: number } {
+): { variant: string; position: [number, number]; rotation: number; on?: string } {
+  if (needsSurface(item.type)) {
+    for (const variant of variants) {
+      const spot = findSpotOnSurface({ ...item, variant }, others)
+      if (spot) return { variant, ...spot }
+    }
+  }
   for (const variant of variants) {
     const candidate = { ...item, variant }
     const spot = placeInRoom({ ...candidate, position: findFreeSpot(candidate, others, room, zones) }, room)
-    if (!findOverlaps([...others, { ...candidate, ...spot }], zones).has(item.id)) return { variant, ...spot }
+    if (!blocked([...others, { ...candidate, ...spot }], zones, item.id)) return { variant, ...spot }
   }
   const fallback = { ...item, variant: variants[0] }
   return { variant: variants[0], ...placeInRoom({ ...fallback, position: findFreeSpot(fallback, others, room, zones) }, room) }
