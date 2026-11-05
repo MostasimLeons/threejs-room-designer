@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useThree, type RootState, type ThreeEvent } from '@react-three/fiber'
 import { Html, Line } from '@react-three/drei'
 import { Select } from '@react-three/postprocessing'
-import { getVariant, isWallMounted, type FurnitureItem } from './furniture/catalog'
+import { getVariant, itemFootprint, isWallMounted, type FurnitureItem } from './furniture/catalog'
 import { Cutaway } from './Cutaway'
 import { itemObjectName } from './ArSource'
 import { isCameraBehindWall } from './walls'
@@ -205,7 +205,8 @@ export function FurnitureLayer({
         // The selected piece gets a 3D outline (PostEffects) and the rotate ring; the floor
         // rectangle is for hover (faint blue) and overlaps (red).
         const showOutline = isHovered || isOverlapping
-        const { footprint, round } = getVariant(item.type, item.variant)
+        const { round } = getVariant(item.type, item.variant)
+        const footprint = itemFootprint(item)
         const onWall = isWallMounted(item.type)
         const piece = (
           <group key={item.id}>
@@ -227,7 +228,7 @@ export function FurnitureLayer({
               onClick={interactive ? (e) => e.stopPropagation() : undefined}
             >
               <Select enabled={isSelected}>
-                <FurnitureModel type={item.type} variant={item.variant} color={item.color} frame={item.frame} />
+                <FurnitureModel type={item.type} variant={item.variant} color={item.color} frame={item.frame} size={item.size} />
               </Select>
               {showOutline && (
                 <SelectionOutline
@@ -272,7 +273,7 @@ function DimensionGuides({ item, room }: { item: FurnitureItem; room: { width: n
   const [hx, hz] = halfExtents(item)
   const gaps = wallGaps(item, room)
   const unit = useUnit()
-  const [w, d] = getVariant(item.type, item.variant).footprint
+  const [w, d] = itemFootprint(item)
   const y = 0.03
   const guides: { from: [number, number, number]; to: [number, number, number]; length: number }[] = []
   // Along x: to whichever side wall is nearer (none when it's flush).

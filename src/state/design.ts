@@ -1,4 +1,5 @@
 import { placeInRoom, FURNITURE_INFO, getVariant, isAllowedIn, type FurnitureItem, type FurnitureType } from '../scene/furniture/catalog'
+import { normalizeSize } from '../scene/furniture/sizes'
 import { normalizeDegrees } from '../utils/math'
 import { DEFAULT_LIGHTING, normalizeLighting, type RoomLighting } from '../scene/sun'
 import {
@@ -65,7 +66,7 @@ function parseWallFinishes(raw: unknown): Partial<Record<WallName, WallFinish>> 
 
 function parseItem(raw: unknown, room: RoomId, bounds: { width: number; depth: number }): FurnitureItem | null {
   if (!isRecord(raw)) return null
-  const { id, type, variant, position, rotation, color, frame } = raw
+  const { id, type, variant, position, rotation, color, frame, size } = raw
   if (typeof id !== 'string' || typeof type !== 'string' || !(type in FURNITURE_INFO)) return null
   if (!Array.isArray(position) || position.length !== 2 || !position.every((n) => typeof n === 'number' && Number.isFinite(n))) return null
   if (typeof rotation !== 'number' || !Number.isFinite(rotation)) return null
@@ -86,6 +87,9 @@ function parseItem(raw: unknown, room: RoomId, bounds: { width: number; depth: n
   // A frame finish the piece doesn't offer (or from a newer version) is dropped: standard look.
   const frames = FURNITURE_INFO[furnitureType].frame?.options as string[] | undefined
   if (typeof frame === 'string' && frames?.includes(frame)) item.frame = frame as FurnitureItem['frame']
+  // A custom size (Phase 15) is kept within its limits; a broken one is dropped (standard size).
+  const custom = Array.isArray(size) ? normalizeSize(furnitureType, item.variant, size) : undefined
+  if (custom) item.size = custom
   Object.assign(item, placeInRoom(item, bounds))
   return item
 }

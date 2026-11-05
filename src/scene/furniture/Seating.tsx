@@ -3,6 +3,7 @@ import { frameMaterial } from './frames'
 import { Block, Cylinder } from '../parts'
 import { getVariant } from './catalog'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
+import { useFootprint } from './footprintContext'
 
 /**
  * Smaller seating added in Phase 10: ottoman, desk chair and bench.
@@ -119,7 +120,7 @@ export function Bench({ color, variant, frame }: ModelProps) {
   // Both are made every time (hooks must run in the same order whichever style is chosen).
   const fabric = useTintedMaterial(materials.creamUpholstery, color)
   const wood = useTintedMaterial(materials.woodLight, color)
-  const [w, d] = getVariant('bench', variant).footprint
+  const [w, d] = useFootprint('bench', variant)
 
   if (variant === 'wood') {
     return (

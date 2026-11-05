@@ -1,7 +1,7 @@
 import { materials } from '../materials'
 import { Block } from '../parts'
-import { getVariant } from './catalog'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
+import { useFootprint } from './footprintContext'
 
 /**
  * Tall sliding-door wardrobe: natural oak cabinet with cream lacquered doors on two
@@ -10,7 +10,7 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
  */
 export function Wardrobe({ color, variant }: ModelProps) {
   const doorMaterial = useTintedMaterial(materials.creamLacquer, color)
-  const [width, depth] = getVariant('wardrobe', variant).footprint
+  const [width, depth] = useFootprint('wardrobe', variant)
   const height = 2.3
   const plinth = 0.07
   const doors = variant === '3-door' ? 3 : 2

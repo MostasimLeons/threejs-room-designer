@@ -2,6 +2,8 @@ import { clamp, degToRad } from '../../utils/math'
 // Type-only: house.ts imports this file's layouts, so a value import here would be circular.
 import type { RoomId } from '../house'
 import type { FrameId } from './frames'
+// Only used inside functions, so this two-way import with products.ts is safe.
+import { itemHeight } from './products'
 
 export type FurnitureType =
   // Living Room
@@ -43,15 +45,19 @@ export type FurnitureType =
   | 'wallArt'
   | 'wallMirror'
   | 'wallShelf'
+  // Phase 15: under the desk
+  | 'drawerUnit'
+  | 'pcTower'
 
 /** Groups for the catalog ("Add furniture"), in the order they're shown. */
-export type FurnitureCategory = 'seating' | 'tables' | 'beds' | 'storage' | 'lighting' | 'decor' | 'kitchen' | 'bathroom'
+export type FurnitureCategory = 'seating' | 'tables' | 'beds' | 'storage' | 'office' | 'lighting' | 'decor' | 'kitchen' | 'bathroom'
 
 export const CATEGORIES: { id: FurnitureCategory; label: string }[] = [
   { id: 'seating', label: 'Seating' },
   { id: 'tables', label: 'Tables & desks' },
   { id: 'beds', label: 'Beds' },
   { id: 'storage', label: 'Storage' },
+  { id: 'office', label: 'Office' },
   { id: 'lighting', label: 'Lighting' },
   { id: 'decor', label: 'Plants & decor' },
   { id: 'kitchen', label: 'Kitchen' },
@@ -72,6 +78,12 @@ export interface FurnitureItem {
   color: string
   /** Finish of the legs / frame / handles (see frames.ts). Missing = the piece's standard finish. */
   frame?: FrameId
+  /**
+   * Custom width × depth × height in metres (Phase 15). Missing = the chosen option's
+   * standard size, which is how every older design is stored. Round pieces use the
+   * width as the diameter (depth = width). Kept within limits by sizes.ts.
+   */
+  size?: [number, number, number]
 }
 
 /** A style or size option for a piece of furniture. */
@@ -112,6 +124,18 @@ interface FurnitureInfo {
    * Its footprint is [width along the wall, depth out from the wall].
    */
   mount?: 'wall'
+  /**
+   * A desk or table with knee space: how far below its top the space underneath
+   * starts (top + apron or drawer). Chairs and low pieces may tuck under it.
+   */
+  kneeBelowTop?: number
+  /**
+   * May go under a desk or table (see kneeBelowTop):
+   * - 'seat': a chair; the front `under` part of its depth may go under, the back stays out
+   *   (round chairs: all but the middle `1 - under` of their width)
+   * - 'low': anything lower than the knee space may go fully under (drawer units, PCs, poufs, benches)
+   */
+  tuck?: { kind: 'seat'; under: number } | { kind: 'low' }
 }
 
 /** A preset colour with a readable name (shown as a tooltip and read by screen readers). */
@@ -356,6 +380,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     label: 'Accent chair',
     category: 'seating',
     rooms: ['bedroom', 'living'],
+    tuck: { kind: 'seat', under: 0.5 },
     variantLabel: 'Style',
     variants: [
       { id: 'tub', label: 'Tub', detail: '75 cm', footprint: [0.75, 0.75] },
@@ -370,6 +395,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     label: 'Dining table',
     category: 'tables',
     rooms: ['dining', 'kitchen'],
+    kneeBelowTop: 0.12,
     variantLabel: 'Shape',
     variants: [
       { id: 'rectangle', label: 'Rectangle', detail: '180 × 90 cm, seats 6', footprint: [1.8, 0.9] },
@@ -383,6 +409,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     label: 'Dining chair',
     category: 'seating',
     rooms: ['dining', 'kitchen'],
+    tuck: { kind: 'seat', under: 0.7 },
     variantLabel: 'Style',
     variants: [
       { id: 'upholstered', label: 'Upholstered', detail: '46 cm', footprint: [0.46, 0.52] },
@@ -421,6 +448,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     label: 'Bar stool',
     category: 'seating',
     rooms: ['kitchen'],
+    tuck: { kind: 'low' },
     variantLabel: 'Style',
     variants: [
       { id: 'backless', label: 'Backless', detail: '75 cm seat', footprint: [0.4, 0.4] },
@@ -496,6 +524,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     label: 'Ottoman',
     category: 'seating',
     rooms: ['living', 'bedroom'],
+    tuck: { kind: 'low' },
     variantLabel: 'Style',
     variants: [
       { id: 'pouf', label: 'Round pouf', detail: 'Ø 55 cm', footprint: [0.55, 0.55], round: true },
@@ -521,6 +550,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     label: 'Desk',
     category: 'tables',
     rooms: ['bedroom', 'living'],
+    kneeBelowTop: 0.12,
     variantLabel: 'Size',
     variants: [
       { id: '120', label: 'Writing desk', detail: '120 × 60 cm', footprint: [1.2, 0.6] },
@@ -534,6 +564,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     label: 'Desk chair',
     category: 'seating',
     rooms: ['bedroom', 'living'],
+    tuck: { kind: 'seat', under: 0.6 },
     variantLabel: 'Style',
     variants: [
       { id: 'task', label: 'Swivel', detail: '62 cm, on castors', footprint: [0.62, 0.62], round: true },
@@ -547,6 +578,7 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     label: 'Bench',
     category: 'seating',
     rooms: ['bedroom', 'dining', 'kitchen', 'living'],
+    tuck: { kind: 'low' },
     variantLabel: 'Style',
     variants: [
       { id: 'upholstered', label: 'Upholstered', detail: '120 × 40 cm', footprint: [1.2, 0.4] },
@@ -638,6 +670,39 @@ export const FURNITURE_INFO: Record<FurnitureType, FurnitureInfo> = {
     swatches: WOOD_SWATCHES,
     frame: { label: 'Brackets', options: ['black', 'brass', 'white'] },
   },
+
+  // ---------- Phase 15: under the desk ----------
+  drawerUnit: {
+    label: 'Drawer unit',
+    category: 'office',
+    rooms: ['bedroom', 'living'],
+    tuck: { kind: 'low' },
+    variantLabel: 'Style',
+    variants: [
+      { id: 'castors', label: 'On castors', detail: '41 × 50 cm, 58 tall, 3 drawers', footprint: [0.41, 0.5] },
+      { id: 'desk-height', label: 'Desk height', detail: '43 × 58 cm, 72 tall, file drawer', footprint: [0.43, 0.58] },
+    ],
+    colorLabel: 'Body',
+    swatches: OAK_SWATCHES,
+    frame: { label: 'Handles', options: ['black', 'chrome', 'brass'] },
+  },
+  pcTower: {
+    label: 'PC tower',
+    category: 'office',
+    rooms: ['bedroom', 'living'],
+    tuck: { kind: 'low' },
+    variantLabel: 'Size',
+    variants: [
+      { id: 'mid', label: 'Mid tower', detail: '21 × 45 cm, 46 tall', footprint: [0.21, 0.45] },
+      { id: 'mini', label: 'Small form factor', detail: '17 × 36 cm, 34 tall', footprint: [0.17, 0.36] },
+    ],
+    colorLabel: 'Case',
+    swatches: [
+      { color: '#2a2a2c', name: 'Black' },
+      { color: '#f2f0eb', name: 'White' },
+      { color: '#9ea3a8', name: 'Silver' },
+    ],
+  },
 }
 
 /** Does this piece hang on a wall (art, mirrors, shelves)? */
@@ -650,10 +715,10 @@ export const isWallMounted = (type: FurnitureType) => FURNITURE_INFO[type].mount
  * face +z at 0°, like everything else).
  */
 export function mountOnWall(
-  item: Pick<FurnitureItem, 'type' | 'variant' | 'position'>,
+  item: Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'size'>,
   room: { width: number; depth: number },
 ): { position: [number, number]; rotation: number } {
-  const [w, d] = getVariant(item.type, item.variant).footprint
+  const [w, d] = itemFootprint(item)
   const halfW = room.width / 2
   const halfD = room.depth / 2
   // A point dragged past a wall counts as at that wall (otherwise its distance would be negative).
@@ -675,7 +740,7 @@ export function mountOnWall(
  * pieces, hung on the nearest wall (which also sets their rotation).
  */
 export function placeInRoom(
-  item: Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation'>,
+  item: Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation' | 'size'>,
   room: { width: number; depth: number },
 ): { position: [number, number]; rotation: number } {
   if (isWallMounted(item.type)) return mountOnWall(item, room)
@@ -691,6 +756,17 @@ export function isAllowedIn(type: FurnitureType, room: RoomId): boolean {
 export function getVariant(type: FurnitureType, variant: string): VariantInfo {
   const { variants } = FURNITURE_INFO[type]
   return variants.find((v) => v.id === variant) ?? variants[0]
+}
+
+/**
+ * Width × depth on the floor in metres: the piece's custom size if it has one,
+ * otherwise its option's. Everything that measures a piece (walls, overlaps,
+ * outlines, guides) goes through this.
+ */
+export function itemFootprint(item: Pick<FurnitureItem, 'type' | 'variant' | 'size'>): [number, number] {
+  const { footprint, round } = getVariant(item.type, item.variant)
+  if (!item.size) return footprint
+  return round ? [item.size[0], item.size[0]] : [item.size[0], item.size[1]]
 }
 
 /** The Living Room's starting arrangement. "Reset" returns to this. */
@@ -778,9 +854,9 @@ export const DEFAULT_LAYOUTS: Record<RoomId, FurnitureItem[]> = {
  * Half the size of a piece along x and z, after its rotation. A round piece is the
  * same size whichever way it's turned.
  */
-export function footprintHalfExtents(item: Pick<FurnitureItem, 'type' | 'variant' | 'rotation'>): [number, number] {
-  const { footprint, round } = getVariant(item.type, item.variant)
-  const [w, d] = footprint
+export function footprintHalfExtents(item: Pick<FurnitureItem, 'type' | 'variant' | 'rotation' | 'size'>): [number, number] {
+  const { round } = getVariant(item.type, item.variant)
+  const [w, d] = itemFootprint(item)
   if (round) return [w / 2, w / 2]
   const angle = degToRad(item.rotation)
   const cos = Math.abs(Math.cos(angle))
@@ -789,7 +865,7 @@ export function footprintHalfExtents(item: Pick<FurnitureItem, 'type' | 'variant
 }
 
 export function clampToRoom(
-  item: Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation'>,
+  item: Pick<FurnitureItem, 'type' | 'variant' | 'position' | 'rotation' | 'size'>,
   /** The room's inner size. */
   room: { width: number; depth: number },
 ): [number, number] {
@@ -839,7 +915,8 @@ type Shape = { kind: 'rect'; corners: Point[] } | { kind: 'circle'; center: Poin
 
 /** An item's footprint, rotated the same way as the 3D model. */
 function footprintShape(item: FurnitureItem): Shape {
-  const { footprint, round } = getVariant(item.type, item.variant)
+  const { round } = getVariant(item.type, item.variant)
+  const footprint = itemFootprint(item)
   if (round) return { kind: 'circle', center: item.position, radius: footprint[0] / 2 }
   return { kind: 'rect', corners: rectCorners(item.position, footprint, item.rotation) }
 }
@@ -899,6 +976,34 @@ function cornersOverlap(cornersA: Point[], cornersB: Point[]): boolean {
   return true
 }
 
+/** Below this knee space a chair can't be pushed under (e.g. a desk made very low). */
+const MIN_SEAT_KNEE = 0.5
+
+/**
+ * Is `guest` tucked under `host` in a way that works in real life? The host needs
+ * knee space (a desk or table). A low piece (drawer unit, PC, pouf) fits if it's
+ * lower than the knee space. A chair may push its seat under as long as its back
+ * stays outside: the back strip of its depth (or, for a round swivel chair, the
+ * middle of it with the armrests) must not overlap the host.
+ */
+export function tuckedUnder(guest: FurnitureItem, host: FurnitureItem, hostShape: Shape = footprintShape(host)): boolean {
+  const { kneeBelowTop } = FURNITURE_INFO[host.type]
+  const { tuck } = FURNITURE_INFO[guest.type]
+  if (kneeBelowTop === undefined || !tuck) return false
+  const knee = itemHeight(host) - kneeBelowTop
+  if (tuck.kind === 'low') return itemHeight(guest) <= knee + 0.005
+  if (knee < MIN_SEAT_KNEE) return false
+  const { round } = getVariant(guest.type, guest.variant)
+  const [w, d] = itemFootprint(guest)
+  if (round) return !shapesOverlap({ kind: 'circle', center: guest.position, radius: (w / 2) * (1 - tuck.under) }, hostShape)
+  // The back strip: chairs face +z, so their back is at -z (turned with the chair).
+  const backDepth = d * (1 - tuck.under)
+  const angle = degToRad(guest.rotation)
+  const offset = -d / 2 + backDepth / 2
+  const center: Point = [guest.position[0] + offset * Math.sin(angle), guest.position[1] + offset * Math.cos(angle)]
+  return !shapesOverlap({ kind: 'rect', corners: rectCorners(center, [w, backDepth], guest.rotation) }, hostShape)
+}
+
 /**
  * For each item that overlaps something, what it overlaps: other items' ids, and
  * built-in zones as `zone:<label>` (for example "zone:kitchen units").
@@ -914,6 +1019,8 @@ export function findOverlaps(items: FurnitureItem[], zones: FixedZone[] = []): M
       // Art above a sofa is fine: pieces on the wall only clash with each other.
       if (onWall !== isWallMounted(items[j].type)) continue
       if (!shapesOverlap(shapes[i], shapes[j])) continue
+      // A chair or drawer unit tucked under a desk or table is fine.
+      if (tuckedUnder(items[i], items[j], shapes[j]) || tuckedUnder(items[j], items[i], shapes[i])) continue
       add(items[i].id, items[j].id)
       add(items[j].id, items[i].id)
     }

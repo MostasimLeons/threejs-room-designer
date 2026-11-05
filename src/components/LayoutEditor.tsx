@@ -47,7 +47,7 @@ interface LengthFieldProps {
  * "11'6"). Shown in the unit chosen in the sidebar. Values outside the range are
  * brought within it by the layout rules.
  */
-function LengthField({ label, value, min, max, onPreview, onCommit, onSet, step = 0.01 }: LengthFieldProps) {
+export function LengthField({ label, value, min, max, onPreview, onCommit, onSet, step = 0.01 }: LengthFieldProps) {
   const unit = useUnit()
   const shown = formatLength(value, unit)
   const [draft, setDraft] = useState<string | null>(null)

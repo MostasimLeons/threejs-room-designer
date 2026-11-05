@@ -1,7 +1,7 @@
 import { materials } from '../materials'
 import { Block, Cylinder } from '../parts'
-import { getVariant } from './catalog'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
+import { useFootprint } from './footprintContext'
 
 /**
  * Oak dressing table with a cream drawer, a brass-framed mirror (round or tall rectangle)
@@ -9,7 +9,7 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
  */
 export function DressingTable({ color, variant }: ModelProps) {
   const wood = useTintedMaterial(materials.woodLight, color)
-  const [width, depth] = getVariant('dressingTable', variant).footprint
+  const [width, depth] = useFootprint('dressingTable', variant)
   const back = -depth / 2
   const tableD = 0.45
   const tableZ = back + tableD / 2

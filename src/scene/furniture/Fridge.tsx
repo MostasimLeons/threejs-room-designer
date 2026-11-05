@@ -1,7 +1,7 @@
 import { materials } from '../materials'
-import { getVariant } from './catalog'
 import { Block } from '../parts'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
+import { useFootprint } from './footprintContext'
 
 const HEIGHT = 1.85
 
@@ -12,7 +12,7 @@ const HEIGHT = 1.85
  */
 export function Fridge({ color, variant }: ModelProps) {
   const finish = useTintedMaterial(materials.steel, color)
-  const [width, depth] = getVariant('fridge', variant).footprint
+  const [width, depth] = useFootprint('fridge', variant)
   const front = depth / 2
   const double = variant === 'double'
 

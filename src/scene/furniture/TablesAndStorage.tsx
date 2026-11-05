@@ -3,6 +3,7 @@ import { frameMaterial } from './frames'
 import { Block, Cylinder } from '../parts'
 import { getVariant } from './catalog'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
+import { useFootprint } from './footprintContext'
 
 /**
  * Tables and storage added in Phase 10: side table, desk, bookshelf, chest of
@@ -47,7 +48,7 @@ const DESK_H = 0.74
 export function Desk({ color, variant, frame }: ModelProps) {
   const legs = frameMaterial(frame, materials.metalBlack)
   const wood = useTintedMaterial(materials.woodLight, color)
-  const [w, d] = getVariant('desk', variant).footprint
+  const [w, d] = useFootprint('desk', variant)
   return (
     <group>
       <Block size={[w, 0.03, d]} radius={0.008} position={[0, DESK_H - 0.015, 0]} material={wood} />
@@ -112,7 +113,7 @@ function Books({ width, y, z, seed, fill = 0.7 }: { width: number; y: number; z:
 /** "open": wooden shelves with books and a vase. "wide": steel frame with wood shelves (stand-in for its real model). */
 export function Bookshelf({ color, variant }: ModelProps) {
   const wood = useTintedMaterial(materials.woodLight, color)
-  const [w, d] = getVariant('bookshelf', variant).footprint
+  const [w, d] = useFootprint('bookshelf', variant)
   const wide = variant === 'wide'
   const h = wide ? 2.0 : 1.8
   const shelves = 5
@@ -160,7 +161,7 @@ export function Bookshelf({ color, variant }: ModelProps) {
 export function ChestOfDrawers({ color, variant, frame }: ModelProps) {
   const handles = frameMaterial(frame, materials.brass)
   const wood = useTintedMaterial(materials.woodLight, color)
-  const [w, d] = getVariant('chestOfDrawers', variant).footprint
+  const [w, d] = useFootprint('chestOfDrawers', variant)
   const tall = variant === 'tall'
   const legH = tall ? 0.05 : 0.12
   const bodyH = tall ? 1.8 : 0.66
@@ -215,7 +216,7 @@ export function ChestOfDrawers({ color, variant, frame }: ModelProps) {
 export function BathroomCabinet({ color, variant, frame }: ModelProps) {
   const metal = frameMaterial(frame, materials.chrome)
   const cabinet = useTintedMaterial(materials.creamLacquer, color)
-  const [w, d] = getVariant('bathroomCabinet', variant).footprint
+  const [w, d] = useFootprint('bathroomCabinet', variant)
   const tall = variant === 'tall'
   const legH = 0.1
   const bodyH = tall ? 1.6 : 0.75

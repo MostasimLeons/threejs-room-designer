@@ -1,8 +1,8 @@
 import { materials } from '../materials'
 import { frameMaterial } from './frames'
 import { Block, Cylinder } from '../parts'
-import { getVariant } from './catalog'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
+import { useFootprint } from './footprintContext'
 
 /**
  * L-shaped corner sofa: a three-seat sofa along the back with a chaise longue
@@ -13,7 +13,7 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 export function CornerSofa({ color, variant, frame }: ModelProps) {
   const legMaterial = frameMaterial(frame, materials.woodDark)
   const fabric = useTintedMaterial(materials.fabricWhite, color)
-  const [w, d] = getVariant('cornerSofa', variant).footprint
+  const [w, d] = useFootprint('cornerSofa', variant)
   const side = variant === 'right' ? 1 : -1 // which end the chaise is on
   const legH = 0.08
   const baseH = 0.28

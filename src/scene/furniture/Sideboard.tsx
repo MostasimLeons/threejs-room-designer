@@ -1,12 +1,12 @@
 import { materials } from '../materials'
-import { getVariant } from './catalog'
 import { Block, Cylinder } from '../parts'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
+import { useFootprint } from './footprintContext'
 
 /** Low sideboard on slim black legs, with door seams, brass knobs, a vase and books on top. Faces +z. */
 export function Sideboard({ color, variant }: ModelProps) {
   const wood = useTintedMaterial(materials.woodLight, color)
-  const [width, depth] = getVariant('sideboard', variant).footprint
+  const [width, depth] = useFootprint('sideboard', variant)
   const doors = variant === '200' ? 4 : 3
   const legH = 0.14
   const bodyH = 0.62
