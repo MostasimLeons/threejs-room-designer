@@ -22,6 +22,9 @@ import { Fridge } from './Fridge'
 import { Bathtub } from './Bathtub'
 import { Vanity } from './Vanity'
 import { TowelRail } from './TowelRail'
+import { CornerSofa } from './CornerSofa'
+import { Bench, DeskChair, Ottoman } from './Seating'
+import { BathroomCabinet, Bookshelf, ChestOfDrawers, Desk, SideTable } from './TablesAndStorage'
 
 interface ModelChoice {
   type: FurnitureType
@@ -87,5 +90,23 @@ function CodeModel({ type, variant, color }: ModelChoice) {
       return <Vanity color={color} variant={variant} />
     case 'towelRail':
       return <TowelRail color={color} variant={variant} />
+    case 'cornerSofa':
+      return <CornerSofa color={color} variant={variant} />
+    case 'ottoman':
+      return <Ottoman color={color} variant={variant} />
+    case 'sideTable':
+      return <SideTable color={color} variant={variant} />
+    case 'desk':
+      return <Desk color={color} variant={variant} />
+    case 'deskChair':
+      return <DeskChair color={color} variant={variant} />
+    case 'bench':
+      return <Bench color={color} variant={variant} />
+    case 'bookshelf':
+      return <Bookshelf color={color} variant={variant} />
+    case 'chestOfDrawers':
+      return <ChestOfDrawers color={color} variant={variant} />
+    case 'bathroomCabinet':
+      return <BathroomCabinet color={color} variant={variant} />
   }
 }

@@ -6,6 +6,16 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 export function CoffeeTable({ color, variant }: ModelProps) {
   const wood = useTintedMaterial(materials.woodLight, color)
   const round = variant === 'round'
+  if (variant === 'square') {
+    // Low square table: a wooden top on a black base (stand-in for its real model).
+    return (
+      <group>
+        <Block size={[0.9, 0.28, 0.9]} radius={0.01} position={[0, 0.14, 0]} material={materials.metalBlack} />
+        <Block size={[1.0, 0.06, 1.0]} radius={0.015} position={[0, 0.31, 0]} material={wood} />
+        <Cylinder radiusTop={0.05} radiusBottom={0.065} height={0.18} position={[0.25, 0.43, -0.2]} material={materials.ceramic} />
+      </group>
+    )
+  }
   const legs: [number, number][] = round
     ? [
         [-0.25, -0.25],

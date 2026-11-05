@@ -5,7 +5,8 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 
 /**
  * Upholstered bed with a channel-tufted headboard, oak plinth, linen bedding and pillows.
- * King = 180 × 200 cm mattress, Queen = 160 × 200 cm. Headboard at the back, faces +z.
+ * King = 180 × 200 cm mattress, Queen = 160, Double = 140, Single = 90 (one pillow).
+ * Headboard at the back, faces +z.
  */
 export function Bed({ color, variant }: ModelProps) {
   const upholstery = useTintedMaterial(materials.creamUpholstery, color)
@@ -16,7 +17,10 @@ export function Bed({ color, variant }: ModelProps) {
   const back = -depth / 2
 
   // Headboard channels (vertical tufted strips)
-  const channels = 7
+  const channels = Math.max(3, Math.round(width / 0.27))
+  // A single bed has one pillow and one cushion in the middle; wider beds have two of each.
+  const pillowSides = width < 1.2 ? [0] : [-1, 1]
+  const pillowW = width < 1.2 ? mattressW - 0.14 : mattressW / 2 - 0.1
   const channelW = (width + 0.04) / channels
 
   return (
@@ -42,10 +46,10 @@ export function Bed({ color, variant }: ModelProps) {
       />
 
       {/* Pillows: two sleeping pillows and two smaller accent cushions */}
-      {[-1, 1].map((side) => (
+      {pillowSides.map((side) => (
         <group key={side}>
           <Block
-            size={[mattressW / 2 - 0.1, 0.17, 0.42]}
+            size={[pillowW, 0.17, 0.42]}
             radius={0.07}
             position={[side * (mattressW / 4), 0.64, back + 0.42]}
             rotation={[-0.35, 0, 0]}

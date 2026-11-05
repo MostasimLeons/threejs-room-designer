@@ -84,6 +84,10 @@ export const materials = {
   // A fully metallic mirror would reflect the (mostly dark) surroundings and look black,
   // so it's a pale, glossy silver instead.
   mirror: new THREE.MeshStandardMaterial({ color: '#dbe4ea', roughness: 0.08, metalness: 0.35 }),
+
+  // ---- Phase 10 ----
+  // Brown leather, for the leather options' code-built stand-ins (their real models keep their own leather).
+  leather: new THREE.MeshStandardMaterial({ color: '#5a3a29', roughness: 0.45 }),
 }
 
 /**

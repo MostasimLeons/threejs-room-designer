@@ -1,10 +1,11 @@
 import { materials } from '../materials'
 import { Block, Cylinder } from '../parts'
+import { getVariant } from './catalog'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 
 const TOP_Y = 0.75 // table height
 
-/** Dining table: a rectangle for six on tapered legs, or a round table on a pedestal. */
+/** Dining table: a rectangle for six or a long one for eight on tapered legs, or a round table on a pedestal. */
 export function DiningTable({ color, variant }: ModelProps) {
   const wood = useTintedMaterial(materials.woodLight, color)
 
@@ -27,13 +28,14 @@ export function DiningTable({ color, variant }: ModelProps) {
     )
   }
 
-  const legX = 0.8
-  const legZ = 0.36
+  const [w, d] = getVariant('diningTable', variant).footprint
+  const legX = w / 2 - 0.1
+  const legZ = d / 2 - 0.09
   return (
     <group>
-      <Block size={[1.8, 0.04, 0.9]} radius={0.012} position={[0, TOP_Y - 0.02, 0]} material={wood} />
+      <Block size={[w, 0.04, d]} radius={0.012} position={[0, TOP_Y - 0.02, 0]} material={wood} />
       {/* Apron under the top, set in from the edge */}
-      <Block size={[1.6, 0.08, 0.72]} position={[0, TOP_Y - 0.08, 0]} material={wood} />
+      <Block size={[w - 0.2, 0.08, d - 0.18]} position={[0, TOP_Y - 0.08, 0]} material={wood} />
       {[
         [-legX, -legZ],
         [legX, -legZ],
@@ -50,7 +52,7 @@ export function DiningTable({ color, variant }: ModelProps) {
         />
       ))}
       {/* Runner and two vases */}
-      <Block size={[1.1, 0.004, 0.32]} position={[0, TOP_Y + 0.002, 0]} material={materials.linen} />
+      <Block size={[w * 0.6, 0.004, 0.32]} position={[0, TOP_Y + 0.002, 0]} material={materials.linen} />
       <Cylinder radiusTop={0.04} radiusBottom={0.055} height={0.22} position={[-0.18, TOP_Y + 0.11, 0]} material={materials.ceramic} />
       <Cylinder
         radiusTop={0.035}

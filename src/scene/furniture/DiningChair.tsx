@@ -9,7 +9,9 @@ const SEAT_Y = 0.47
  * "spindle" has a wooden back made of thin rods. The colour is the seat fabric.
  */
 export function DiningChair({ color, variant }: ModelProps) {
-  const fabric = useTintedMaterial(materials.fabricWhite, color)
+  const tinted = useTintedMaterial(materials.fabricWhite, color)
+  // The leather option keeps its own brown leather (like its real model).
+  const fabric = variant === 'leather' ? materials.leather : tinted
   const wood = materials.woodLight
   const legs: [number, number][] = [
     [-0.19, -0.19],

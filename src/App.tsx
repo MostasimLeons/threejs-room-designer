@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Scene } from './scene/Scene'
 import type { ViewMode } from './scene/roomConfig'
-import { FURNITURE_INFO, findOverlaps, isAllowedIn, overlapName, type FurnitureItem, type FurnitureType } from './scene/furniture/catalog'
-import { findFreeSpot } from './scene/furniture/placement'
+import {
+  FURNITURE_INFO,
+  findOverlaps,
+  getVariant,
+  isAllowedIn,
+  overlapName,
+  type FurnitureItem,
+  type FurnitureType,
+} from './scene/furniture/catalog'
+import { findFreeSpot, placeNew } from './scene/furniture/placement'
 import { createId } from './utils/id'
 import { downloadBlob } from './utils/download'
 import { decodeShare, shareCodeFromHash } from './state/share'
@@ -268,10 +276,20 @@ export default function App() {
       rotation: 0,
       color: info.swatches[0].color,
     }
-    item.position = findFreeSpot(item, design.items, ROOMS[room], ROOMS[room].fixedZones)
+    // The default option, or the first that has room (e.g. a round table in a busy kitchen).
+    const placed = placeNew(
+      item,
+      info.variants.map((v) => v.id),
+      design.items,
+      ROOMS[room],
+      ROOMS[room].fixedZones,
+    )
+    item.variant = placed.variant
+    item.position = placed.position
     history.addItem(item)
     setSelectedId(item.id)
-    setToast(`Added ${info.label.toLowerCase()}. Drag it into place.`)
+    const option = item.variant === info.variants[0].id ? '' : ` (${getVariant(type, item.variant).label.toLowerCase()}, to fit)`
+    setToast(`Added ${info.label.toLowerCase()}${option}. Drag it into place.`)
   }
 
   /**

@@ -36,6 +36,7 @@ export const MODELS: Partial<Record<FurnitureType, Partial<Record<string, ModelS
   coffeeTable: {
     rectangle: { url: `${base}coffee-table-rectangle.glb`, tint: [], rotation: 90, fit: 'fit' },
     round: { url: `${base}coffee-table-round.glb`, tint: [], fit: 'fit' },
+    square: { url: `${base}coffee-table-square.glb`, tint: [], fit: 'fit' },
   },
   sideboard: {
     '160': { url: `${base}sideboard.glb`, tint: ['modern_wooden_cabinet'], fit: 'stretch' },
@@ -46,6 +47,23 @@ export const MODELS: Partial<Record<FurnitureType, Partial<Record<string, ModelS
   },
   accentChair: {
     lounge: { url: `${base}accent-chair-lounge.glb`, tint: [], fit: 'fit' },
+  },
+  // Phase 10
+  diningChair: {
+    leather: { url: `${base}dining-chair-leather.glb`, tint: [], fit: 'fit' },
+  },
+  sideTable: {
+    wood: { url: `${base}side-table.glb`, tint: [], fit: 'fit' },
+  },
+  ottoman: {
+    leather: { url: `${base}ottoman.glb`, tint: [], fit: 'fit' },
+  },
+  chestOfDrawers: {
+    tall: { url: `${base}chest-tall.glb`, tint: [], fit: 'fit' },
+  },
+  bookshelf: {
+    // Real shelving is 235 × 72 cm; stretched to 200 × 45 so it fits against a wall.
+    wide: { url: `${base}shelving-wide.glb`, tint: [], fit: 'stretch', maxHeight: 2.1 },
   },
 }
 

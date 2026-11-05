@@ -75,5 +75,26 @@ export function findFreeSpot(
 
 const round = (v: number) => Math.round(v * 100) / 100
 
+/**
+ * Where a new piece from the catalog goes, and in which option: the first option
+ * (the default) if it fits somewhere free, otherwise the first one that does (a
+ * round dining table in a kitchen with no room for a long one). If none fits,
+ * the first option anyway; the overlap warning then shows.
+ */
+export function placeNew(
+  item: FurnitureItem,
+  variants: string[],
+  others: FurnitureItem[],
+  room: Room,
+  zones: FixedZone[],
+): { variant: string; position: [number, number] } {
+  for (const variant of variants) {
+    const candidate = { ...item, variant }
+    const position = findFreeSpot(candidate, others, room, zones)
+    if (!findOverlaps([...others, { ...candidate, position }], zones).has(item.id)) return { variant, position }
+  }
+  return { variant: variants[0], position: findFreeSpot({ ...item, variant: variants[0] }, others, room, zones) }
+}
+
 /** Keeps a number tidy for display and saving (centimetre precision). */
 export const toCm = (metres: number) => Math.round(clamp(metres, -1e6, 1e6) * 100)
