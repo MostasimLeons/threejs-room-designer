@@ -2,9 +2,9 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { materials } from '../materials'
 import { Block, Cylinder } from '../parts'
-import { getVariant } from './catalog'
 import { frameMaterial } from './frames'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
+import { useFootprint } from './footprintContext'
 
 /**
  * Pieces that hang on a wall (Phase 11). Like everything else they face +z, with
@@ -131,7 +131,7 @@ export function WallArt({ color, variant, frame }: ModelProps) {
     useMemo(() => shade(color, 1.6), [color]),
   )
   const frameMat = frameMaterial(frame, materials.metalBlack)
-  const [w, d] = getVariant('wallArt', variant).footprint
+  const [w, d] = useFootprint('wallArt', variant)
   const colours = { main, dark, light }
 
   return (
@@ -151,7 +151,7 @@ export function WallArt({ color, variant, frame }: ModelProps) {
 /** Round or tall mirror. Colour = the frame. */
 export function WallMirror({ color, variant }: ModelProps) {
   const frameMat = useTintedMaterial(materials.brass, color)
-  const [w, d] = getVariant('wallMirror', variant).footprint
+  const [w, d] = useFootprint('wallMirror', variant)
   const back = -d / 2
   if (variant === 'tall') {
     const h = 1.6
@@ -187,7 +187,7 @@ const BOOKS = [materials.bookA, materials.bookB, materials.terracotta, materials
 export function WallShelf({ color, variant, frame }: ModelProps) {
   const wood = useTintedMaterial(materials.woodLight, color)
   const brackets = frameMaterial(frame, materials.metalBlack)
-  const [w, d] = getVariant('wallShelf', variant).footprint
+  const [w, d] = useFootprint('wallShelf', variant)
   const shelves = variant === 'double' ? [1.3, 1.65] : [1.45]
   return (
     <group>

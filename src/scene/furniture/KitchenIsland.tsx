@@ -1,7 +1,7 @@
 import { materials } from '../materials'
-import { getVariant } from './catalog'
 import { Block } from '../parts'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
+import { useFootprint } from './footprintContext'
 
 const BODY_H = 0.88
 const TOP_T = 0.04
@@ -13,7 +13,7 @@ const TOP_T = 0.04
  */
 export function KitchenIsland({ color, variant }: ModelProps) {
   const paint = useTintedMaterial(materials.creamLacquer, color)
-  const [width, depth] = getVariant('kitchenIsland', variant).footprint
+  const [width, depth] = useFootprint('kitchenIsland', variant)
   const plinth = 0.1
   const back = -depth / 2 + 0.01
   const drawers = Math.round(width / 0.6)

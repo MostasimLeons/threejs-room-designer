@@ -1,8 +1,8 @@
 import { materials } from '../materials'
 import { frameMaterial } from './frames'
 import { Block, Cylinder } from '../parts'
-import { getVariant } from './catalog'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
+import { useFootprint } from './footprintContext'
 
 /**
  * Sofa built from its width, so the same code makes a 2-, 3- or 4-seater.
@@ -11,7 +11,7 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 export function Sofa({ color, variant, frame }: ModelProps) {
   const legMaterial = frameMaterial(frame, materials.woodDark)
   const fabric = useTintedMaterial(materials.fabricWhite, color)
-  const [width] = getVariant('sofa', variant).footprint
+  const [width] = useFootprint('sofa', variant)
   const inner = width - 0.36 // space between the two arms
   const cushions = variant === '4-seat' ? 3 : 2
   const cushionW = (inner - 0.04) / cushions

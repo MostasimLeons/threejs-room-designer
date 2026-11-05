@@ -1,7 +1,7 @@
 import { materials } from '../materials'
-import { getVariant } from './catalog'
 import { Block, Cylinder } from '../parts'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
+import { useFootprint } from './footprintContext'
 
 const CABINET_BOTTOM = 0.3 // wall-hung, floor visible underneath
 const CABINET_H = 0.5
@@ -14,7 +14,7 @@ const TOP_Y = CABINET_BOTTOM + CABINET_H
  */
 export function Vanity({ color, variant }: ModelProps) {
   const wood = useTintedMaterial(materials.woodLight, color)
-  const [width, depth] = getVariant('vanity', variant).footprint
+  const [width, depth] = useFootprint('vanity', variant)
   const basins = variant === 'double' ? [-0.3, 0.3] : [0]
   const backZ = -depth / 2
 

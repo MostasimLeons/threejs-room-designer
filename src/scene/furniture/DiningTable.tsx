@@ -1,6 +1,6 @@
 import { materials } from '../materials'
 import { Block, Cylinder } from '../parts'
-import { getVariant } from './catalog'
+import { useFootprint } from './footprintContext'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 
 const TOP_Y = 0.75 // table height
@@ -9,6 +9,8 @@ const TOP_Y = 0.75 // table height
 export function DiningTable({ color, variant }: ModelProps) {
   const wood = useTintedMaterial(materials.woodLight, color)
 
+  // Before the early return below: hooks must run every time.
+  const [w, d] = useFootprint('diningTable', variant)
   if (variant === 'round') {
     return (
       <group>
@@ -28,7 +30,6 @@ export function DiningTable({ color, variant }: ModelProps) {
     )
   }
 
-  const [w, d] = getVariant('diningTable', variant).footprint
   const legX = w / 2 - 0.1
   const legZ = d / 2 - 0.09
   return (

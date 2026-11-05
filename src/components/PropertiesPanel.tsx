@@ -2,7 +2,8 @@ import { FURNITURE_INFO, getVariant, isWallMounted, type FurnitureItem } from '.
 import type { RoomFinishes } from '../scene/finishes'
 import { ROOMS, type RoomId, type RoomInfo, type RoomLayout } from '../scene/house'
 import type { OpeningRef } from '../scene/layout'
-import { LayoutCard, OpeningPanel } from './LayoutEditor'
+import { LayoutCard, LengthField, OpeningPanel } from './LayoutEditor'
+import { itemSize, sizeLimits, type Size3 } from '../scene/furniture/sizes'
 import { useUnit } from '../utils/units'
 import type { FinishChanges, ItemChanges } from '../state/useDesignHistory'
 import { ColorPicker } from './ColorPicker'
@@ -129,7 +130,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             <h2>Properties</h2>
             <p className="item-title">{info.label}</p>
             <p className="muted">
-              {variant.label} · {variant.detail}
+              {variant.label} · {item.size ? 'custom size' : variant.detail}
             </p>
           </div>
           <button className="icon-button" onClick={onDeselect} aria-label="Deselect">
@@ -173,6 +174,8 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           ))}
         </div>
       </section>
+
+      <SizeCard item={item} round={Boolean(variant.round)} onUpdate={onUpdate} onPreview={onPreview} onCommit={onCommit} />
 
       {fixedFinish ? (
         <section className="card">
@@ -331,5 +334,62 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         )}
       </section>
     </aside>
+  )
+}
+
+interface SizeCardProps {
+  item: FurnitureItem
+  round: boolean
+  onUpdate: (changes: ItemChanges) => void
+  onPreview: (changes: ItemChanges) => void
+  onCommit: () => void
+}
+
+/**
+ * Custom width, depth and height (Phase 15), dragged or typed in any unit. Each
+ * option has limits (see sizes.ts); "Standard size" goes back to the option's own.
+ * A slider drag is one undo step, a typed value is one step.
+ */
+function SizeCard({ item, round, onUpdate, onPreview, onCommit }: SizeCardProps) {
+  const size = itemSize(item)
+  const limits = sizeLimits(item.type, item.variant)
+  const field = (index: 0 | 1 | 2, label: string, range: [number, number]) => {
+    const withValue = (value: number): Size3 => {
+      const next: Size3 = [...size]
+      next[index] = value
+      if (round && index === 0) next[1] = value
+      return next
+    }
+    return (
+      <LengthField
+        label={label}
+        value={size[index]}
+        min={range[0]}
+        max={range[1]}
+        onPreview={(value) => onPreview({ size: withValue(value) })}
+        onCommit={onCommit}
+        onSet={(value) => onUpdate({ size: withValue(value) })}
+      />
+    )
+  }
+  return (
+    <section className="card size-card">
+      <h2>Size</h2>
+      {field(0, round ? 'Diameter' : 'Width', limits.width)}
+      {!round && field(1, 'Depth', limits.depth)}
+      {field(2, 'Height', limits.height)}
+      <p className="muted small">
+        {item.size ? 'Custom size. ' : 'The standard size for this option. '}
+        Chairs, drawer units and PCs can tuck under desks and tables; a piece too tall for the space under one is flagged.
+        {item.size && (
+          <>
+            {' '}
+            <button className="text-button" onClick={() => onUpdate({ size: undefined })}>
+              Back to the standard size
+            </button>
+          </>
+        )}
+      </p>
+    </section>
   )
 }

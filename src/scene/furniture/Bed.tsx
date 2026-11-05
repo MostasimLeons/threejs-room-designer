@@ -1,8 +1,8 @@
 import { materials } from '../materials'
 import { frameMaterial } from './frames'
 import { Block } from '../parts'
-import { getVariant } from './catalog'
 import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
+import { useFootprint } from './footprintContext'
 
 /**
  * Upholstered bed with a channel-tufted headboard, oak plinth, linen bedding and pillows.
@@ -12,7 +12,7 @@ import { useTintedMaterial, type ModelProps } from './useTintedMaterial'
 export function Bed({ color, variant, frame }: ModelProps) {
   const legMaterial = frameMaterial(frame, materials.woodLight)
   const upholstery = useTintedMaterial(materials.creamUpholstery, color)
-  const [width, depth] = getVariant('bed', variant).footprint
+  const [width, depth] = useFootprint('bed', variant)
   const mattressW = width - 0.1 // 1.8 m for a king
   const frameD = depth - 0.12 // frame in front of the headboard
   const frameZ = (depth - frameD) / 2 // shift the frame forward of the headboard
